@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "tag": "c:storage_blocks/iron"
+    },
+    "C": {
+      "tag": "c:plates/copper"
+    },
+    "E": {
+      "item": "create:electron_tube"
+    },
+    "R": {
+      "tag": "c:storage_blocks/redstone"
+    },
+    "T": {
+      "item": "rocketnautics:titanium_casing"
+    }
+  },
+  "pattern": [
+    " E ",
+    "CTC",
+    "RBR"
+  ],
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:magnetic_stabilizer"
+  }
+}

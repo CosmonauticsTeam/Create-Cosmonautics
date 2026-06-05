@@ -139,7 +139,15 @@ public class RocketTags {
         THRUSTERS,
         RILLE_CARVABLE,
         CRATER_CARVABLE,
-        GENERIC_CARVABLE;
+        GENERIC_CARVABLE,
+        SUPER_LIGHT(NameSpace.SABLE),
+        LIGHT(NameSpace.SABLE),
+        HEAVY(NameSpace.SABLE),
+        SUPER_HEAVY(NameSpace.SABLE),
+        HALF_VOLUME(NameSpace.SABLE),
+        QUARTER_VOLUME(NameSpace.SABLE),
+        SLIPPERY(NameSpace.SABLE),
+        BOUNCY(NameSpace.SABLE);
 
         public final TagKey<Block> tag;
 
@@ -192,7 +200,8 @@ public class RocketTags {
     private enum NameSpace { // this exists to differentiate between the namespace override and path override constructors
 
         MOD(RocketNautics.MODID),
-        COMMON("c");
+        COMMON("c"),
+        SABLE("sable");
 
         public final String id;
 

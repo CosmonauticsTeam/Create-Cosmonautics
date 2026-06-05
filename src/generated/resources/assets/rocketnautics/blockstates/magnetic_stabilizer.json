@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "rocketnautics:block/magnetic_stabilizer"
+    },
+    "powered=true": {
+      "model": "rocketnautics:block/magnetic_stabilizer_on"
+    }
+  }
+}

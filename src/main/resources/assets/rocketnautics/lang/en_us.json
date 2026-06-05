@@ -20,6 +20,14 @@
   "block.rocketnautics.hologram_block": "Hologram Table",
   "block.rocketnautics.hologram_block.funny": "Actually a volumetric display.",
   "block.rocketnautics.hologram_block.summary": "Displays a hologram of the universe around itself at configurable scale and size. Short click the configuration points to increase/decrease the hologram scale.",
+
+  "block.rocketnautics.magnetic_stabilizer": "Magnetic Stabilizer",
+  "block.rocketnautics.magnetic_stabilizer.tooltip.summary": "Creates _friction_ against the _ambient magnetic field_. Magnets. _How do they work?_",
+  "block.rocketnautics.magnetic_stabilizer.tooltip.condition1": "When Powered",
+  "block.rocketnautics.magnetic_stabilizer.tooltip.behaviour1": "Dampens _angular momentum_ of the attached _ship_.",
+
+  "block.rocketnautics.titanium_casing": "Resilient Casing",
+
   "item.rocketnautics.music_disc_space": "Music Disc",
   "item.rocketnautics.music_disc_space.desc": "Kevin MacLeod - Brittle Rille",
   "item.rocketnautics.music_disc_space.funny": "We noticed that one of our employees was playing some _game_ instead of _working_. We fired him, of course, but we _liked_ the _soundtrack_!",

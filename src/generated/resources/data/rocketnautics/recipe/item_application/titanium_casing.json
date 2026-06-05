@@ -1,0 +1,16 @@
+{
+  "type": "create:item_application",
+  "ingredients": [
+    {
+      "item": "create:copper_casing"
+    },
+    {
+      "item": "rocketnautics:titanium_alloy_sheet"
+    }
+  ],
+  "results": [
+    {
+      "id": "rocketnautics:titanium_casing"
+    }
+  ]
+}

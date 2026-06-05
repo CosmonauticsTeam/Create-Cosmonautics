@@ -1,5 +1,6 @@
 {
   "values": [
+    "rocketnautics:titanium_casing",
     "rocketnautics:rocket_thruster",
     "rocketnautics:vector_thruster",
     "rocketnautics:booster_thruster",
@@ -7,6 +8,7 @@
     "rocketnautics:separator",
     "rocketnautics:sputnik",
     "rocketnautics:hologram_block",
+    "rocketnautics:magnetic_stabilizer",
     "rocketnautics:titanium_ore",
     "rocketnautics:deepslate_titanium_ore",
     "rocketnautics:lunar_regolith",

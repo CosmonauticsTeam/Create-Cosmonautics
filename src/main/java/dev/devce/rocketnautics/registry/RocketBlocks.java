@@ -1,16 +1,22 @@
 package dev.devce.rocketnautics.registry;
 
+import com.simibubi.create.AllItems;
+import com.simibubi.create.content.decoration.encasing.CasingBlock;
+import com.simibubi.create.foundation.data.BuilderTransformers;
 import com.simibubi.create.foundation.data.CreateRegistrate;
+import com.simibubi.create.foundation.data.recipe.CommonMetal;
 import com.tterrag.registrate.builders.BlockBuilder;
 import com.tterrag.registrate.builders.ItemBuilder;
 import com.tterrag.registrate.util.DataIngredient;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import com.tterrag.registrate.util.nullness.NonNullFunction;
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.RocketSpriteShifts;
 import dev.devce.rocketnautics.content.RocketBlockItem;
 import dev.devce.rocketnautics.content.blocks.*;
 import dev.devce.rocketnautics.content.blocks.world.MossBlock;
 import dev.devce.rocketnautics.content.blocks.world.RockBlock;
+import dev.simulated_team.simulated.index.SimTags;
 import dev.simulated_team.simulated.registrate.SimulatedRegistrate;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
@@ -28,6 +34,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.ApplyBonusCount;
+import net.neoforged.neoforge.client.model.generators.ConfiguredModel;
 import net.neoforged.neoforge.common.Tags;
 import org.jspecify.annotations.NonNull;
 
@@ -39,6 +46,13 @@ import static dev.devce.rocketnautics.registry.RocketTags.BlockTags.GENERIC_CARV
 
 public class RocketBlocks {
     private static final SimulatedRegistrate REGISTRATE = RocketNautics.getRegistrate();
+
+    public static final BlockEntry<CasingBlock> TITANIUM_CASING = REGISTRATE.block("titanium_casing", CasingBlock::new)
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .properties(p -> p.mapColor(MapColor.TERRACOTTA_PINK))
+            .transform(BuilderTransformers.casing(() -> RocketSpriteShifts.TITANIUM_CASING))
+            .tag(RocketTags.BlockTags.LIGHT.tag)
+            .register();
 
     public static final BlockEntry<RocketThrusterBlock> ROCKET_THRUSTER = REGISTRATE.block("rocket_thruster", RocketThrusterBlock::new)
             .initialProperties(() -> Blocks.IRON_BLOCK)
@@ -70,7 +84,7 @@ public class RocketBlocks {
             .initialProperties(() -> Blocks.IRON_BLOCK)
             .properties(BlockBehaviour.Properties::noOcclusion)
             .transform(pickaxeOnly())
-            .tag(RocketTags.BlockTags.THRUSTERS.tag)
+            .tag(RocketTags.BlockTags.THRUSTERS.tag, RocketTags.BlockTags.LIGHT.tag, RocketTags.BlockTags.QUARTER_VOLUME.tag)
             .transform(existingDirectionalModel("rcs_thruster"))
             .item(RocketBlockItem::new).build().register();
 
@@ -80,6 +94,7 @@ public class RocketBlocks {
             .properties(BlockBehaviour.Properties::noOcclusion)
             .transform(pickaxeOnly())
             .transform(existingDirectionalModel("sep"))
+            .tag(RocketTags.BlockTags.SUPER_LIGHT.tag)
             .item(RocketBlockItem::new)
             .model((ctx, prov) -> prov.blockItem(ctx::getEntry, "_single"))
             .build().register();
@@ -89,6 +104,7 @@ public class RocketBlocks {
             .properties(BlockBehaviour.Properties::noOcclusion)
             .transform(pickaxeOnly())
             .transform(existingSimpleModel("sputnik"))
+            .tag(RocketTags.BlockTags.SUPER_HEAVY.tag)
             .item(RocketBlockItem::new)
             .recipe((ctx, prov) -> ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
                     .pattern("L L")
@@ -106,8 +122,33 @@ public class RocketBlocks {
             .initialProperties(() -> Blocks.IRON_BLOCK)
             .transform(pickaxeOnly())
             .transform(existingSimpleModel("hologram_block"))
+            .tag(RocketTags.BlockTags.HALF_VOLUME.tag, RocketTags.BlockTags.HEAVY.tag)
             .item(RocketBlockItem::new)
             .transform(RocketItems.noGeneratedModel())
+            .build()
+            .register();
+
+    public static final BlockEntry<MagneticStabilizerBlock> MAGNETIC_STABILIZER = REGISTRATE.block("magnetic_stabilizer", MagneticStabilizerBlock::new)
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .transform(pickaxeOnly())
+            .tag(RocketTags.BlockTags.SUPER_HEAVY.tag)
+            .blockstate((ctx, prov) -> prov.getVariantBuilder(ctx.getEntry())
+                    .partialState().with(MagneticStabilizerBlock.POWERED, true)
+                    .setModels(new ConfiguredModel(prov.models().getExistingFile(RocketNautics.path("block/magnetic_stabilizer_on"))))
+                    .partialState().with(MagneticStabilizerBlock.POWERED, false)
+                    .setModels(new ConfiguredModel(prov.models().getExistingFile(RocketNautics.path("block/magnetic_stabilizer")))))
+            .item()
+            .recipe((ctx, prov) -> ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
+                    .pattern(" E ")
+                    .pattern("CTC")
+                    .pattern("RBR")
+                    .define('C', CommonMetal.COPPER.plates)
+                    .define('B', Tags.Items.STORAGE_BLOCKS_IRON)
+                    .define('R', Tags.Items.STORAGE_BLOCKS_REDSTONE)
+                    .define('T', RocketBlocks.TITANIUM_CASING)
+                    .define('E', AllItems.ELECTRON_TUBE)
+                    .unlockedBy("has_iron_block", prov.has(Items.IRON_BLOCK))
+                    .save(prov))
             .build()
             .register();
 
@@ -172,6 +213,7 @@ public class RocketBlocks {
             .properties(p -> p.mapColor(MapColor.STONE))
             .transform(pickaxeOnly())
             .transform(stairs(LUNAR_REGOLITH, "_end", "_side"))
+            .tag(RocketTags.BlockTags.HALF_VOLUME.tag, RocketTags.BlockTags.LIGHT.tag)
             .item().build()
             .register();
 
@@ -180,6 +222,7 @@ public class RocketBlocks {
             .properties(p -> p.mapColor(MapColor.STONE))
             .transform(pickaxeOnly())
             .transform(slab(LUNAR_REGOLITH, "_end", "_side"))
+            .tag(RocketTags.BlockTags.HALF_VOLUME.tag, RocketTags.BlockTags.LIGHT.tag)
             .item().build()
             .register();
 
@@ -195,6 +238,7 @@ public class RocketBlocks {
             .properties(p -> p.mapColor(MapColor.STONE))
             .transform(pickaxeOnly())
             .transform(stairs(LUNAR_SHATTERED_REGOLITH))
+            .tag(RocketTags.BlockTags.HALF_VOLUME.tag, RocketTags.BlockTags.LIGHT.tag)
             .item().build()
             .register();
 
@@ -203,6 +247,7 @@ public class RocketBlocks {
             .properties(p -> p.mapColor(MapColor.STONE))
             .transform(pickaxeOnly())
             .transform(slab(LUNAR_SHATTERED_REGOLITH))
+            .tag(RocketTags.BlockTags.HALF_VOLUME.tag, RocketTags.BlockTags.LIGHT.tag)
             .item().build()
             .register();
 
@@ -227,6 +272,7 @@ public class RocketBlocks {
             .properties(p -> p.mapColor(MapColor.STONE))
             .transform(pickaxeOnly())
             .transform(stairs(LUNAR_REGOLITH_BRICK))
+            .tag(RocketTags.BlockTags.HALF_VOLUME.tag, RocketTags.BlockTags.LIGHT.tag)
             .item().build()
             .register();
 
@@ -235,6 +281,7 @@ public class RocketBlocks {
             .properties(p -> p.mapColor(MapColor.STONE))
             .transform(pickaxeOnly())
             .transform(slab(LUNAR_REGOLITH_BRICK))
+            .tag(RocketTags.BlockTags.HALF_VOLUME.tag, RocketTags.BlockTags.LIGHT.tag)
             .item().build()
             .register();
 
@@ -243,6 +290,7 @@ public class RocketBlocks {
             .transform(pickaxeOnly())
             .tag(GENERIC_CARVABLE.tag)
             .blockstate((ctx, prov) -> prov.axisBlock(ctx.getEntry()))
+            .tag(RocketTags.BlockTags.HEAVY.tag)
             .item().build()
             .register();
 

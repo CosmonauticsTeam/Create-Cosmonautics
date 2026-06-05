@@ -49,6 +49,11 @@ public class RocketBlockEntities {
             .renderer(() -> HologramTableRenderer::new)
             .register();
 
+    public static final BlockEntityEntry<MagneticStabilizerBlockEntity> MAGNETIC_STABILIZER = REGISTRATE
+            .blockEntity("magnetic_stabilizer", MagneticStabilizerBlockEntity::new)
+            .validBlocks(RocketBlocks.MAGNETIC_STABILIZER)
+            .register();
+
     public static void register(IEventBus eventBus) {
         eventBus.addListener(RocketBlockEntities::registerCapabilities);
     }

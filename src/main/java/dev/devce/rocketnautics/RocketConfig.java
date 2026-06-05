@@ -41,6 +41,7 @@ public class RocketConfig {
         public final ModConfigSpec.BooleanValue enableEngineDebugLogging;
         public final ModConfigSpec.BooleanValue brokenBarrier;
         public final ModConfigSpec.DoubleValue sonicBoomSpeedThreshold;
+        public final ModConfigSpec.DoubleValue magneticStabilizerStrength;
 
         public Server(ModConfigSpec.Builder builder) {
             builder.push("Thrusters");
@@ -84,6 +85,11 @@ public class RocketConfig {
                     .comment("Base consumption per tick of pressurized air while leg thrusters are active")
                     .defineInRange("legThrusterBaseConsumption", 2, 1, 100);
             builder.pop();
+            magneticStabilizerStrength = builder
+                    .comment("Strength of the Magnetic Stabilizer in dampening angular momentum")
+                    .defineInRange("magneticStabilizerStrength", 50d, 1, 1000000);
+            builder.push("Functional Blocks");
+
         }
     }
 
