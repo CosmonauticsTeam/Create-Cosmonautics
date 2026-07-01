@@ -1,6 +1,6 @@
 plugins {
-    id 'net.neoforged.moddev' version '1.0.1'
-    id 'com.gradleup.shadow' version '8.3.6'
+    id 'net.neoforged.moddev' version '1.0.24'
+    id 'com.gradleup.shadow' version '8.3.11'
 }
 
 configurations {
@@ -66,7 +66,7 @@ base {
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 neoForge {
-    version = '21.1.228'
+    version = '21.1.234'
 
     runs {
         client {
@@ -101,7 +101,7 @@ tasks.register('extractInnerJar', Copy) {
         configurations.jarExtraction.collect { zipTree(it) }
     }
     // Filter specifically for your nested JAR file
-    include "**/c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.101.jar"
+    include "**/c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.113.jar"
 
     // Flatten the directory structure so it drops straight into our target folder
     eachFile { path = name }
@@ -127,10 +127,10 @@ dependencies {
     implementation("dev.ryanhcode.offroad:offroad-neoforge-${minecraft_version}:${offroad_version}") { transitive = false }
     implementation("dev.simulated_team.simulated:simulated-neoforge-${minecraft_version}:${simulated_version}") { transitive = false }
     implementation("dev.eriksonn.aeronautics:aeronautics-neoforge-${minecraft_version}:${aeronautics_version}") { transitive = false }
-    implementation("foundry.veil:veil-neoforge-${minecraft_version}:4.1.1")
+    implementation("foundry.veil:veil-neoforge-${minecraft_version}:4.2.1")
 
-    runtimeOnly("maven.modrinth:c2me-neoforge:0.4.0-alpha.0.101+1.21.1")
-    jarExtraction("maven.modrinth:c2me-neoforge:0.4.0-alpha.0.101+1.21.1")
+    runtimeOnly("maven.modrinth:c2me-neoforge:0.4.0-alpha.0.113+1.21.1")
+    jarExtraction("maven.modrinth:c2me-neoforge:0.4.0-alpha.0.113+1.21.1")
     compileOnly fileTree(layout.buildDirectory.dir("extracted-jars")) {
         builtBy(extractInnerJar)
     }
@@ -139,14 +139,14 @@ dependencies {
     compileOnly("mezz.jei:jei-1.21.1-neoforge-api:${jei_version}")
     runtimeOnly("mezz.jei:jei-1.21.1-neoforge:${jei_version}")
     
-    implementation "curse.maven:jade-324717:6738687"
+    implementation("maven.modrinth:jade:15.10.5+neoforge")
 
     
     compileOnly("cc.tweaked:cc-tweaked-${minecraft_version}-forge-api:${cc_version}")
     runtimeOnly("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_version}")
 
     shade("org.luaj:luaj-jse:3.0.1")
-    shade('org.orekit:orekit:13.1.4')
+    shade('org.orekit:orekit:13.1.6')
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }

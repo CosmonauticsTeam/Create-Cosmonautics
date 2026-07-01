@@ -178,7 +178,7 @@ public class FluidHoseItem extends Item {
             RopeStrandHolderBehavior holderB = sbeB.getBehaviour(RopeStrandHolderBehavior.TYPE);
 
             if (holderA != null && holderB != null) {
-                if (holderA.createRope(holderB)) {
+                if (holderA.createRope(holderB, true)) {
                     level.playSound(null, posA, SoundEvents.WOOL_PLACE, SoundSource.BLOCKS, 0.5F, 1F);
                     level.playSound(null, posB, SoundEvents.WOOL_PLACE, SoundSource.BLOCKS, 0.5F, 1F);
                     return true;

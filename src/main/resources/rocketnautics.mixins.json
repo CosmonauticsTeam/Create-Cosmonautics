@@ -23,6 +23,7 @@
     "RapierFreeConstraintHandleMixin",
     "RapierGenericConstraintHandleMixin",
     "RapierRotaryConstraintHandleMixin",
+    "compat.SableCreateKineticsMixin",
     "compat.C2MEDensityFunctionFixer"
   ],
   "client": [
