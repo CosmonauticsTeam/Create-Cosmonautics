@@ -449,7 +449,7 @@ public final class DeepSpaceHandler {
                 // Pulsate slightly differently for each layer
                 float pulseFreq = 0.05f + layer * 0.02f;
                 float pulseAmp = 0.005f + layer * 0.004f;
-                float scale = 1.0f + (float) Math.sin(baseTime * pulseFreq) * pulseAmp;
+                float scale = 1.0f;
                 float layerSize = size * (1.0f + layer * 0.006f) * scale;
                 
                 // Rotate layers in different directions and speeds
