@@ -406,7 +406,7 @@ public final class DeepSpaceHandler {
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.depthMask(true);
+        RenderSystem.depthMask(false);
         RenderSystem.enableDepthTest();
         RenderSystem.enableCull();
         RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
