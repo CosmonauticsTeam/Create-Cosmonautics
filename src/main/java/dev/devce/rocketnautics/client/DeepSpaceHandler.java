@@ -430,7 +430,7 @@ public final class DeepSpaceHandler {
         renderCubeOrSphere(bufferbuilder, matrix, size, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, isSphere);
         BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
 
-        if (planet.extras().star()) {
+        if (planet.extras().star() && isSphere) {
             // Render 3 extra rotating, pulsating plasma layers for a highly turbulent, volumetric 3D solar storm!
             // This prevents the "flat cube" look and creates amazing swirling interference patterns.
             long tick = mc.level.getGameTime();
