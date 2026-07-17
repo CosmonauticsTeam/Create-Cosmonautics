@@ -9,6 +9,7 @@ import com.tterrag.registrate.util.nullness.NonNullSupplier;
 import dev.devce.rocketnautics.compat.computercraft.ComputerCraftCompat;
 import dev.devce.rocketnautics.content.commands.GravityCommand;
 import dev.devce.rocketnautics.content.commands.JetpackCommand;
+import dev.devce.rocketnautics.content.commands.OrbitCommand;
 import dev.devce.rocketnautics.content.commands.ShipCopyPasteCommand;
 import dev.devce.rocketnautics.content.commands.TimescaleCommand;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseLoader;
@@ -146,6 +147,7 @@ public class RocketNautics {
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         GravityCommand.register(event.getDispatcher());
+        OrbitCommand.register(event.getDispatcher());
         ShipCopyPasteCommand.register(event.getDispatcher());
         JetpackCommand.register(event.getDispatcher());
         dev.devce.rocketnautics.content.commands.AsteroidCommand.register(event.getDispatcher());

@@ -43,6 +43,14 @@ import java.util.function.LongConsumer;
 import java.util.function.UnaryOperator;
 
 public class DeepSpaceHelper {
+    public static boolean isSphereShape() {
+        try {
+            return dev.devce.rocketnautics.RocketConfig.SERVER.planetShape.get() == dev.devce.rocketnautics.RocketConfig.PlanetShape.SPHERE;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static final AbsoluteDate EPOCH = AbsoluteDate.ARBITRARY_EPOCH;
     private static final long ATTOS_IN_TICK = 50000000000000000L;
     public static final TimeOffset TICK = new TimeOffset(0L, ATTOS_IN_TICK);

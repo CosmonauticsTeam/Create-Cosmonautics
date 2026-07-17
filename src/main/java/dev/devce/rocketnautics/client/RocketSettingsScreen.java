@@ -59,7 +59,7 @@ public class RocketSettingsScreen extends Screen {
     protected void init() {
         this.clearWidgets();
         int x = this.width / 2;
-        int y = 60;
+        int y = 50;
 
         if (activeTab == ScreenTab.CLIENT) {
             initClientSettings(x, y);
@@ -67,14 +67,15 @@ public class RocketSettingsScreen extends Screen {
             initServerSettings(x, y);
         }
 
-        // Back Button
-        this.addRenderableWidget(new NodeButton(this.width / 2 - 100, this.height - 35, 200, 20, 
+        // Back Button positioned under the panel
+        int ph = 125;
+        this.addRenderableWidget(new NodeButton(this.width / 2 - 100, y + ph + 15, 200, 20, 
             Component.translatable("gui.done"), b -> this.minecraft.setScreen(this.lastScreen), 0xFF00FF88));
     }
 
     private void addNodeConfig(int x, int y, String title, int color, java.util.function.Consumer<NodeConfigBuilder> setup) {
-        int width = 200;
-        NodeConfigBuilder builder = new NodeConfigBuilder(x - width / 2, y + 20, color);
+        int width = 430;
+        NodeConfigBuilder builder = new NodeConfigBuilder(x - width / 2, y + 25, color);
         setup.accept(builder);
     }
 
@@ -100,6 +101,7 @@ public class RocketSettingsScreen extends Screen {
                 RocketConfig.CLIENT.planetRenderMaximumScale.set(val.intValue());
                 RocketConfig.CLIENT.planetRenderMaximumScale.save();
             });
+
         });
     }
 
@@ -127,6 +129,13 @@ public class RocketSettingsScreen extends Screen {
             builder.addToggle("Engine Debug Logs", RocketConfig.SERVER.enableEngineDebugLogging.get(), val -> {
                 RocketConfig.SERVER.enableEngineDebugLogging.set(val);
                 RocketConfig.SERVER.enableEngineDebugLogging.save();
+            });
+            String[] shapes = { "gui.rocketnautics.planet_shape.cube", "gui.rocketnautics.planet_shape.sphere" };
+            builder.addCycle("gui.rocketnautics.planet_shape", shapes, RocketConfig.SERVER.planetShape.get().ordinal(), val -> {
+                RocketConfig.PlanetShape shape = RocketConfig.PlanetShape.values()[val];
+                RocketConfig.SERVER.planetShape.set(shape);
+                RocketConfig.SERVER.planetShape.save();
+                DeepSpaceHandler.clearRenderCache();
             });
         });
     }
@@ -185,17 +194,28 @@ public class RocketSettingsScreen extends Screen {
 
     private class NodeConfigBuilder {
         private final int startX;
-        private int currentY;
+        private final int startY;
         private final int accent;
+        private int count = 0;
 
         public NodeConfigBuilder(int x, int y, int accent) {
             this.startX = x;
-            this.currentY = y;
+            this.startY = y;
             this.accent = accent;
         }
 
+        private int getColX() {
+            return startX + 10 + (count % 2) * 210;
+        }
+
+        private int getRowY() {
+            return startY + (count / 2) * 30;
+        }
+
         public void addToggle(String name, boolean initial, java.util.function.Consumer<Boolean> callback) {
-            addRenderableWidget(new NodeButton(startX + 10, currentY, 180, 20, 
+            int cx = getColX();
+            int cy = getRowY();
+            addRenderableWidget(new NodeButton(cx, cy, 200, 20, 
                 Component.literal(name + ": " + (initial ? "ON" : "OFF")), 
                 btn -> {
                     boolean isCurrentlyOn = btn.getMessage().getString().contains("ON");
@@ -203,12 +223,28 @@ public class RocketSettingsScreen extends Screen {
                     callback.accept(next);
                     btn.setMessage(Component.literal(name + ": " + (next ? "ON" : "OFF")));
                 }, accent));
-            currentY += 25;
+            count++;
         }
 
         public void addSlider(String name, double initial, double min, double max, java.util.function.Consumer<Double> callback) {
-            addRenderableWidget(new NodeSlider(startX + 10, currentY, 180, 20, name, initial, min, max, accent, callback));
-            currentY += 25;
+            int cx = getColX();
+            int cy = getRowY();
+            addRenderableWidget(new NodeSlider(cx, cy, 200, 20, name, initial, min, max, accent, callback));
+            count++;
+        }
+
+        public void addCycle(String nameKey, String[] optionKeys, int initialIndex, java.util.function.Consumer<Integer> callback) {
+            final int[] currentIndex = { initialIndex };
+            int cx = getColX();
+            int cy = getRowY();
+            addRenderableWidget(new NodeButton(cx, cy, 200, 20, 
+                Component.translatable(nameKey).append(": ").append(Component.translatable(optionKeys[currentIndex[0]])), 
+                btn -> {
+                    currentIndex[0] = (currentIndex[0] + 1) % optionKeys.length;
+                    callback.accept(currentIndex[0]);
+                    btn.setMessage(Component.translatable(nameKey).append(": ").append(Component.translatable(optionKeys[currentIndex[0]])));
+                }, accent));
+            count++;
         }
     }
 
@@ -235,7 +271,6 @@ public class RocketSettingsScreen extends Screen {
         this.renderBackground(graphics, mouseX, mouseY, partialTick);
         
         graphics.pose().pushPose();
-        // Remove scaling to fix mouse interaction mismatch with widgets
         
         // Header
         graphics.fill(0, 0, width, 24, 0xFF121212);
@@ -244,8 +279,8 @@ public class RocketSettingsScreen extends Screen {
         renderTabs(graphics, mouseX, mouseY);
 
         // Node Panel Background
-        int pw = 220;
-        int ph = 200;
+        int pw = 430;
+        int ph = 125;
         int px = width / 2 - pw / 2;
         int py = 50;
         

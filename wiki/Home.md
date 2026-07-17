@@ -8,3 +8,6 @@ The pages below detail how to customize the universe components currently suppor
 - [Common Types](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Common-Types)
 - [Cube Planets](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Cube-Planets)
 - [Texture Definition](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Texture-Definition)
+
+## Peripherals and Programming
+- [Peripherals](Peripherals.md) — Sputnik block telemetry, ComputerCraft integration, and local Lua script API.

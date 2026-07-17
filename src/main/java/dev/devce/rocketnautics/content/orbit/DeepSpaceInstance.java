@@ -191,13 +191,19 @@ public final class DeepSpaceInstance {
             // rotate the frame to view the planet aligned with the cardinal axes
             Vector3D p = lastOrbiting.getRotationAtTime(position.getLocalUniverseTime())
                     .applyInverseTo(getPosition().getCurrentPosition());
-            double ax = Math.abs(p.getX());
-            double ay = Math.abs(p.getY());
-            double az = Math.abs(p.getZ());
-            double dx = Math.max(0, ax - lastOrbiting.radius());
-            double dy = Math.max(0, ay - lastOrbiting.radius());
-            double dz = Math.max(0, az - lastOrbiting.radius());
-            double d2 = dx * dx + dy * dy + dz * dz;
+            double d2;
+            if (dev.devce.rocketnautics.api.orbit.DeepSpaceHelper.isSphereShape()) {
+                double dist = p.getNorm() - lastOrbiting.radius();
+                d2 = dist > 0 ? dist * dist : 0;
+            } else {
+                double ax = Math.abs(p.getX());
+                double ay = Math.abs(p.getY());
+                double az = Math.abs(p.getZ());
+                double dx = Math.max(0, ax - lastOrbiting.radius());
+                double dy = Math.max(0, ay - lastOrbiting.radius());
+                double dz = Math.max(0, az - lastOrbiting.radius());
+                d2 = dx * dx + dy * dy + dz * dz;
+            }
             if (d2 < lastOrbiting.linkedDimension().transitionHeight() * lastOrbiting.linkedDimension().transitionHeight()) {
                 SpaceTransitionHandler.exitDeepSpace(server, lastOrbiting, new TimeStampedPVCoordinates(lastTime, lastPosition, Vector3D.ZERO),
                         this, () -> manager.retireInstance(this.getId()));

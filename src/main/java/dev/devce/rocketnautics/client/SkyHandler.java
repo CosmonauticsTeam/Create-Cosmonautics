@@ -11,6 +11,7 @@ import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.SkyDataHandler;
 import dev.devce.rocketnautics.api.orbit.*;
+import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.PlanetExtras;
 import dev.devce.rocketnautics.network.PlanetMapRequestPayload;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
@@ -169,10 +170,11 @@ public class SkyHandler {
         BufferBuilder bufferbuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
         float r = 1.0f, g = 1.0f, b = 1.0f;
-        bufferbuilder.addVertex(matrix, relX - size, relY, relZ - size).setColor(r, g, b, visibility).setUv(0.0f, 0.0f);
-        bufferbuilder.addVertex(matrix, relX - size, relY, relZ + size).setColor(r, g, b, visibility).setUv(0.0f, 1.0f);
-        bufferbuilder.addVertex(matrix, relX + size, relY, relZ + size).setColor(r, g, b, visibility).setUv(1.0f, 1.0f);
-        bufferbuilder.addVertex(matrix, relX + size, relY, relZ - size).setColor(r, g, b, visibility).setUv(1.0f, 0.0f);
+        float u0 = 0.0f, u1 = 1.0f, v0 = 0.0f, v1 = 1.0f;
+        bufferbuilder.addVertex(matrix, relX - size, relY, relZ - size).setColor(r, g, b, visibility).setUv(u0, v0);
+        bufferbuilder.addVertex(matrix, relX - size, relY, relZ + size).setColor(r, g, b, visibility).setUv(u0, v1);
+        bufferbuilder.addVertex(matrix, relX + size, relY, relZ + size).setColor(r, g, b, visibility).setUv(u1, v1);
+        bufferbuilder.addVertex(matrix, relX + size, relY, relZ - size).setColor(r, g, b, visibility).setUv(u1, v0);
         BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
 
         if (extras != null && extras.clouds()) {
@@ -361,8 +363,31 @@ public class SkyHandler {
         }
     }
 
+    private static int lastPowerSize = 1;
+    private static int lastCenterX = 0;
+    private static int lastCenterZ = 0;
+    private static ColorPalette lastMapDataPosXPosZ = null;
+    private static ColorPalette lastMapDataPosXNegZ = null;
+    private static ColorPalette lastMapDataNegXPosZ = null;
+    private static ColorPalette lastMapDataNegXNegZ = null;
+
+    public static void triggerPlanetTextureRebuild() {
+        updatePlanetTexture(lastPowerSize, lastCenterX, lastCenterZ, lastMapDataPosXPosZ, lastMapDataPosXNegZ, lastMapDataNegXPosZ, lastMapDataNegXNegZ);
+    }
+
     public static void updatePlanetTexture(int powerSize, int centerX, int centerZ, ColorPalette mapDataPosXPosZ, ColorPalette mapDataPosXNegZ, ColorPalette mapDataNegXPosZ, ColorPalette mapDataNegXNegZ) {
+        lastPowerSize = powerSize;
+        lastCenterX = centerX;
+        lastCenterZ = centerZ;
+        lastMapDataPosXPosZ = mapDataPosXPosZ;
+        lastMapDataPosXNegZ = mapDataPosXNegZ;
+        lastMapDataNegXPosZ = mapDataNegXPosZ;
+        lastMapDataNegXNegZ = mapDataNegXNegZ;
+
         PlanetRenderInfo updating = PLANET_TEXTURE_OBJ_LAST;
+        if (updating == null) {
+            return;
+        }
         PLANET_TEXTURE_OBJ_LAST = PLANET_TEXTURE_OBJ;
         PLANET_TEXTURE_OBJ = updating;
         texFade = 1;
@@ -374,11 +399,22 @@ public class SkyHandler {
         mc.execute(() -> {
             if (PLANET_TEXTURE_OBJ == null) return;
 
-            NativeImage image = composePlanetTexture(new CompoundPaletteAccess(mapDataPosXPosZ, mapDataPosXNegZ, mapDataNegXPosZ, mapDataNegXNegZ));
+            NativeImage image;
+            if (mapDataPosXPosZ != null) {
+                image = composePlanetTexture(new CompoundPaletteAccess(mapDataPosXPosZ, mapDataPosXNegZ, mapDataNegXPosZ, mapDataNegXNegZ));
+            } else {
+                // Fallback to a default/blank texture since we have no server map data
+                image = new NativeImage(1024, 1024, false);
+                for (int x = 0; x < 1024; x++) {
+                    for (int y = 0; y < 1024; y++) {
+                        image.setPixelRGBA(x, y, (255 << 24) | (80 << 16) | (40 << 8) | 10);
+                    }
+                }
+            }
 
             PLANET_TEXTURE_OBJ.getTexture().setPixels(image);
             PLANET_TEXTURE_OBJ.getTexture().upload();
-            PLANET_TEXTURE_OBJ.getTexture().setFilter(false, false);
+            PLANET_TEXTURE_OBJ.getTexture().setFilter(true, false);
             image.close();
             awaitUpdate = false;
         });
@@ -447,6 +483,10 @@ public class SkyHandler {
 
         ColorPalette virtualPalette = virtualPaletteBuilder.build();
 
+        // Local Noise2D for additional biome features and polar ice caps
+        java.util.Random rand = new java.util.Random(98765L);
+        Noise2D noiseGen = new Noise2D(64, rand);
+
         // Pass 2: Color, Shade, and Draw the 3D-embossed pixel art planet
         for (int vy = 0; vy < virtualSize; vy++) {
             for (int vx = 0; vx < virtualSize; vx++) {
@@ -456,6 +496,23 @@ public class SkyHandler {
                 int r = unpacked[1];
                 int g = unpacked[2];
                 int b = unpacked[3];
+
+                if (!flags.contains(ColorFlags.OCEAN)) {
+                    // Landmass variations (Desert, Savanna, Pine Forest/Taiga)
+                    float temp = noiseGen.sample(vx * 0.08f, vy * 0.08f);
+                    float moisture = noiseGen.sample(vx * 0.08f + 50f, vy * 0.08f + 50f);
+                    
+                    if (temp > 0.62f && moisture < 0.38f) {
+                        // Desert: sandy golden-yellow
+                        r = 230; g = 198; b = 115;
+                    } else if (temp > 0.55f && moisture >= 0.38f && moisture < 0.58f) {
+                        // Savanna: dry yellow-green
+                        r = 168; g = 175; b = 90;
+                    } else if (temp < 0.38f) {
+                        // Taiga/Tundra: dark pine green
+                        r = 45; g = 90; b = 75;
+                    }
+                }
 
                 // Dynamic 3D pixel-art coastline shading
                 if (flags.contains(ColorFlags.OCEAN)) {
@@ -491,6 +548,76 @@ public class SkyHandler {
         return image;
     }
 
+    public static class Noise3D {
+        private final int[] p = new int[512];
+        public Noise3D(long seed) {
+            java.util.Random rand = new java.util.Random(seed);
+            int[] permutation = new int[256];
+            for (int i = 0; i < 256; i++) permutation[i] = i;
+            for (int i = 255; i > 0; i--) {
+                int j = rand.nextInt(i + 1);
+                int temp = permutation[i];
+                permutation[i] = permutation[j];
+                permutation[j] = temp;
+            }
+            for (int i = 0; i < 256; i++) {
+                p[i] = permutation[i];
+                p[256 + i] = permutation[i];
+            }
+        }
+        private static double fade(double t) {
+            return t * t * t * (t * (t * 6 - 15) + 10);
+        }
+        private static double lerp(double t, double a, double b) {
+            return a + t * (b - a);
+        }
+        private static double grad(int hash, double x, double y, double z) {
+            int h = hash & 15;
+            double u = h < 8 ? x : y;
+            double v = h < 4 ? y : h == 12 || h == 14 ? x : z;
+            return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
+        }
+        public double sample(double x, double y, double z) {
+            int X = (int) Math.floor(x) & 255;
+            int Y = (int) Math.floor(y) & 255;
+            int Z = (int) Math.floor(z) & 255;
+            x -= Math.floor(x);
+            y -= Math.floor(y);
+            z -= Math.floor(z);
+            double u = fade(x);
+            double v = fade(y);
+            double w = fade(z);
+            int A = p[X] + Y;
+            int AA = p[A] + Z;
+            int AB = p[A + 1] + Z;
+            int B = p[X + 1] + Y;
+            int BA = p[B] + Z;
+            int BB = p[B + 1] + Z;
+            return lerp(w, lerp(v, lerp(u, grad(p[AA], x, y, z),
+                                           grad(p[BA], x - 1, y, z)),
+                                   lerp(u, grad(p[AB], x, y - 1, z),
+                                           grad(p[BB], x - 1, y - 1, z))),
+                           lerp(v, lerp(u, grad(p[AA + 1], x, y, z - 1),
+                                           grad(p[BA + 1], x - 1, y, z - 1)),
+                                   lerp(u, grad(p[AB + 1], x, y - 1, z - 1),
+                                           grad(p[BB + 1], x - 1, y - 1, z - 1))));
+        }
+    }
+
+    public static Vector3d getFaceDirection(int face, double u, double v) {
+        switch (face) {
+            case 0: return new Vector3d(u, 1.0, v);      // TOP
+            case 1: return new Vector3d(u, -1.0, v);     // BOTTOM
+            case 2: return new Vector3d(1.0, -v, -u);    // NORTH
+            case 3: return new Vector3d(-u, -v, 1.0);    // SOUTH
+            case 4: return new Vector3d(-1.0, -v, u);    // WEST
+            case 5: return new Vector3d(u, -v, -1.0);    // EAST
+            default: return new Vector3d(0, 0, 0);
+        }
+    }
+
+
+
     public static ResourceLocation CLOUD_TEXTURE_ID = null;
     private static DynamicTexture CLOUD_TEXTURE_OBJ = null;
 
@@ -509,24 +636,25 @@ public class SkyHandler {
 
         for (int x = 0; x < size; x++) {
             for (int y = 0; y < size; y++) {
-                float u = (x / (float)size) * 8.0f;
-                float v = (y / (float)size) * 8.0f;
+                // Map coordinates from 0 to 64.0f to match the Noise2D period (64)
+                float u = (x / (float)size) * 64.0f;
+                float v = (y / (float)size) * 64.0f;
                 
                 // 1. Coriolis Cyclonic Spiral Vortices (Twists coordinates in opposite directions)
                 // Cyclone 1 (North, Counter-Clockwise)
                 {
-                    double cu = 2.5;
-                    double cv = 2.5;
+                    double cu = 20.0;
+                    double cv = 20.0;
                     double du = u - cu;
                     double dv = v - cv;
-                    if (du > 4.0) du -= 8.0;
-                    if (du < -4.0) du += 8.0;
-                    if (dv > 4.0) dv -= 8.0;
-                    if (dv < -4.0) dv += 8.0;
+                    if (du > 32.0) du -= 64.0;
+                    if (du < -32.0) du += 64.0;
+                    if (dv > 32.0) dv -= 64.0;
+                    if (dv < -32.0) dv += 64.0;
                     double dist = Math.sqrt(du * du + dv * dv);
-                    if (dist < 2.2) {
-                        double strength = 1.9 * (1.0 - dist / 2.2);
-                        double angle = strength / (dist + 0.15);
+                    if (dist < 17.6) {
+                        double strength = 1.9 * (1.0 - dist / 17.6);
+                        double angle = strength / (dist / 8.0 + 0.15);
                         double cosA = Math.cos(angle);
                         double sinA = Math.sin(angle);
                         u = (float) (cu + (du * cosA - dv * sinA));
@@ -536,18 +664,18 @@ public class SkyHandler {
                 
                 // Cyclone 2 (South, Clockwise)
                 {
-                    double cu = 5.5;
-                    double cv = 5.5;
+                    double cu = 44.0;
+                    double cv = 44.0;
                     double du = u - cu;
                     double dv = v - cv;
-                    if (du > 4.0) du -= 8.0;
-                    if (du < -4.0) du += 8.0;
-                    if (dv > 4.0) dv -= 8.0;
-                    if (dv < -4.0) dv += 8.0;
+                    if (du > 32.0) du -= 64.0;
+                    if (du < -32.0) du += 64.0;
+                    if (dv > 32.0) dv -= 64.0;
+                    if (dv < -32.0) dv += 64.0;
                     double dist = Math.sqrt(du * du + dv * dv);
-                    if (dist < 2.2) {
-                        double strength = -1.9 * (1.0 - dist / 2.2);
-                        double angle = strength / (dist + 0.15);
+                    if (dist < 17.6) {
+                        double strength = -1.9 * (1.0 - dist / 17.6);
+                        double angle = strength / (dist / 8.0 + 0.15);
                         double cosA = Math.cos(angle);
                         double sinA = Math.sin(angle);
                         u = (float) (cu + (du * cosA - dv * sinA));
@@ -605,7 +733,7 @@ public class SkyHandler {
         
         CLOUD_TEXTURE_OBJ = new DynamicTexture(image);
         CLOUD_TEXTURE_ID = mc.getTextureManager().register("rocketnautics_clouds", CLOUD_TEXTURE_OBJ);
-        CLOUD_TEXTURE_OBJ.setFilter(false, false); // Keep it crisp and pixelated to perfectly match the planet style!
+        CLOUD_TEXTURE_OBJ.setFilter(false, false); // Keep them crisp and pixelated!
         image.close();
     }
 
@@ -817,7 +945,7 @@ public class SkyHandler {
         lastUpdatedAngle = celestialAngle;
         Minecraft mc = Minecraft.getInstance();
         
-        int size = 128;
+        int size = 256;
         NativeImage image = new NativeImage(size, size, false);
         
         double theta = 2.0 * Math.PI * celestialAngle;
@@ -840,41 +968,22 @@ public class SkyHandler {
                 
                 int r = 0, g = 0, b = 0, a = 0;
                 
-                // --- 1. Pixelated Toon/Cell Shading Shadow + Specular Highlight ---
-                if (dSun > 0.65) {
-                    // Brilliant star-facing sunlight overlay (warm tint)
+                // --- 1. Smooth Step Shadow Transition ---
+                if (dSun > 0.1) {
+                    double sunGlow = Math.min(1.0, (dSun - 0.1) / 0.9);
                     r = 255;
                     g = 245;
                     b = 200;
-                    a = 55;
-                } else if (dSun > 0.45) {
-                    // Dithered bright border to clear light
-                    if ((x + y) % 2 == 0) {
-                        r = 255;
-                        g = 245;
-                        b = 200;
-                        a = 35;
-                    }
-                } else if (dSun > 0.05) {
-                    // Direct illumination - clear, shows raw planet texture
-                    r = 0; g = 0; b = 0; a = 0;
-                } else if (dSun > -0.12) {
-                    // Soft dithered terminator line
-                    if ((x + y) % 2 == 0) {
-                        r = 6;
-                        g = 8;
-                        b = 25;
-                        a = 130;
-                    }
+                    a = (int) (45.0 * sunGlow);
                 } else {
-                    // Deep dark indigo space shadow
+                    double shadowFactor = Math.min(1.0, (0.1 - dSun) / 0.35);
                     r = 4;
                     g = 5;
                     b = 18;
-                    a = 230;
+                    a = (int) (230.0 * shadowFactor);
                 }
                 
-                // --- 2. Pixelated Atmospheric Edge Glow ---
+                // --- 2. Smooth Atmospheric Edge Glow ---
                 double rDist = Math.sqrt(rSq);
                 if (rDist >= 0.83) {
                     double edgeFactor = (rDist - 0.83) / 0.17; // 0.0 to 1.0
@@ -888,27 +997,22 @@ public class SkyHandler {
                         int gb = 255;
                         int ga = (int) (225.0 * intensity);
                         
-                        // Pixelate the atmosphere glow!
-                        if (ga > 20) {
-                            r = (int) (r * (1.0 - intensity) + gr * intensity);
-                            g = (int) (g * (1.0 - intensity) + gg * intensity);
-                            b = (int) (b * (1.0 - intensity) + gb * intensity);
-                            a = Math.max(a, ga);
-                        }
+                        r = (int) (r * (1.0 - intensity) + gr * intensity);
+                        g = (int) (g * (1.0 - intensity) + gg * intensity);
+                        b = (int) (b * (1.0 - intensity) + gb * intensity);
+                        a = Math.max(a, ga);
                     } else {
-                        // Shadow-side atmospheric glow: cool space violet (dithered/pixelated)
+                        // Shadow-side atmospheric glow: cool space violet
                         double intensity = edgeFactor * Math.max(0.0, (-dSun - 0.2) / 1.2);
                         int gr = 120;
                         int gg = 75;
                         int gb = 230;
                         int ga = (int) (180.0 * intensity);
                         
-                        if (ga > 20) {
-                            r = (int) (r * (1.0 - intensity) + gr * intensity);
-                            g = (int) (g * (1.0 - intensity) + gg * intensity);
-                            b = (int) (b * (1.0 - intensity) + gb * intensity);
-                            a = Math.max(a, ga);
-                        }
+                        r = (int) (r * (1.0 - intensity) + gr * intensity);
+                        g = (int) (g * (1.0 - intensity) + gg * intensity);
+                        b = (int) (b * (1.0 - intensity) + gb * intensity);
+                        a = Math.max(a, ga);
                     }
                 }
                 
@@ -924,7 +1028,7 @@ public class SkyHandler {
             LIGHT_OVERLAY_TEXTURE_OBJ.setPixels(image);
             LIGHT_OVERLAY_TEXTURE_OBJ.upload();
         }
-        LIGHT_OVERLAY_TEXTURE_OBJ.setFilter(false, false); // Keep it crisp and pixelated!
+        LIGHT_OVERLAY_TEXTURE_OBJ.setFilter(true, false);
         image.close();
     }
 

@@ -19,6 +19,7 @@ public class ClientModEvents {
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(RocketNauticsClient.JETPACK_TOGGLE);
         event.register(RocketNauticsClient.DAMPENERS_TOGGLE);
+        event.register(RocketNauticsClient.ALIGNMENT_TOGGLE);
     }
 
     /**

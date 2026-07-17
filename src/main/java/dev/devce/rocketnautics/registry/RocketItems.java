@@ -16,6 +16,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.ArmorMaterials;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
 import net.neoforged.neoforge.common.Tags;
@@ -51,6 +52,11 @@ public class RocketItems {
     public static final ItemEntry<AnchorBootsItem> COPPER_ANCHOR_BOOTS = REGISTRATE.item("copper_anchor_boots", p -> new AnchorBootsItem(AllArmorMaterials.COPPER, p, RocketNautics.path("copper_diving")))
             .properties(p -> p.durability(ArmorItem.Type.BOOTS.getDurability(7)))
             .tag(ItemTags.FOOT_ARMOR)
+            .register();
+
+    public static final ItemEntry<SpaceHelmetItem> SPACE_HELMET = REGISTRATE.item("space_helmet", p -> new SpaceHelmetItem(ArmorMaterials.NETHERITE, p, RocketNautics.path("space_helmet")))
+            .properties(p -> p.durability(ArmorItem.Type.HELMET.getDurability(7)))
+            .tag(ItemTags.HEAD_ARMOR)
             .register();
 
     static { REGISTRATE.setCreativeTab(RocketTabs.RESOURCE_TAB); }

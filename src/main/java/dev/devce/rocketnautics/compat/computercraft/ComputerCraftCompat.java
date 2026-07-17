@@ -12,5 +12,10 @@ public class ComputerCraftCompat {
     }
 
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(
+                PeripheralCapability.get(),
+                RocketBlockEntities.SPUTNIK.get(),
+                (be, side) -> new SputnikPeripheral(be)
+        );
     }
 }

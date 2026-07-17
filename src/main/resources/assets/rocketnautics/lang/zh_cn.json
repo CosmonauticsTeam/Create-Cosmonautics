@@ -70,6 +70,11 @@
   "item.rocketnautics.copper_anchor_boots.tooltip.summary": "献给无比怀念重力、或是想正常走楼梯的你。",
   "item.rocketnautics.copper_anchor_boots.tooltip.condition1": "穿戴状态下",
   "item.rocketnautics.copper_anchor_boots.tooltip.behaviour1": "站在方块上时生成微弱重力，让你如同在地面般正常行走；同时兼具铜潜水靴的功能。",
+
+  "item.rocketnautics.space_helmet": "太空头盔",
+  "item.rocketnautics.space_helmet.tooltip.summary": "当配备空气时，保护你免受真空和溺水伤害。",
+  "item.rocketnautics.space_helmet.tooltip.condition1": "穿戴状态下",
+  "item.rocketnautics.space_helmet.tooltip.behaviour1": "配合加压气源使用时，允许在太空或水下呼吸。",
   "block.rocketnautics.titanium_ore": "钛矿石",
   "block.rocketnautics.titanium_ore.funny": "你未来一次次失败太空任务的核心装备。",
   "block.rocketnautics.titanium_ore.summary": "仅在高海拔区域或地底深处产出的稀有矿石，是制造坚固轻量化航天构件的核心原料。",

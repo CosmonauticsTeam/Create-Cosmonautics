@@ -83,6 +83,11 @@
   "item.rocketnautics.copper_anchor_boots.tooltip.condition1": "When Worn",
   "item.rocketnautics.copper_anchor_boots.tooltip.behaviour1": "Provides _weak gravity_ when standing on a block. Allows _walking around_ as if _grounded_. Also acts like _Copper Diving Boots_.",
 
+  "item.rocketnautics.space_helmet": "Space Helmet",
+  "item.rocketnautics.space_helmet.tooltip.summary": "Protects you from vacuum and drowning when supplied with air.",
+  "item.rocketnautics.space_helmet.tooltip.condition1": "When Worn",
+  "item.rocketnautics.space_helmet.tooltip.behaviour1": "Allows breathing in space or underwater when coupled with a pressurized air source.",
+
   "block.rocketnautics.titanium_ore": "Titanium Ore",
   "block.rocketnautics.titanium_ore.funny": "The backbone of your future failed space missions.",
   "block.rocketnautics.titanium_ore.summary": "Rare ore found in high altitudes or deep underground. Essential for building strong, lightweight aerospace components.",
@@ -190,5 +195,17 @@
   "rocketnautics.goggles.hose.role": "Role",
   "rocketnautics.goggles.hose.role.output": "Output",
   "rocketnautics.goggles.hose.role.input": "Input",
-  "rocketnautics.goggles.hose.contents": "Contents"
+  "rocketnautics.goggles.hose.contents": "Contents",
+  "key.categories.rocketnautics": "Cosmonautics",
+  "key.rocketnautics.toggle_jetpack": "Toggle Jetpack",
+  "key.rocketnautics.toggle_dampeners": "Toggle Inertial Dampeners",
+  "key.rocketnautics.toggle_alignment": "Toggle Space Helmet Orbit Alignment Helper",
+  "gui.rocketnautics.planet_shape": "Planet Shape",
+  "gui.rocketnautics.planet_shape.cube": "Cube",
+  "gui.rocketnautics.planet_shape.sphere": "Sphere",
+  "gui.rocketnautics.hud.orbiting": "ORB",
+  "gui.rocketnautics.hud.altitude": "ALT",
+  "gui.rocketnautics.hud.speed": "SPD",
+  "gui.rocketnautics.hud.eccentricity": "ECC",
+  "gui.rocketnautics.hud.escape": "Escape"
 }

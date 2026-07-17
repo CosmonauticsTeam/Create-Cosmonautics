@@ -126,6 +126,78 @@ public class SputnikPeripheral implements IPeripheral {
         return data;
     }
 
+    @LuaFunction(mainThread = true)
+    public final Map<String, Object> getDeepSpaceData() {
+        Map<String, Object> data = new HashMap<>();
+
+        boolean inDeepSpace = sputnik.isInDeepSpace();
+        data.put("inDeepSpace", inDeepSpace);
+
+        if (!inDeepSpace) {
+            data.put("semiMajorAxis", Double.NaN);
+            data.put("eccentricity", Double.NaN);
+            data.put("inclination", Double.NaN);
+            data.put("period", Double.NaN);
+            data.put("speed", 0.0);
+            data.put("gravity", 0.0);
+            data.put("parentBody", sputnik.getDimensionId());
+            data.put("parentRadius", 0.0);
+            data.put("distanceToPlanet", Double.NaN);
+            data.put("inAtmosphere", false);
+            data.put("atmosphereFlags", "");
+            data.put("universeTime", 0.0);
+
+            Map<String, Double> vel = new HashMap<>();
+            vel.put("x", Double.NaN); vel.put("y", Double.NaN); vel.put("z", Double.NaN);
+            data.put("velocity", vel);
+
+            Map<String, Double> dir = new HashMap<>();
+            dir.put("x", Double.NaN); dir.put("y", Double.NaN); dir.put("z", Double.NaN);
+            data.put("velocityDir", dir);
+
+            return data;
+        }
+
+        data.put("semiMajorAxis", sputnik.getOrbitalSemiMajorAxis());
+        data.put("eccentricity", sputnik.getOrbitalEccentricity());
+        data.put("inclination", sputnik.getOrbitalInclination());
+        data.put("period", sputnik.getOrbitalPeriod());
+        data.put("speed", sputnik.getOrbitalSpeed());
+        data.put("gravity", sputnik.getGravityAcceleration());
+        data.put("parentBody", sputnik.getParentBodyName());
+        data.put("parentRadius", sputnik.getParentBodyRadius());
+        data.put("distanceToPlanet", sputnik.getDistanceToPlanet());
+        data.put("inAtmosphere", sputnik.isInAtmosphere());
+        data.put("atmosphereFlags", sputnik.getAtmosphereFlags());
+        data.put("universeTime", (double) sputnik.getUniverseTime());
+
+        DeepSpaceInstance inst = sputnik.getDeepSpaceInstance();
+        Map<String, Double> vel = new HashMap<>();
+        Map<String, Double> dir = new HashMap<>();
+        if (inst != null && !inst.isCorrupted()) {
+            Vector3D v = inst.getPosition().getCurrentPVCoords().getVelocity();
+            vel.put("x", v.getX());
+            vel.put("y", v.getY());
+            vel.put("z", v.getZ());
+
+            double len = v.getNorm();
+            if (len > 1e-6) {
+                dir.put("x", v.getX() / len);
+                dir.put("y", v.getY() / len);
+                dir.put("z", v.getZ() / len);
+            } else {
+                dir.put("x", 0.0); dir.put("y", 0.0); dir.put("z", 0.0);
+            }
+        } else {
+            vel.put("x", Double.NaN); vel.put("y", Double.NaN); vel.put("z", Double.NaN);
+            dir.put("x", Double.NaN); dir.put("y", Double.NaN); dir.put("z", Double.NaN);
+        }
+        data.put("velocity", vel);
+        data.put("velocityDir", dir);
+
+        return data;
+    }
+
     private Map<String, Object> buildSpaceData() {
         try {
             if (sputnik.getLevel() == null) return buildUnavailableSpaceData();

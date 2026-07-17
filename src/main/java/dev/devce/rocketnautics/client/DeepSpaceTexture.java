@@ -24,8 +24,8 @@ public final class DeepSpaceTexture implements PreparedTexture {
         NativeImage image = SkyHandler.composePlanetTexture(renderData);
 
         DynamicTexture constructed = new DynamicTexture(image);
-        ResourceLocation claimed = mc.getTextureManager().register("rocketnautics_deep_space_planet", constructed);
-        constructed.setFilter(false, false);
+        ResourceLocation claimed = mc.getTextureManager().register("rocketnautics_deep_space_planet_" + renderID, constructed);
+        constructed.setFilter(true, false);
         image.close();
         return new DeepSpaceTexture(constructed, claimed);
     }

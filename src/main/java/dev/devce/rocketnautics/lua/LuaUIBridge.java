@@ -230,6 +230,25 @@ public class LuaUIBridge {
                         return LuaValue.valueOf(key.location().toString());
                     }
                 });
+                proxy.set("setItem", new OneArgFunction() {
+                    @Override public LuaValue call(LuaValue arg) {
+                        if (arg.isnil()) {
+                            el.setStack(net.minecraft.world.item.ItemStack.EMPTY);
+                            return LuaValue.NIL;
+                        }
+                        String name = arg.tojstring();
+                        net.minecraft.resources.ResourceLocation loc = net.minecraft.resources.ResourceLocation.tryParse(name);
+                        if (loc != null) {
+                            net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(loc);
+                            if (item != net.minecraft.world.item.Items.AIR) {
+                                el.setStack(new net.minecraft.world.item.ItemStack(item));
+                            } else {
+                                el.setStack(net.minecraft.world.item.ItemStack.EMPTY);
+                            }
+                        }
+                        return LuaValue.NIL;
+                    }
+                });
 
                 registry.put(proxy, new LuaElement(proxy, el));
                 return proxy;

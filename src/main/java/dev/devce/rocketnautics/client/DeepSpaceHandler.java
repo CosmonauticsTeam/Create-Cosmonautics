@@ -55,7 +55,7 @@ import java.util.stream.Stream;
 @EventBusSubscriber(modid = RocketNautics.MODID, value = Dist.CLIENT)
 public final class DeepSpaceHandler {
 
-    private static @Nullable UniverseDefinition UNIVERSE;
+    static @Nullable UniverseDefinition UNIVERSE;
     private static final Int2ObjectAVLTreeMap<IntObjectPair<PreparedTexture>> KNOWN_RENDER_DATA = new Int2ObjectAVLTreeMap<>();
     private static final Int2BooleanAVLTreeMap AWAITING_SERVER = new Int2BooleanAVLTreeMap();
 
@@ -84,6 +84,16 @@ public final class DeepSpaceHandler {
         receivedUniverseDateTick = -1;
         KNOWN_RENDER_DATA.values().forEach(p -> p.right().retire());
         KNOWN_RENDER_DATA.clear();
+    }
+
+    public static void clearRenderCache() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        mc.execute(() -> {
+            KNOWN_RENDER_DATA.values().forEach(p -> p.right().retire());
+            KNOWN_RENDER_DATA.clear();
+            AWAITING_SERVER.clear();
+        });
     }
     
     public static void receiveUniverseTime(long universeTicks, float serverTickRate) {
@@ -200,7 +210,16 @@ public final class DeepSpaceHandler {
     public static void receiveRenderData(int id, Either<ColorPalette, ResourceLocation> data, int powerScale) {
         KNOWN_RENDER_DATA.put(id, IntObjectPair.of(powerScale, data.<PreparedTexture>map(arr -> DeepSpaceTexture.construct(id, arr), res -> {
             Minecraft.getInstance().getTextureManager().register(res, new SimpleTexture(res));
-            return () -> res;
+            return new PreparedTexture() {
+                @Override
+                public ResourceLocation getId() {
+                    return res;
+                }
+                @Override
+                public void retire() {
+                    // Do not unregister static shared assets
+                }
+            };
         })));
         AWAITING_SERVER.remove(id);
     }
@@ -387,10 +406,10 @@ public final class DeepSpaceHandler {
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.depthMask(false);
-        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
         RenderSystem.enableCull();
-        RenderSystem.setShader(GameRenderer::getPositionTexShader);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
         if (planet.extras().star()) {
             SkyHandler.ensureStarPlasmaTexture();
             if (SkyHandler.STAR_PLASMA_TEXTURE_ID != null) {
@@ -407,7 +426,8 @@ public final class DeepSpaceHandler {
 
         Matrix4f matrix = poseStack.last().pose();
 
-        renderCubeFaces(bufferbuilder, matrix, size, 0, 0, 1.0f, 1.0f, 1.0f, 1.0f);
+        boolean isSphere = dev.devce.rocketnautics.RocketConfig.SERVER.planetShape.get() == dev.devce.rocketnautics.RocketConfig.PlanetShape.SPHERE;
+        renderCubeOrSphere(bufferbuilder, matrix, size, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, isSphere);
         BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
 
         if (planet.extras().star()) {
@@ -444,7 +464,7 @@ public final class DeepSpaceHandler {
                 BufferBuilder layerBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
                 
                 // Render textured cube with color using our existing renderCubeFaces helper
-                renderCubeFaces(layerBuilder, poseStack.last().pose(), layerSize, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, alpha);
+                renderCubeOrSphere(layerBuilder, poseStack.last().pose(), layerSize, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, alpha, isSphere);
                 BufferUploader.drawWithShader(layerBuilder.buildOrThrow());
                 
                 poseStack.popPose();
@@ -467,14 +487,14 @@ public final class DeepSpaceHandler {
                 // Draw slightly larger cube for clouds
                 float shadowSize = size * 1.01f;
                 matrix.translate(shadowShift, 0, 0); // shift matrix for shadow
-                renderCubeFaces(shadowBuilder, matrix, shadowSize, timeOffset, 0.0f, sr, sg, sb, sa);
+                renderCubeOrSphere(shadowBuilder, matrix, shadowSize, timeOffset, 0.0f, sr, sg, sb, sa, isSphere);
                 BufferUploader.drawWithShader(shadowBuilder.buildOrThrow());
                 matrix.translate(-shadowShift, 0, 0); // un-shift matrix
 
                 // Scrolling Clouds
                 BufferBuilder cloudBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
                 float cloudSize = size * 1.02f;
-                renderCubeFaces(cloudBuilder, matrix, cloudSize, timeOffset, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+                renderCubeOrSphere(cloudBuilder, matrix, cloudSize, timeOffset, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, isSphere);
                 BufferUploader.drawWithShader(cloudBuilder.buildOrThrow());
 
                 // Scrolling Clouds Layer 2 (Upper, faster, different scroll offsets for parallax volumetric effect)
@@ -482,7 +502,7 @@ public final class DeepSpaceHandler {
                 float cloudSize2 = size * 1.032f;
                 float uOffset2 = -timeOffset * 1.4f;
                 float vOffset2 = timeOffset * 0.5f;
-                renderCubeFaces(cloudBuilder2, matrix, cloudSize2, uOffset2, vOffset2, 1.0f, 1.0f, 1.0f, 0.55f); // Soft, beautiful overlay
+                renderCubeOrSphere(cloudBuilder2, matrix, cloudSize2, uOffset2, vOffset2, 1.0f, 1.0f, 1.0f, 0.55f, isSphere); // Soft, beautiful overlay
                 BufferUploader.drawWithShader(cloudBuilder2.buildOrThrow());
             }
 
@@ -529,10 +549,10 @@ public final class DeepSpaceHandler {
             for (FaceDefinition face : shadowFaces) {
                 for (int gv = 0; gv < G; gv++) {
                     for (int gu = 0; gu < G; gu++) {
-                        Vector3D p1 = getPoint(face, gu, gv, G);
-                        Vector3D p2 = getPoint(face, gu, gv + 1, G);
-                        Vector3D p3 = getPoint(face, gu + 1, gv + 1, G);
-                        Vector3D p4 = getPoint(face, gu + 1, gv, G);
+                        Vector3D p1 = getPoint(face, gu, gv, G, shadowSize);
+                        Vector3D p2 = getPoint(face, gu, gv + 1, G, shadowSize);
+                        Vector3D p3 = getPoint(face, gu + 1, gv + 1, G, shadowSize);
+                        Vector3D p4 = getPoint(face, gu + 1, gv, G, shadowSize);
 
                         // for some reason the bottom face and only the bottom face has an incorrect normal
                         if (face == shadowFaces[1]) {
@@ -640,7 +660,7 @@ public final class DeepSpaceHandler {
                 }
 
                 BufferBuilder atmBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-                renderCubeFaces(atmBuilder, matrix, s, 0, 0, lr, lg, lb, aa);
+                renderCubeOrSphere(atmBuilder, matrix, s, 0.0f, 0.0f, lr, lg, lb, aa, isSphere);
                 BufferUploader.drawWithShader(atmBuilder.buildOrThrow());
             }
         }
@@ -697,7 +717,8 @@ public final class DeepSpaceHandler {
         Matrix4f matrix = poseStack.last().pose();
 
         // Draw base planet map
-        renderCubeFaces(bufferbuilder, matrix, size, 0.0f, 0.0f, r, g, b, a);
+        boolean isSphere = dev.devce.rocketnautics.RocketConfig.SERVER.planetShape.get() == dev.devce.rocketnautics.RocketConfig.PlanetShape.SPHERE;
+        renderCubeOrSphere(bufferbuilder, matrix, size, 0.0f, 0.0f, r, g, b, a, isSphere);
 
         // no clouds, they look really odd on the hologram
 
@@ -724,48 +745,74 @@ public final class DeepSpaceHandler {
     }
 
 
-    private static void renderCubeFaces(VertexConsumer bufferbuilder, Matrix4f matrix, float size, float uOffset, float vOffset, float r, float g, float b, float a) {
-        // u,v of 0,0 corresponds to negX,negZ (u is x, v is z)
-
-        // align top of texture for top/bottom faces with the north face
-
-        // TOP face
-        bufferbuilder.addVertex(matrix, -size, size, -size).setColor(r, g, b, a).setUv(0.0f + uOffset, 0.0f + vOffset);
-        bufferbuilder.addVertex(matrix, -size, size, size).setColor(r, g, b, a).setUv(0.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, size, size, size).setColor(r, g, b, a).setUv(1.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, size, size, -size).setColor(r, g, b, a).setUv(1.0f + uOffset, 0.0f + vOffset);
-
+    private static final Vector3d[][] FACE_CORNERS = {
+        // TOP
+        { new Vector3d(-1, 1, -1), new Vector3d(-1, 1, 1), new Vector3d(1, 1, 1), new Vector3d(1, 1, -1) },
         // BOTTOM
-        bufferbuilder.addVertex(matrix, -size, -size, -size).setColor(r, g, b, a).setUv(0.0f + uOffset, 0.0f + vOffset);
-        bufferbuilder.addVertex(matrix, size, -size, -size).setColor(r, g, b, a).setUv(1.0f + uOffset, 0.0f + vOffset);
-        bufferbuilder.addVertex(matrix, size, -size, size).setColor(r, g, b, a).setUv(1.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, -size, -size, size).setColor(r, g, b, a).setUv(0.0f + uOffset, 1.0f + vOffset);
-
-        // align top of texture for horizontal faces with the top face
-
+        { new Vector3d(-1, -1, -1), new Vector3d(1, -1, -1), new Vector3d(1, -1, 1), new Vector3d(-1, -1, 1) },
         // NORTH
-        bufferbuilder.addVertex(matrix, size, size, -size).setColor(r, g, b, a).setUv(0.0f + uOffset, 0.0f + vOffset);
-        bufferbuilder.addVertex(matrix, size, -size, -size).setColor(r, g, b, a).setUv(0.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, -size, -size, -size).setColor(r, g, b, a).setUv(1.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, -size, size, -size).setColor(r, g, b, a).setUv(1.0f + uOffset, 0.0f + vOffset);
-
+        { new Vector3d(1, 1, -1), new Vector3d(1, -1, -1), new Vector3d(-1, -1, -1), new Vector3d(-1, 1, -1) },
         // SOUTH
-        bufferbuilder.addVertex(matrix, -size, size, size).setColor(r, g, b, a).setUv(0.0f + uOffset, 0.0f + vOffset);
-        bufferbuilder.addVertex(matrix, -size, -size, size).setColor(r, g, b, a).setUv(0.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, size, -size, size).setColor(r, g, b, a).setUv(1.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, size, size, size).setColor(r, g, b, a).setUv(1.0f + uOffset, 0.0f + vOffset);
-
+        { new Vector3d(-1, 1, 1), new Vector3d(-1, -1, 1), new Vector3d(1, -1, 1), new Vector3d(1, 1, 1) },
         // WEST
-        bufferbuilder.addVertex(matrix, -size, size, -size).setColor(r, g, b, a).setUv(0.0f + uOffset, 0.0f + vOffset);
-        bufferbuilder.addVertex(matrix, -size, -size, -size).setColor(r, g, b, a).setUv(0.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, -size, -size, size).setColor(r, g, b, a).setUv(1.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, -size, size, size).setColor(r, g, b, a).setUv(1.0f + uOffset, 0.0f + vOffset);
-
+        { new Vector3d(-1, 1, -1), new Vector3d(-1, -1, -1), new Vector3d(-1, -1, 1), new Vector3d(-1, 1, 1) },
         // EAST
-        bufferbuilder.addVertex(matrix, size, size, size).setColor(r, g, b, a).setUv(0.0f + uOffset, 0.0f + vOffset);
-        bufferbuilder.addVertex(matrix, size, -size, size).setColor(r, g, b, a).setUv(0.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, size, -size, -size).setColor(r, g, b, a).setUv(1.0f + uOffset, 1.0f + vOffset);
-        bufferbuilder.addVertex(matrix, size, size, -size).setColor(r, g, b, a).setUv(1.0f + uOffset, 0.0f + vOffset);
+        { new Vector3d(1, 1, 1), new Vector3d(1, -1, 1), new Vector3d(1, -1, -1), new Vector3d(1, 1, -1) }
+    };
+
+    private static void renderCubeOrSphere(VertexConsumer bufferbuilder, Matrix4f matrix, float size, float uOffset, float vOffset, float r, float g, float b, float a, boolean isSphere) {
+        int G = isSphere ? 16 : 1;
+        
+        for (int face = 0; face < 6; face++) {
+            float u0 = 0.0f, u1 = 1.0f, v0 = 0.0f, v1 = 1.0f;
+
+            Vector3d c00 = FACE_CORNERS[face][0];
+            Vector3d c01 = FACE_CORNERS[face][1];
+            Vector3d c11 = FACE_CORNERS[face][2];
+            Vector3d c10 = FACE_CORNERS[face][3];
+
+            for (int gv = 0; gv < G; gv++) {
+                for (int gu = 0; gu < G; gu++) {
+                    double uA = (double) gu / G;
+                    double uB = (double) (gu + 1) / G;
+                    double vA = (double) gv / G;
+                    double vB = (double) (gv + 1) / G;
+
+                    Vector3d p0 = getBilinearPoint(c00, c01, c11, c10, uA, vA);
+                    Vector3d p1 = getBilinearPoint(c00, c01, c11, c10, uA, vB);
+                    Vector3d p2 = getBilinearPoint(c00, c01, c11, c10, uB, vB);
+                    Vector3d p3 = getBilinearPoint(c00, c01, c11, c10, uB, vA);
+
+                    if (isSphere) {
+                        p0.normalize().mul(size);
+                        p1.normalize().mul(size);
+                        p2.normalize().mul(size);
+                        p3.normalize().mul(size);
+                    } else {
+                        p0.mul(size);
+                        p1.mul(size);
+                        p2.mul(size);
+                        p3.mul(size);
+                    }
+
+                    float texUA = Mth.lerp((float) uA, u0, u1) + uOffset;
+                    float texUB = Mth.lerp((float) uB, u0, u1) + uOffset;
+                    float texVA = Mth.lerp((float) vA, v0, v1) + vOffset;
+                    float texVB = Mth.lerp((float) vB, v0, v1) + vOffset;
+
+                    bufferbuilder.addVertex(matrix, (float)p0.x, (float)p0.y, (float)p0.z).setColor(r, g, b, a).setUv(texUA, texVA);
+                    bufferbuilder.addVertex(matrix, (float)p1.x, (float)p1.y, (float)p1.z).setColor(r, g, b, a).setUv(texUA, texVB);
+                    bufferbuilder.addVertex(matrix, (float)p2.x, (float)p2.y, (float)p2.z).setColor(r, g, b, a).setUv(texUB, texVB);
+                    bufferbuilder.addVertex(matrix, (float)p3.x, (float)p3.y, (float)p3.z).setColor(r, g, b, a).setUv(texUB, texVA);
+                }
+            }
+        }
+    }
+
+    private static Vector3d getBilinearPoint(Vector3d c00, Vector3d c01, Vector3d c11, Vector3d c10, double u, double v) {
+        Vector3d p0 = c00.lerp(c10, u, new Vector3d());
+        Vector3d p1 = c01.lerp(c11, u, new Vector3d());
+        return p0.lerp(p1, v, new Vector3d());
     }
 
     private static class FaceDefinition {
@@ -780,52 +827,53 @@ public final class DeepSpaceHandler {
         }
     }
 
-    private static Vector3D getPoint(FaceDefinition face, int gu, int gv, int G) {
+    private static Vector3D getPoint(FaceDefinition face, int gu, int gv, int G, double shadowSize) {
         double u = -1.0 + 2.0 * gu / G;
         double v = -1.0 + 2.0 * gv / G;
-        return face.center.add(face.U.scalarMultiply(u)).add(face.V.scalarMultiply(v));
+        Vector3D p = face.center.add(face.U.scalarMultiply(u)).add(face.V.scalarMultiply(v));
+        if (dev.devce.rocketnautics.RocketConfig.SERVER.planetShape.get() == dev.devce.rocketnautics.RocketConfig.PlanetShape.SPHERE) {
+            return p.normalize().scalarMultiply(shadowSize);
+        }
+        return p;
     }
 
     private static long computeColor(Vector3D P, Vector3D L, int gx, int gy) {
         double d = P.normalize().dotProduct(L);
         
-        int r = 0, g = 0, b = 0, a = 0;
+        int r = 4, g = 5, b = 18, a = 220;
         
-        if (d > 0.65) {
-            // Brilliant star-facing sunlight highlight
-            r = 255;
-            g = 245;
-            b = 200;
-            a = 45;
-        } else if (d > 0.45) {
-            // Dithered bright border to direct light
-            if ((gx + gy) % 2 == 0) {
-                r = 255;
-                g = 245;
-                b = 200;
-                a = 25;
+        if (d > 0.05) {
+            // Lit side: no dark shadow, but soft sunlight highlight on the bright side
+            r = 255; g = 245; b = 200;
+            if (d > 0.45) {
+                // Smooth highlight transition
+                double factor = Math.min(1.0, (d - 0.45) / 0.20);
+                factor = factor * factor * (3.0 - 2.0 * factor); // smoothstep
+                a = (int) (factor * 45);
             } else {
                 a = 0;
             }
-        } else if (d > 0.05) {
-            // Direct illumination
-            a = 0;
         } else if (d > -0.12) {
-            // Soft dithered terminator line
-            if ((gx + gy) % 2 == 0) {
-                r = 6;
-                g = 8;
-                b = 25;
-                a = 120;
-            } else {
-                a = 0;
-            }
+            // Smoothly transition shadow alpha and color in the terminator zone
+            double factor = (d - (-0.12)) / 0.17; // 0 at d=-0.12, 1 at d=0.05
+            factor = factor * factor * (3.0 - 2.0 * factor); // smoothstep
+            
+            r = (int) net.minecraft.util.Mth.lerp(factor, 4, 0);
+            g = (int) net.minecraft.util.Mth.lerp(factor, 5, 0);
+            b = (int) net.minecraft.util.Mth.lerp(factor, 18, 0);
+            a = (int) net.minecraft.util.Mth.lerp(factor, 220, 0);
         } else {
-            // Deep dark indigo space shadow
-            r = 4;
-            g = 5;
-            b = 18;
-            a = 220;
+            // Dark side: full shadow
+            r = 4; g = 5; b = 18; a = 220;
+        }
+
+        // Apply dither pattern to the transition zones to keep the retro shader look!
+        if (d > -0.12 && d < 0.05) {
+            int dither = ((gx + gy) % 2 == 0) ? 12 : -12;
+            a = Math.max(0, Math.min(220, a + dither));
+        } else if (d > 0.45 && d < 0.65) {
+            int dither = ((gx + gy) % 2 == 0) ? 8 : -8;
+            a = Math.max(0, Math.min(45, a + dither));
         }
         
         return ((long)r << 24) | ((long)g << 16) | ((long)b << 8) | a;

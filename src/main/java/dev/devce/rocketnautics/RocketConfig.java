@@ -42,6 +42,7 @@ public class RocketConfig {
         public final ModConfigSpec.BooleanValue brokenBarrier;
         public final ModConfigSpec.DoubleValue sonicBoomSpeedThreshold;
         public final ModConfigSpec.DoubleValue magneticStabilizerStrength;
+        public final ModConfigSpec.EnumValue<PlanetShape> planetShape;
 
         public Server(ModConfigSpec.Builder builder) {
             builder.push("Thrusters");
@@ -88,9 +89,22 @@ public class RocketConfig {
             magneticStabilizerStrength = builder
                     .comment("Strength of the Magnetic Stabilizer in dampening angular momentum")
                     .defineInRange("magneticStabilizerStrength", 50d, 1, 1000000);
-            builder.push("Functional Blocks");
-
+            
+            builder.push("Space");
+            planetShape = builder
+                    .comment("Selects the shape of planets in the sky:")
+                    .comment(" - CUBE: Classic Minecraft cube-shaped planets.")
+                    .comment(" - SPHERE: Smooth sphere-shaped planets.")
+                    .defineEnum("planetShape", PlanetShape.CUBE);
+            builder.pop();
         }
+    }
+
+
+
+    public enum PlanetShape {
+        CUBE,
+        SPHERE
     }
 
     /**
@@ -105,6 +119,7 @@ public class RocketConfig {
         public final ModConfigSpec.IntValue planetRenderMaximumScale;
         public final ModConfigSpec.DoubleValue orbitPredictionAngularThreshold;
         public final ModConfigSpec.IntValue orbitPredictionSteps;
+
 
         public Client(ModConfigSpec.Builder builder) {
             builder.push("Visuals");

@@ -47,6 +47,11 @@
   "item.rocketnautics.jetpack.tooltip.summary": "Для тех, кому гравитация кажется слишком навязчивой. Осторожно: не использовать как личный обогреватель.",
   "item.rocketnautics.jetpack.tooltip.condition1": "Техническая сводка",
   "item.rocketnautics.jetpack.tooltip.behaviour1": "Носимая полетная система. Нажмите [G] для переключения режимов. Использует топливо для создания тяги. Удерживайте [Пробел] для (краткого) преодоления законов физики.",
+
+  "item.rocketnautics.space_helmet": "Космический шлем",
+  "item.rocketnautics.space_helmet.tooltip.summary": "Защищает вас от вакуума и утопления при наличии запаса воздуха.",
+  "item.rocketnautics.space_helmet.tooltip.condition1": "Когда надет",
+  "item.rocketnautics.space_helmet.tooltip.behaviour1": "Позволяет дышать в космосе или под водой при наличии источника сжатого воздуха.",
   "block.rocketnautics.titanium_ore": "Титановая руда",
   "block.rocketnautics.titanium_ore.funny": "Основа ваших будущих провальных космических миссий.",
   "block.rocketnautics.titanium_ore.summary": "Редкая руда, встречающаяся на большой высоте или глубоко под землей. Необходима для создания прочных и легких аэрокосмических компонентов.",
@@ -125,7 +130,17 @@
   "rocketnautics.goggles.hose.contents": "Содержимое",
   "key.rocketnautics.toggle_jetpack": "Переключить режим джетпака",
   "key.categories.rocketnautics": "Cosmonautics",
+  "key.rocketnautics.toggle_dampeners": "Переключить инерционные гасители",
+  "key.rocketnautics.toggle_alignment": "Переключить помощник выравнивания по орбите шлема",
   "subtitles.rocketnautics.sonic_boom": "Звуковой удар!",
   "subtitles.rocketnautics.high_wind": "Свист ветра",
-  "rocketnautics.display_source.sputnik": "Дисплей Ноды Спутника"
+  "rocketnautics.display_source.sputnik": "Дисплей Ноды Спутника",
+  "gui.rocketnautics.planet_shape": "Форма планет",
+  "gui.rocketnautics.planet_shape.cube": "Куб",
+  "gui.rocketnautics.planet_shape.sphere": "Шар",
+  "gui.rocketnautics.hud.orbiting": "ОРБ",
+  "gui.rocketnautics.hud.altitude": "ВЫС",
+  "gui.rocketnautics.hud.speed": "СКОР",
+  "gui.rocketnautics.hud.eccentricity": "ЭКС",
+  "gui.rocketnautics.hud.escape": "Уход"
 }

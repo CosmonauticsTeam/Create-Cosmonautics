@@ -70,6 +70,14 @@ public class RocketNauticsClient {
             "key.categories.rocketnautics"
     );
 
+    /** Key mapping to toggle space helmet HUD alignment helper. */
+    public static final KeyMapping ALIGNMENT_TOGGLE = new KeyMapping(
+            "key.rocketnautics.toggle_alignment",
+            Type.KEYSYM,
+            GLFW.GLFW_KEY_Y,
+            "key.categories.rocketnautics"
+    );
+
     /** Timer for the seamless atmosphere-to-space transition effect. */
     public static int seamlessTransitionTicks = 0;
 

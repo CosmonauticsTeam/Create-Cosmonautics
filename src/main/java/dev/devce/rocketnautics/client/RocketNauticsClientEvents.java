@@ -30,6 +30,7 @@ public class RocketNauticsClientEvents {
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
+        if (mc.screen instanceof net.minecraft.client.gui.screens.ReceivingLevelScreen) return;
 
         dev.simulated_team.simulated.content.blocks.rope.strand.client.ClientLevelRopeManager ropeManager =    
                 dev.simulated_team.simulated.content.blocks.rope.strand.client.ClientLevelRopeManager.getOrCreate(mc.level);
