@@ -118,6 +118,12 @@ public class GlobalSpacePhysicsHandler {
     private static final Map<UUID, Vector3d> LAST_SHIPS_VELOCITIES = new ConcurrentHashMap<>();
 
     private static void applySonicBoom(ServerSubLevel subLevel, RigidBodyHandle handle, ServerLevel level) {
+        if (!handle.isValid()) {
+            SUPERSONIC_SHIPS.remove(subLevel.getUniqueId());
+            LAST_SHIPS_VELOCITIES.remove(subLevel.getUniqueId());
+            return;
+        }
+
         Vector3d worldPos = subLevel.logicalPose().position();
         if (worldPos == null) return;
 
@@ -131,7 +137,14 @@ public class GlobalSpacePhysicsHandler {
             return;
         }
 
-        Vector3d velocity = new Vector3d(handle.getLinearVelocity());
+        Vector3d velocity;
+        try {
+            velocity = new Vector3d(handle.getLinearVelocity());
+        } catch (RuntimeException e) {
+            SUPERSONIC_SHIPS.remove(subLevel.getUniqueId());
+            LAST_SHIPS_VELOCITIES.remove(subLevel.getUniqueId());
+            return;
+        }
         double speed = velocity.length();
         
         // Mach 1 is configured by the server settings (default: 80.0 blocks per second).
@@ -245,6 +258,7 @@ public class GlobalSpacePhysicsHandler {
      * The impulse is calculated based on the ship's mass and the current gravity factor.
      */
     private static void applyZeroGravity(ServerSubLevel subLevel, RigidBodyHandle handle, ServerLevel level, Vector3d worldPos, double timeStep) {
+        if (!handle.isValid()) return;
         double gravityFactor = calculateGravityFactor(level, worldPos.y());
         if (gravityFactor <= 0.0) return;
 
@@ -258,7 +272,9 @@ public class GlobalSpacePhysicsHandler {
         // Transform impulse to local ship coordinates before applying
         Quaterniond orientation = subLevel.logicalPose().orientation();
         Vector3d localImpulse = orientation.transformInverse(antiGravityImpulse, new Vector3d());
-        handle.applyLinearImpulse(localImpulse);
+        try {
+            handle.applyLinearImpulse(localImpulse);
+        } catch (RuntimeException ignored) {}
     }
 
     /**
