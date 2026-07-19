@@ -261,13 +261,12 @@ public class RocketNodes {
                 }
             });
 
-            // getDeepSpacePosition() -> returns x, y, z
             globals[0].set("getDeepSpacePosition", new VarArgFunction() {
                 @Override public Varargs invoke(Varargs args) {
                     if (finalSputnik != null && finalSputnik.getLevel() != null) {
                         if (finalSputnik.getLevel().isClientSide()) {
-                            if (finalSputnik.isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                                var pos = dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getCurrentPosition();
+                            if (finalSputnik.isInDeepSpace() && dev.devce.rocketnautics.content.blocks.SputnikClientHelper.hasReceivedPosition.get()) {
+                                var pos = dev.devce.rocketnautics.content.blocks.SputnikClientHelper.getReceivedPosition.get().getCurrentPosition();
                                 return varargsOf(new LuaValue[]{
                                     LuaValue.valueOf(pos.getX()),
                                     LuaValue.valueOf(pos.getY()),
@@ -341,13 +340,12 @@ public class RocketNodes {
                 }
             });
 
-            // getDeepSpaceVelocity() -> returns vx, vy, vz
             globals[0].set("getDeepSpaceVelocity", new VarArgFunction() {
                 @Override public Varargs invoke(Varargs args) {
                     if (finalSputnik != null && finalSputnik.getLevel() != null) {
                         if (finalSputnik.getLevel().isClientSide()) {
-                            if (finalSputnik.isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                                var vel = dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getCurrentPVCoords().getVelocity();
+                            if (finalSputnik.isInDeepSpace() && dev.devce.rocketnautics.content.blocks.SputnikClientHelper.hasReceivedPosition.get()) {
+                                var vel = dev.devce.rocketnautics.content.blocks.SputnikClientHelper.getReceivedPosition.get().getCurrentPVCoords().getVelocity();
                                 return varargsOf(new LuaValue[]{
                                     LuaValue.valueOf(vel.getX()),
                                     LuaValue.valueOf(vel.getY()),
@@ -371,13 +369,12 @@ public class RocketNodes {
                 }
             });
 
-            // getDeepSpaceVelocityDir() -> returns dx, dy, dz (normalized)
             globals[0].set("getDeepSpaceVelocityDir", new VarArgFunction() {
                 @Override public Varargs invoke(Varargs args) {
                     if (finalSputnik != null && finalSputnik.getLevel() != null) {
                         if (finalSputnik.getLevel().isClientSide()) {
-                            if (finalSputnik.isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                                var vel = dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getCurrentPVCoords().getVelocity();
+                            if (finalSputnik.isInDeepSpace() && dev.devce.rocketnautics.content.blocks.SputnikClientHelper.hasReceivedPosition.get()) {
+                                var vel = dev.devce.rocketnautics.content.blocks.SputnikClientHelper.getReceivedPosition.get().getCurrentPVCoords().getVelocity();
                                 double len = vel.getNorm();
                                 if (len > 1e-6) {
                                     return varargsOf(new LuaValue[]{
@@ -412,8 +409,8 @@ public class RocketNodes {
                 @Override public LuaValue call() {
                     if (finalSputnik != null && finalSputnik.getLevel() != null) {
                         if (finalSputnik.getLevel().isClientSide()) {
-                            if (finalSputnik.isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                                return LuaValue.valueOf(dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getFrame().getName());
+                            if (finalSputnik.isInDeepSpace() && dev.devce.rocketnautics.content.blocks.SputnikClientHelper.hasReceivedPosition.get()) {
+                                return LuaValue.valueOf(dev.devce.rocketnautics.content.blocks.SputnikClientHelper.getReceivedPosition.get().getFrame().getName());
                             }
                         } else if (finalSputnik.getLevel().getServer() != null) {
                             var dsData = dev.devce.rocketnautics.content.orbit.DeepSpaceData.getInstance(finalSputnik.getLevel().getServer());

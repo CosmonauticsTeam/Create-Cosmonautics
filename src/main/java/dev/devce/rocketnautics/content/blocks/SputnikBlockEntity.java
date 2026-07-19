@@ -237,8 +237,7 @@ public class SputnikBlockEntity extends BlockEntity {
     public boolean isInDeepSpace() {
         if (level == null) return false;
         if (level.isClientSide()) {
-            Level clientLevel = net.minecraft.client.Minecraft.getInstance().level;
-            return clientLevel != null && dev.devce.rocketnautics.api.orbit.DeepSpaceHelper.isDeepSpace(clientLevel);
+            return dev.devce.rocketnautics.api.orbit.DeepSpaceHelper.isDeepSpace(level);
         }
         if (dev.devce.rocketnautics.api.orbit.DeepSpaceHelper.isDeepSpace(level)) {
             return true;
@@ -273,8 +272,8 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Orbital semi-major axis in metres, or NaN if not in DeepSpace. */
     public double getOrbitalSemiMajorAxis() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                return dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getCurrentOrbit().getA();
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
+                return SputnikClientHelper.getReceivedPosition.get().getCurrentOrbit().getA();
             }
             return Double.NaN;
         }
@@ -286,8 +285,8 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Orbital eccentricity (0 = circular). */
     public double getOrbitalEccentricity() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                return dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getCurrentOrbit().getE();
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
+                return SputnikClientHelper.getReceivedPosition.get().getCurrentOrbit().getE();
             }
             return Double.NaN;
         }
@@ -299,8 +298,8 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Orbital inclination in degrees. */
     public double getOrbitalInclination() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                return Math.toDegrees(dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getCurrentOrbit().getI());
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
+                return Math.toDegrees(SputnikClientHelper.getReceivedPosition.get().getCurrentOrbit().getI());
             }
             return Double.NaN;
         }
@@ -312,9 +311,9 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Orbital period in seconds, or NaN if orbit is hyperbolic. */
     public double getOrbitalPeriod() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
                 try {
-                    return dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getCurrentOrbit().getKeplerianPeriod();
+                    return SputnikClientHelper.getReceivedPosition.get().getCurrentOrbit().getKeplerianPeriod();
                 } catch (Exception e) {
                     return Double.NaN;
                 }
@@ -333,8 +332,8 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Current orbital speed in m/s. */
     public double getOrbitalSpeed() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                return dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getCurrentPVCoords().getVelocity().getNorm();
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
+                return SputnikClientHelper.getReceivedPosition.get().getCurrentPVCoords().getVelocity().getNorm();
             }
             return 0;
         }
@@ -346,8 +345,8 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Gravitational acceleration at current position (m/s²). */
     public double getGravityAcceleration() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                var pos = dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition();
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
+                var pos = SputnikClientHelper.getReceivedPosition.get();
                 double mu = pos.getCurrentOrbit().getMu();
                 double r = pos.getCurrentPosition().getNorm();
                 if (r < 1) return 0;
@@ -366,8 +365,8 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Name of the current orbital frame (parent body). */
     public String getParentBodyName() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                return dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getFrame().getName();
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
+                return SputnikClientHelper.getReceivedPosition.get().getFrame().getName();
             }
             return getDimensionId();
         }
@@ -379,9 +378,9 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Radius of the parent body in metres, or 0 if unknown. */
     public double getParentBodyRadius() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition() && dev.devce.rocketnautics.client.DeepSpaceHandler.getUniverse() != null) {
-                String frameName = dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getFrame().getName();
-                return dev.devce.rocketnautics.client.DeepSpaceHandler.getUniverse().getPlanets().stream()
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get() && SputnikClientHelper.getUniverse.get() != null) {
+                String frameName = SputnikClientHelper.getReceivedPosition.get().getFrame().getName();
+                return SputnikClientHelper.getUniverse.get().getPlanets().stream()
                         .filter(p -> p.orekitFrame().getName().equals(frameName))
                         .mapToDouble(CubePlanet::radius)
                         .findFirst().orElse(0);
@@ -401,8 +400,8 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Distance from current position to the nearest planet surface in metres. */
     public double getDistanceToPlanet() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                double r = dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getCurrentPosition().getNorm();
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
+                double r = SputnikClientHelper.getReceivedPosition.get().getCurrentPosition().getNorm();
                 double radius = getParentBodyRadius();
                 return Math.max(0, r - radius);
             }
@@ -418,10 +417,10 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Returns true if the sputnik is within the transition height of the nearest planet's atmosphere. */
     public boolean isInAtmosphere() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition() && dev.devce.rocketnautics.client.DeepSpaceHandler.getUniverse() != null) {
-                String frameName = dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getFrame().getName();
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get() && SputnikClientHelper.getUniverse.get() != null) {
+                String frameName = SputnikClientHelper.getReceivedPosition.get().getFrame().getName();
                 CubePlanet orbiting = null;
-                for (CubePlanet p : dev.devce.rocketnautics.client.DeepSpaceHandler.getUniverse().getPlanets()) {
+                for (CubePlanet p : SputnikClientHelper.getUniverse.get().getPlanets()) {
                     if (p.orekitFrame().getName().equals(frameName)) { orbiting = p; break; }
                 }
                 if (orbiting == null || orbiting.linkedDimension() == null) return false;
@@ -446,10 +445,10 @@ public class SputnikBlockEntity extends BlockEntity {
     /** Comma-separated AtmosphereFlags at current altitude, or empty string. */
     public String getAtmosphereFlags() {
         if (level != null && level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition() && dev.devce.rocketnautics.client.DeepSpaceHandler.getUniverse() != null) {
-                String frameName = dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getFrame().getName();
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get() && SputnikClientHelper.getUniverse.get() != null) {
+                String frameName = SputnikClientHelper.getReceivedPosition.get().getFrame().getName();
                 CubePlanet orbiting = null;
-                for (CubePlanet p : dev.devce.rocketnautics.client.DeepSpaceHandler.getUniverse().getPlanets()) {
+                for (CubePlanet p : SputnikClientHelper.getUniverse.get().getPlanets()) {
                     if (p.orekitFrame().getName().equals(frameName)) { orbiting = p; break; }
                 }
                 if (orbiting == null || orbiting.linkedDimension() == null) return "";
@@ -491,8 +490,8 @@ public class SputnikBlockEntity extends BlockEntity {
     public long getUniverseTime() {
         if (level == null) return 0L;
         if (level.isClientSide()) {
-            if (isInDeepSpace() && dev.devce.rocketnautics.client.DeepSpaceHandler.hasReceivedPosition()) {
-                return (long) (dev.devce.rocketnautics.client.DeepSpaceHandler.getReceivedPosition().getLocalUniverseTime().durationFrom(org.orekit.time.AbsoluteDate.ARBITRARY_EPOCH) / 0.05);
+            if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
+                return (long) (SputnikClientHelper.getReceivedPosition.get().getLocalUniverseTime().durationFrom(org.orekit.time.AbsoluteDate.ARBITRARY_EPOCH) / 0.05);
             }
             return 0L;
         }

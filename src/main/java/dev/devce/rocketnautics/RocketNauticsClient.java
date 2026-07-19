@@ -294,6 +294,9 @@ public class RocketNauticsClient {
     public static void onClientSetup(FMLClientSetupEvent event) {
         RocketPartials.init();
         dev.devce.rocketnautics.content.blocks.ThrusterClientHandler.init();
+        dev.devce.rocketnautics.content.blocks.SputnikClientHelper.hasReceivedPosition = dev.devce.rocketnautics.client.DeepSpaceHandler::hasReceivedPosition;
+        dev.devce.rocketnautics.content.blocks.SputnikClientHelper.getReceivedPosition = dev.devce.rocketnautics.client.DeepSpaceHandler::getReceivedPosition;
+        dev.devce.rocketnautics.content.blocks.SputnikClientHelper.getUniverse = dev.devce.rocketnautics.client.DeepSpaceHandler::getUniverse;
 
 
         net.neoforged.fml.ModLoadingContext.get().registerExtensionPoint(net.neoforged.neoforge.client.gui.IConfigScreenFactory.class,

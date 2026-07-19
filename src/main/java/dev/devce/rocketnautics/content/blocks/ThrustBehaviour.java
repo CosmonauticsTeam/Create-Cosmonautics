@@ -229,6 +229,7 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
     }
 
     private void handleCameraShake(Level level) {
+        if (engineType == EngineType.RCS) return;
         float shakeInt = RocketConfig.CLIENT.shakeIntensity.get().floatValue();
         double shakeRad = RocketConfig.CLIENT.shakeRadius.get();
         ThrusterClientHelper.handleCameraShake(getPos(), throttle, shakeRad, shakeInt);
@@ -252,6 +253,8 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
                 entity.hurtMarked = true;
             }
         });
+
+        if (engineType == EngineType.RCS) return;
 
         // Block melting logic
         for (int dist = 1; dist <= 3; dist++) {
