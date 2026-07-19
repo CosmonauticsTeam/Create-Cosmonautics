@@ -95,6 +95,7 @@ public class RocketNodes {
         // --- Lua Script Node (Turing Complete Logic & Control) ---
         NodeRegistry.register(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "lua_script"), "Programming", (x, y) -> {
             WNode node = new WNode(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "lua_script"), "Lua Script", x, y);
+            node.getCustomData().putString("code", "-- Write your Lua code here\n");
             setupLuaEvaluator(node);
             return node;
         });

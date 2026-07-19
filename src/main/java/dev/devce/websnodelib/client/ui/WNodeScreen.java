@@ -890,9 +890,8 @@ public class WNodeScreen extends Screen {
                     return true;
                 }
                 // AI FIX/ADD STOP
-                // AI FIX/ADD START
                 isSearching = true; 
-                searchQuery = ""; 
+                searchQuery = searchField.getValue(); 
                 menuX = (int)mouseX; 
                 menuY = (int)mouseY; 
                 updateSearch(); 
@@ -954,7 +953,10 @@ public class WNodeScreen extends Screen {
                             if (this.onSave != null) this.onSave.accept(this.graph.save());
                         }, this));
                         return true;
-                    } else if (node.getCustomData().contains("code")) {
+                    } else if (node.getCustomData().contains("code") || node.getTypeId().getPath().equals("lua_script")) {
+                        if (!node.getCustomData().contains("code")) {
+                            node.getCustomData().putString("code", "-- Write your Lua code here\n");
+                        }
                         minecraft.setScreen(new WLuaEditorScreen(node, this));
                         return true;
                     }
