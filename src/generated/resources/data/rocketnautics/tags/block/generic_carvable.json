@@ -1,0 +1,11 @@
+{
+  "values": [
+    "rocketnautics:lunar_regolith",
+    "rocketnautics:lunar_loose_regolith",
+    "rocketnautics:lunar_aged_basalt",
+    "rocketnautics:lunar_rock",
+    "rocketnautics:lunar_fragmented_rock",
+    "minecraft:basalt",
+    "minecraft:smooth_basalt"
+  ]
+}
