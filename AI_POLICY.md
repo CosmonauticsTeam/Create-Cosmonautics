@@ -50,12 +50,34 @@ We clearly outline where and how AI may be integrated into our workflow:
 
 ---
 
-## 5. Guidelines for Developers and Contributors
+## 5. Guidelines and AI Code Conduct
 
-1. **Tool Disclosure:** Add a short note in your PR description: "Assisted by [Tool Name] for boilerplate/refactoring."
-2. **Reviewing Code:** Always run and compile the code locally, and write/run tests before submitting.
-3. **No Slop:** Do not copy-paste code suggestions from LLMs that contain obvious bugs, placeholder comments, or unneeded logic.
-4. **Filtering and Editing:** AI outputs are often overly verbose. Review, trim, and format your text and code before submitting.
+Using AI tools to write code is supported as it accelerates routine work. However, to keep Pull Requests clean and ensure fast reviews, please adhere to these guidelines:
+
+### Understand the Architecture of Your Solution
+* **You are the lead architect.** You do not need to memorize every character, but you must clearly understand the **solution logic**: how data flows between modules, why this specific structure was chosen, and how edge cases are handled.
+* Explaining a PR review issue with *"that is what the AI generated"* is not a valid argument.
+
+### Do Not Ask AI to Build Features From Scratch
+Prompts like *"write a complete logistics system"* almost always produce nice-looking but completely useless code filled with lazy placeholders.
+* **The correct approach:**
+  1. Break down the task into smaller components yourself.
+  2. Plan which algorithms and data structures are needed.
+  3. Ask the AI to help with a specific function, algorithm, or UI component rather than the entire system.
+
+### Avoid Lazy Code
+AI models tend to take the path of least resistance, resulting in primitive implementations.
+* **Research existing patterns:** Look at how similar problems are solved in other parts of the codebase.
+* **Guide the AI:** Suggest specific algorithms or design patterns to the model (e.g., *"use a 2D array"* or *"implement this using the State pattern"*). This will result in much higher quality code.
+
+### Checklist Before Submitting a PR
+Before creating a Pull Request:
+* [ ] **The code compiles and runs:** Basic tests pass, and nothing breaks.
+* [ ] **Style is followed:** The code conforms to the project's Code Style.
+
+### How We Review PRs
+1. **Initial AI analysis:** Automated tools highlight obvious AI hallucinations, bugs, and lazy placeholders.
+2. **Manual review:** Maintainers review the architecture, logic, and overall quality of the solution.
 
 ---
 
