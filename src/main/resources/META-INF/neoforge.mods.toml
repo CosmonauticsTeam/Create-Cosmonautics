@@ -24,50 +24,55 @@ displayName="Dimensional Sable"
 description='''Dimensional Support for Sable'''
 
 [[dependencies.rocketnautics]]
-    modId="minecraft"
-    mandatory=true
-    versionRange="[1.21.1]"
-    ordering="NONE"
-    side="BOTH"
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
 
 [[dependencies.rocketnautics]]
-    modId="neoforge"
-    mandatory=true
-    versionRange="[21.1.1,)"
-    ordering="NONE"
-    side="BOTH"
+modId="neoforge"
+type="required"
+versionRange="[21.1.1,)"
+ordering="NONE"
+side="BOTH"
 
 [[dependencies.rocketnautics]]
-    modId="create"
-    mandatory=true
-    versionRange="[1.21.1,)"
-    ordering="NONE"
-    side="BOTH"
+modId="create"
+type="required"
+versionRange="[1.21.1,)"
+ordering="NONE"
+side="BOTH"
 
 [[dependencies.rocketnautics]]
-    modId="aeronautics"
-    mandatory=true
-    versionRange="[1.0.0,)"
-    ordering="NONE"
-    side="BOTH"
+modId="aeronautics"
+type="required"
+versionRange="[1.0.0,)"
+ordering="NONE"
+side="BOTH"
 
 [[dependencies.rocketnautics]]
-    modId="dimensional_sable"
-    mandatory=true
-    versionRange="[1.0,)"
-    ordering="NONE"
-    side="BOTH"
+modId="dimensional_sable"
+type="required"
+versionRange="[1.0,)"
+ordering="NONE"
+side="BOTH"
 
 [[dependencies.dimensional_sable]]
-    modId="neoforge"
-    mandatory=true
-    versionRange="[21.1.1,)"
-    ordering="NONE"
-    side="BOTH"
+modId="neoforge"
+type="required"
+versionRange="[21.1.1,)"
+ordering="NONE"
+side="BOTH"
 
 [[dependencies.dimensional_sable]]
-    modId="sable"
-    mandatory=true
-    versionRange="[2.0.3,)"
-    ordering="NONE"
-    side="BOTH"
+modId="sable"
+type="required"
+versionRange="[2.0.3,)"
+ordering="NONE"
+side="BOTH"
+
+[mc-publish]
+dependencies=[
+  "aeronautics(required){modrinth:create-aeronautics}{curseforge:create-aeronautics}"
+]
