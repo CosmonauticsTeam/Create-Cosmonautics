@@ -2,6 +2,7 @@ package dev.devce.rocketnautics.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import dev.devce.rocketnautics.SkyDataHandler;
 import dev.devce.rocketnautics.client.StarBufferExposer;
@@ -10,8 +11,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.DimensionSpecialEffects;
 import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,8 +24,8 @@ import javax.annotation.Nullable;
 
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererMixin implements StarBufferExposer {
-    @org.spongepowered.asm.mixin.Shadow
-    protected abstract void renderSnowAndRain(net.minecraft.client.renderer.LightTexture pLightTexture, float pPartialTick, double pCamX, double pCamY, double pCamZ);
+    @Shadow
+    protected abstract void renderSnowAndRain(LightTexture pLightTexture, float pPartialTick, double pCamX, double pCamY, double pCamZ);
 
     @Shadow
     @Nullable
@@ -81,20 +84,20 @@ public abstract class LevelRendererMixin implements StarBufferExposer {
     }
 
     
-    @Redirect(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderClouds(Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;FDDD)V"))
-    private void rocketnautics$fadeOutClouds(LevelRenderer instance, com.mojang.blaze3d.vertex.PoseStack pPoseStack, org.joml.Matrix4f pProjectionMatrix, org.joml.Matrix4f pCloudProjectionMatrix, float pPartialTick, double pCamX, double pCamY, double pCamZ) {
+    @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderClouds(Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;FDDD)V"))
+    private void rocketnautics$fadeOutClouds(LevelRenderer instance, PoseStack pPoseStack, Matrix4f pProjectionMatrix, Matrix4f pCloudProjectionMatrix, float pPartialTick, double pCamX, double pCamY, double pCamZ, Operation<Void> original) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
             double y = mc.player.getY();
             
             if (y > 2500.0) return;
         }
-        instance.renderClouds(pPoseStack, pProjectionMatrix, pCloudProjectionMatrix, pPartialTick, pCamX, pCamY, pCamZ);
+        original.call(instance, pPoseStack, pProjectionMatrix, pCloudProjectionMatrix, pPartialTick, pCamX, pCamY, pCamZ);
     }
 
-    @Redirect(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderSnowAndRain(Lnet/minecraft/client/renderer/LightTexture;FDDD)V"))
-    private void rocketnautics$disableWeatherAtAltitude(LevelRenderer instance, net.minecraft.client.renderer.LightTexture pLightTexture, float pPartialTick, double pCamX, double pCamY, double pCamZ) {
+    @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderSnowAndRain(Lnet/minecraft/client/renderer/LightTexture;FDDD)V"))
+    private void rocketnautics$disableWeatherAtAltitude(LevelRenderer instance, LightTexture pLightTexture, float pPartialTick, double pCamX, double pCamY, double pCamZ, Operation<Void> original) {
         if (pCamY > 400.0) return;
-        this.renderSnowAndRain(pLightTexture, pPartialTick, pCamX, pCamY, pCamZ);
+        original.call(instance, pLightTexture, pPartialTick, pCamX, pCamY, pCamZ);
     }
 }

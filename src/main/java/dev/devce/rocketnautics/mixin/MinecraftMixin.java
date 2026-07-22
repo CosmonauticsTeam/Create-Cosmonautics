@@ -15,9 +15,6 @@ import java.util.function.LongSupplier;
 @Mixin(Minecraft.class)
 public class MinecraftMixin {
 
-    @Shadow
-    private long clientTickCount;
-
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
     private void rocketnautics$onSetScreen(Screen screen, CallbackInfo ci) {
         if (RocketNauticsClient.seamlessTransitionTicks > 0) {
