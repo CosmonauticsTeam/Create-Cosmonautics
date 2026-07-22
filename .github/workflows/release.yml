@@ -72,7 +72,7 @@ jobs:
               content: $ping,
               embeds: [{
                 title: $title,
-                description: ($desc + "\n\n**Note:**\nThe release on CurseForge must go through moderation first, so installing the version from there will be available a bit later!\n\n**Download Update:**\n[GitHub](" + $gh_url + ") | [Modrinth](" + $mr_url + ") | [CurseForge](" + $cf_url + ")"),
+                description: ($desc + "\n\n**Note:**\nThe release on CurseForge must go through moderation first, so installing the version from there will be available a bit later!\n\n**Download Update:**\n[<:github_icon:1529613939170738227> GitHub](" + $gh_url + ") | [<:modrinth_icon:1529613887677136966> Modrinth](" + $mr_url + ") | [<:curseforge_icon:1529613824229900359> CurseForge](" + $cf_url + ")"),
                 color: 3447003
               }]
             }' > payload.json
