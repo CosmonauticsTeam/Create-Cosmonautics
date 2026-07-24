@@ -37,7 +37,8 @@ public class RocketDatagen {
 
         event.addProvider(new RocketBiomeTagsProvider(output, registries, event.getExistingFileHelper()));
         RocketNautics.getRegistrate().addDataGenerator(ProviderType.BLOCK_TAGS, RocketBlockTagsProvider::addTags);
-
+        RocketNautics.getRegistrate().addDataGenerator(ProviderType.FLUID_TAGS, RocketFluidTagsProvider::addTags);
+        
         RegistrySetBuilder registry = new RegistrySetBuilder();
         registry.add(Registries.DIMENSION_TYPE, DimensionTypes::bootstrap);
         registry.add(Registries.LEVEL_STEM, LevelStems::bootstrap);
