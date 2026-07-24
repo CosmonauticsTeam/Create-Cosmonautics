@@ -3,6 +3,7 @@ package dev.devce.rocketnautics.content.blocks;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import dev.devce.rocketnautics.registry.RocketBlocks;
+import dev.devce.rocketnautics.registry.RocketTags;
 import dev.ryanhcode.sable.api.block.BlockEntitySubLevelActor;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
@@ -33,11 +34,9 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
     public int inputs = 1;
 
     public final FluidTank tank1 = new FluidTank(1000,
-            stack -> stack.getFluid().isSame(net.minecraft.world.level.material.Fluids.WATER)
-                    || stack.getFluid().isSame(net.minecraft.world.level.material.Fluids.LAVA));
+            stack -> this.isRocketFuel(stack) || this.isOxidizer(stack));
     public final FluidTank tank2 = new FluidTank(1000,
-            stack -> stack.getFluid().isSame(net.minecraft.world.level.material.Fluids.WATER)
-                    || stack.getFluid().isSame(net.minecraft.world.level.material.Fluids.LAVA));
+            stack -> this.isRocketFuel(stack) || this.isOxidizer(stack));
 
     public boolean isThrusting = false;
     public boolean lastThrusting = false;
@@ -204,6 +203,13 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
         };
     }
 
+    private boolean isRocketFuel(FluidStack stack) {
+        return !stack.isEmpty() && stack.is(RocketTags.FluidTags.ROCKET_FUEL.tag);
+    }
+    private boolean isOxidizer(FluidStack stack) {
+        return !stack.isEmpty() && stack.is(RocketTags.FluidTags.OXIDIZER.tag);
+    }
+
     public static void tick(Level level, BlockPos pos, BlockState state, ThrusterMountBlockEntity be) {
         if (level == null)
             return;
@@ -280,14 +286,11 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
                     }
                 }
             }
-            boolean tank1HasWater = be.tank1.getFluid().getFluid()
-                    .isSame(net.minecraft.world.level.material.Fluids.WATER);
-            boolean tank1HasLava = be.tank1.getFluid().getFluid()
-                    .isSame(net.minecraft.world.level.material.Fluids.LAVA);
-            boolean tank2HasWater = be.tank2.getFluid().getFluid()
-                    .isSame(net.minecraft.world.level.material.Fluids.WATER);
-            boolean tank2HasLava = be.tank2.getFluid().getFluid()
-                    .isSame(net.minecraft.world.level.material.Fluids.LAVA);
+
+            boolean hasFuel = be.tank1.getFluid().is(RocketTags.FluidTags.ROCKET_FUEL.tag)
+                    || be.tank2.getFluid().is(RocketTags.FluidTags.ROCKET_FUEL.tag);
+            boolean hasOxidizer = be.tank1.getFluid().is(RocketTags.FluidTags.OXIDIZER.tag)
+                    || be.tank2.getFluid().is(RocketTags.FluidTags.OXIDIZER.tag);
 
             int targetMax = (int) (200 * be.getThrustModifier());
             if (be.thrustLimit != null) {
@@ -297,8 +300,7 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
             }
 
             boolean canThrust = be.hasPipes && be.nozzleType > 0 && be.thrustLimit != null
-                    && be.thrustLimit.getValue() > 0 &&
-                    ((tank1HasWater && tank2HasLava) || (tank1HasLava && tank2HasWater));
+                    && be.thrustLimit.getValue() > 0 && ( hasFuel && hasOxidizer);
 
             if (canThrust) {
                 float baseConsumption = 200.0f;

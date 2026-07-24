@@ -40,7 +40,7 @@ public class RocketThrusterBlockEntity extends AbstractThrusterBlockEntity {
 
     private static final float MIN_THROTTLE_CHANGE = 0.01f;
 
-    public FluidTank fuelTank = new FluidTank(1000, fluid -> true);
+    public FluidTank fuelTank = new FluidTank(1000, this::isRocketFuel);
     public ScrollValueBehaviour minThrust;
     public ScrollValueBehaviour maxThrust;
     public ThrustBehaviour thrust;
@@ -237,16 +237,7 @@ public class RocketThrusterBlockEntity extends AbstractThrusterBlockEntity {
     }
 
     private boolean isRocketFuel(FluidStack stack) {
-        if (stack.isEmpty())
-            return false;
-        if (stack.getFluid().isSame(net.minecraft.world.level.material.Fluids.LAVA))
-            return true;
-        if (stack.is(RocketTags.FluidTags.ROCKET_FUEL.tag))
-            return true;
-
-        String id = net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(stack.getFluid()).toString();
-        return id.contains("tfmg") && (id.contains("kerosene") || id.contains("diesel") || id.contains("gasoline")
-                || id.contains("fuel_oil") || id.contains("lpg"));
+        return !stack.isEmpty() && stack.is(RocketTags.FluidTags.ROCKET_FUEL.tag);
     }
 
     private int attemptFuelDrain(int amount) {

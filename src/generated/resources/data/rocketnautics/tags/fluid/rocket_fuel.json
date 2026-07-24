@@ -1,0 +1,41 @@
+{
+  "values": [
+    "minecraft:lava",
+    {
+      "id": "#c:gasoline",
+      "required": false
+    },
+    {
+      "id": "#c:diesel",
+      "required": false
+    },
+    {
+      "id": "#c:diesel_sulfur",
+      "required": false
+    },
+    {
+      "id": "#c:kerosene",
+      "required": false
+    },
+    {
+      "id": "#c:hydrogen",
+      "required": false
+    },
+    {
+      "id": "#c:lpg",
+      "required": false
+    },
+    {
+      "id": "#c:petroleum_gas",
+      "required": false
+    },
+    {
+      "id": "#c:napalm",
+      "required": false
+    },
+    {
+      "id": "#c:naphtha",
+      "required": false
+    }
+  ]
+}
