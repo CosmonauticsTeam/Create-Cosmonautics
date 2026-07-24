@@ -1,0 +1,9 @@
+{
+  "values": [
+    "minecraft:water",
+    {
+      "id": "#c:air",
+      "required": false
+    }
+  ]
+}

@@ -20,7 +20,8 @@ import java.util.Map;
 
 public class RocketTags {
     public enum FluidTags {
-        ROCKET_FUEL;
+        ROCKET_FUEL,
+        OXIDIZER;
 
         public final TagKey<Fluid> tag;
 
