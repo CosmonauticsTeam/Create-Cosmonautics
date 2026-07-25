@@ -22,6 +22,20 @@ public class RocketNauticsClientCommands {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
         
         LiteralArgumentBuilder<CommandSourceStack> builder = Commands.literal("rn")
+            .then(Commands.literal("map")
+                .executes(context -> {
+                    Minecraft.getInstance().execute(() -> {
+                        Minecraft mc = Minecraft.getInstance();
+                        if (mc.level != null && dev.devce.rocketnautics.api.orbit.DeepSpaceHelper.isDeepSpace(mc.level)) {
+                            mc.setScreen(new dev.devce.rocketnautics.client.ui.SystemMapScreen());
+                        } else if (mc.player != null) {
+                            mc.player.displayClientMessage(
+                                Component.literal("Карту можно открыть только в Глубоком Космосе!").withStyle(ChatFormatting.RED), true);
+                        }
+                    });
+                    return 1;
+                })
+            )
             .then(Commands.literal("debug")
                 .executes(context -> {
                     showRenderInfo();

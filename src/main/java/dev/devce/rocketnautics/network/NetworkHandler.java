@@ -53,6 +53,17 @@ public class NetworkHandler {
         );
 
         registrar.playToClient(
+            OpenMapPayload.TYPE,
+            OpenMapPayload.CODEC,
+            (payload, context) -> context.enqueueWork(() -> {
+                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+                if (mc.level != null && dev.devce.rocketnautics.api.orbit.DeepSpaceHelper.isDeepSpace(mc.level)) {
+                    mc.setScreen(new dev.devce.rocketnautics.client.ui.SystemMapScreen());
+                }
+            })
+        );
+
+        registrar.playToClient(
             ReentryHeatPayload.TYPE,
             ReentryHeatPayload.CODEC,
             (payload, context) -> context.enqueueWork(() -> handleHeatData(payload.x(), payload.y(), payload.z(), payload.intensity()))

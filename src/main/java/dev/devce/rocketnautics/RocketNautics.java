@@ -154,6 +154,7 @@ public class RocketNautics {
         dev.devce.rocketnautics.content.commands.BreakBarrierCommand.register(event.getDispatcher());
         TimescaleCommand.register(event.getDispatcher());
         dev.devce.rocketnautics.content.commands.NodesReloadCommand.register(event.getDispatcher());
+        dev.devce.rocketnautics.content.commands.MapCommand.register(event.getDispatcher());
     }
 
     @SubscribeEvent

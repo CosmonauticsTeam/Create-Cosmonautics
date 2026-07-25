@@ -1658,6 +1658,81 @@ public class SkyHandler {
         return true;
     }
 
+    public static void renderSystemMapStars(net.minecraft.client.gui.GuiGraphics gfx, float pitch, float yaw, float celestialAngle, int width, int height) {
+        ensureSpaceStars();
+        if (SPACE_STARS == null) return;
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableCull();
+        RenderSystem.depthMask(false);
+        RenderSystem.disableDepthTest();
+
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        Matrix4f matrix = gfx.pose().last().pose();
+
+        double radY = Math.toRadians(-yaw);
+        double cosY = Math.cos(radY), sinY = Math.sin(radY);
+        double radP = Math.toRadians(-pitch);
+        double cosP = Math.cos(radP), sinP = Math.sin(radP);
+
+        float focal = height * 0.85f;
+        float centerX = width / 2.0f;
+        float centerY = height / 2.0f;
+        long time = System.currentTimeMillis();
+
+        float angle = (celestialAngle * 360.0f) * ((float) Math.PI / 180.0f);
+        float cosCel = (float) Math.cos(angle);
+        float sinCel = (float) Math.sin(angle);
+
+        boolean hasVertices = false;
+
+        for (SpaceStar star : SPACE_STARS) {
+            float sx = star.x;
+            float sy = star.y * cosCel - star.z * sinCel;
+            float sz = star.y * sinCel + star.z * cosCel;
+
+            double rx = cosY * sx + sinY * sz;
+            double ry = sy;
+            double rz = -sinY * sx + cosY * sz;
+
+            double ry2 = cosP * ry - sinP * rz;
+            double rz2 = sinP * ry + cosP * rz;
+
+            if (rz2 <= 0.05) continue;
+
+            float px = centerX + (float) ((rx / rz2) * focal);
+            float py = centerY - (float) ((ry2 / rz2) * focal);
+
+            if (px < -10 || px > width + 10 || py < -10 || py > height + 10) continue;
+
+            float twinkle = 0.62f + 0.38f * (float) Math.sin((time / 1000.0) * star.twinkleSpeed + star.twinkleOffset);
+            float alpha = twinkle;
+
+            float r = star.r;
+            float g = star.g;
+            float b = star.b;
+            float size = Math.max(0.75f, star.size * 0.6f);
+
+            buffer.addVertex(matrix, px - size, py - size, 0).setColor(r, g, b, alpha);
+            buffer.addVertex(matrix, px - size, py + size, 0).setColor(r, g, b, alpha);
+            buffer.addVertex(matrix, px + size, py + size, 0).setColor(r, g, b, alpha);
+            buffer.addVertex(matrix, px + size, py - size, 0).setColor(r, g, b, alpha);
+            hasVertices = true;
+        }
+
+        if (hasVertices) {
+            BufferUploader.drawWithShader(buffer.buildOrThrow());
+        } else {
+            buffer.build();
+        }
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+    }
+
     public static void renderSpaceStars(PoseStack poseStack, float visibility, Camera camera, float celestialAngle) {
         ensureSpaceStars();
         Minecraft mc = Minecraft.getInstance();

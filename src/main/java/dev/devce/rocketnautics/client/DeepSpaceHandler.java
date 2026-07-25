@@ -707,8 +707,8 @@ public final class DeepSpaceHandler {
             return true;
         }
         float scaleFactor = (float) (1 / holoScale);
-        poseStack.translate(-ourPosInPlanetFrame.getX() * scaleFactor, -ourPosInPlanetFrame.getY() * scaleFactor, -ourPosInPlanetFrame.getZ() * scaleFactor);
         poseStack.pushPose();
+        poseStack.translate(-ourPosInPlanetFrame.getX() * scaleFactor, -ourPosInPlanetFrame.getY() * scaleFactor, -ourPosInPlanetFrame.getZ() * scaleFactor);
         poseStack.mulPose(DeepSpaceHelper.adapt(planet.getRotationAtTime(date)).get(new Quaternionf()));
         float size = (float) (planet.radius() * scaleFactor);
 
