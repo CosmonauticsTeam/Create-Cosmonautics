@@ -84,6 +84,7 @@ public class BoosterThrusterBlockEntity extends AbstractThrusterBlockEntity {
 
         if (level.isClientSide()) {
             updateSound();
+            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.tickClientThruster(this);
 
             if (active) {
                 BlockPos fuelPos = findFuelPos();
@@ -162,11 +163,11 @@ public class BoosterThrusterBlockEntity extends AbstractThrusterBlockEntity {
                     double speedY = nozzle.getStepY() * (2.0 + random.nextDouble() * 2.0) * boost * actualSpeedMult + (random.nextDouble() - 0.5) * 0.4;
                     double speedZ = nozzle.getStepZ() * (2.0 + random.nextDouble() * 2.0) * boost * actualSpeedMult + (random.nextDouble() - 0.5) * 0.4;
 
-                    var particle = (ignitionTicks < getWarmupTime() / 2) ?
-                            RocketParticles.PLUME.get() :
-                            RocketParticles.PLASMA.get();
-
-                    level.addParticle(particle, x, y, z, speedX, speedY, speedZ);
+                    // Legacy flame particles are disabled in favor of the custom 3D GPU-shaded exhaust plume.
+                    // var particle = (ignitionTicks < getWarmupTime() / 2) ?
+                    //         RocketParticles.PLUME.get() :
+                    //         RocketParticles.PLASMA.get();
+                    // level.addParticle(particle, x, y, z, speedX, speedY, speedZ);
                 }
 
                 if (hitBlock && random.nextFloat() < (visualPower / 50.0f)) {

@@ -23,6 +23,9 @@ public class RocketNauticsClientEvents {
     private static float currentRoll = 0;
     private static float prevRoll = 0;
 
+    /** Deep space ambient music manager — one instance per client session. */
+    private static final DeepSpaceMusicManager DEEP_SPACE_MUSIC = new DeepSpaceMusicManager();
+
     /**
      * Handles dynamic render distance adjustment and jetpack input processing every tick.
      */
@@ -113,6 +116,9 @@ public class RocketNauticsClientEvents {
         }
 
         CameraShakeHandler.tick();
+
+        // Tick the deep space ambient music system every client tick.
+        DEEP_SPACE_MUSIC.tick(mc);
     }
 
     @SubscribeEvent

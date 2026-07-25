@@ -19,10 +19,37 @@
     ]
   },
   "music.arcadia": {
-    "category": "record",
+    "category": "music",
     "sounds": [
       {
         "name": "rocketnautics:music/arcadia",
+        "stream": true
+      }
+    ]
+  },
+  "music.pale_dot_in_the_sky": {
+    "category": "music",
+    "sounds": [
+      {
+        "name": "rocketnautics:music/pale_dot_in_the_sky",
+        "stream": true
+      }
+    ]
+  },
+  "music.reflecting_satellites": {
+    "category": "music",
+    "sounds": [
+      {
+        "name": "rocketnautics:music/reflecting_satellites",
+        "stream": true
+      }
+    ]
+  },
+  "music.solar_sails": {
+    "category": "music",
+    "sounds": [
+      {
+        "name": "rocketnautics:music/solar_sails",
         "stream": true
       }
     ]

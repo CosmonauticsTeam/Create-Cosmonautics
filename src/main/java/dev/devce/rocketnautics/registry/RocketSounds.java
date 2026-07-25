@@ -20,6 +20,16 @@ public class RocketSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> MUSIC_ARCADIA = SOUNDS.register("music.arcadia",
             () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "music.arcadia")));
 
+    // NathaNight9 deep space ambient tracks
+    public static final DeferredHolder<SoundEvent, SoundEvent> MUSIC_PALE_DOT = SOUNDS.register("music.pale_dot_in_the_sky",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "music.pale_dot_in_the_sky")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> MUSIC_REFLECTING_SATELLITES = SOUNDS.register("music.reflecting_satellites",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "music.reflecting_satellites")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> MUSIC_SOLAR_SAILS = SOUNDS.register("music.solar_sails",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "music.solar_sails")));
+
     public static final DeferredHolder<SoundEvent, SoundEvent> SONIC_BOOM = SOUNDS.register("sonic_boom",
             () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "sonic_boom")));
 

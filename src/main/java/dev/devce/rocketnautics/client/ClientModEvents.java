@@ -22,6 +22,18 @@ public class ClientModEvents {
         event.register(RocketNauticsClient.ALIGNMENT_TOGGLE);
     }
 
+    @SubscribeEvent
+    public static void onRegisterShaders(net.neoforged.neoforge.client.event.RegisterShadersEvent event) throws java.io.IOException {
+        event.registerShader(
+            new net.minecraft.client.renderer.ShaderInstance(
+                event.getResourceProvider(),
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.devce.rocketnautics.RocketNautics.MODID, "exhaust"),
+                com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR
+            ),
+            shader -> dev.devce.rocketnautics.client.render.ExhaustRenderer.exhaustShader = shader
+        );
+    }
+
     /**
      * Adds the jetpack rendering layer to player models.
      */

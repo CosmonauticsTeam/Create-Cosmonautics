@@ -85,6 +85,8 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
 
         if (level.isClientSide) {
             updateSound();
+            // Register/update plume renderer during the client tick
+            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.tickClientThruster(blockEntity);
             if (active && throttle > 0.01f) {
                 spawnParticles(level);
                 handleCameraShake(level);
@@ -130,14 +132,13 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
             double speedZ = exhaustDir.z * (0.3 + random.nextDouble() * 0.4) * visualBoost * baseSpeedMult + (random.nextDouble() - 0.5) * 0.05;
 
             if (engineType == EngineType.ROCKET) {
-                if (random.nextFloat() < 0.6f) {
-                    level.addParticle(RocketParticles.PLASMA.get(), rx, ry, rz, speedX * 1.1, speedY * 1.1, speedZ * 1.1);
-                }
-                level.addParticle(RocketParticles.PLUME.get(), rx, ry, rz, speedX, speedY, speedZ);
+                // Legacy flame particles are disabled in favor of the custom 3D GPU-shaded exhaust plume.
+                // level.addParticle(RocketParticles.PLASMA.get(), rx, ry, rz, speedX * 1.1, speedY * 1.1, speedZ * 1.1);
+                // level.addParticle(RocketParticles.PLUME.get(), rx, ry, rz, speedX, speedY, speedZ);
                 
-                if (ignitionTicks >= 40 && random.nextFloat() < 0.3f) {
-                    level.addParticle(RocketParticles.BLUE_FLAME.get(), rx, ry, rz, speedX * 1.3, speedY * 1.3, speedZ * 1.3);
-                }
+                // if (ignitionTicks >= 40 && random.nextFloat() < 0.3f) {
+                //     level.addParticle(RocketParticles.BLUE_FLAME.get(), rx, ry, rz, speedX * 1.3, speedY * 1.3, speedZ * 1.3);
+                // }
 
                 // Persistent smoke trail (contrail)
                 if (random.nextFloat() < 0.08f) {
@@ -312,6 +313,7 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
         super.unload();
         if (getWorld() != null && getWorld().isClientSide) {
             ThrusterClientHelper.stopSound(this);
+            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getPos());
         }
     }
 

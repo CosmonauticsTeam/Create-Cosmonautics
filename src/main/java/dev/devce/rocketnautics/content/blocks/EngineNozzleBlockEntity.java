@@ -65,6 +65,7 @@ public class EngineNozzleBlockEntity extends BlockEntity {
         } else {
             // Smooth the heat value on the client for butter-smooth rendering
             be.smoothedHeat = be.smoothedHeat + (be.heat - be.smoothedHeat) * 0.15f;
+            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.tickClientThruster(be);
         }
     }
 
@@ -102,5 +103,27 @@ public class EngineNozzleBlockEntity extends BlockEntity {
         super.loadAdditional(tag, registries);
         heat = tag.getFloat("Heat");
         smoothedHeat = heat; // Avoid jump on load
+    }
+
+    public net.minecraft.world.phys.AABB getRenderBoundingBox() {
+        // Inflate the bounding box by 10 blocks in all directions to prevent frustum culling
+        // from clipping the long volumetric exhaust plume when the engine block leaves the screen.
+        return new net.minecraft.world.phys.AABB(this.worldPosition).inflate(10.0);
+    }
+
+    @Override
+    public void setRemoved() {
+        super.setRemoved();
+        if (level != null && level.isClientSide) {
+            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getBlockPos());
+        }
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        super.onChunkUnloaded();
+        if (level != null && level.isClientSide) {
+            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getBlockPos());
+        }
     }
 }

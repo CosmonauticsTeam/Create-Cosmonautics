@@ -46,16 +46,24 @@ public abstract class AbstractThrusterBlockEntity extends SmartBlockEntity
     @Override
     public void remove() {
         super.remove();
-        if (level != null && !level.isClientSide) {
-            PeripheralRegistry.unregister(level, this);
+        if (level != null) {
+            if (!level.isClientSide) {
+                PeripheralRegistry.unregister(level, this);
+            } else {
+                dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getBlockPos());
+            }
         }
     }
 
     @Override
     public void onChunkUnloaded() {
         super.onChunkUnloaded();
-        if (level != null && !level.isClientSide) {
-            PeripheralRegistry.unregister(level, this);
+        if (level != null) {
+            if (!level.isClientSide) {
+                PeripheralRegistry.unregister(level, this);
+            } else {
+                dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getBlockPos());
+            }
         }
     }
 
@@ -73,5 +81,12 @@ public abstract class AbstractThrusterBlockEntity extends SmartBlockEntity
             uniqueId = tag.getUUID("UniqueId");
         }
         ignitionTicks = tag.getInt("IgnitionTicks");
+    }
+
+    @Override
+    public net.minecraft.world.phys.AABB getRenderBoundingBox() {
+        // Inflate the bounding box by 10 blocks in all directions to prevent frustum culling
+        // from clipping the long volumetric exhaust plume when the engine block leaves the screen.
+        return new net.minecraft.world.phys.AABB(this.worldPosition).inflate(10.0);
     }
 }
