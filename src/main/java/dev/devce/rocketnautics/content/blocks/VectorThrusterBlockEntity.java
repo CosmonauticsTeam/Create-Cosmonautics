@@ -4,12 +4,18 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
+    
+    // Linked Receiver frequencies (two slots per direction)
+    private final ItemStack[] frequencies1 = new ItemStack[6];
+    private final ItemStack[] frequencies2 = new ItemStack[6];
+
     @Override
     public double readValue(String key) {
         if (key.equals("thrust")) return getFlow() * 100.0;
@@ -33,6 +39,28 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
 
     public VectorThrusterBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
+        for (int i = 0; i < 6; i++) {
+            frequencies1[i] = ItemStack.EMPTY;
+            frequencies2[i] = ItemStack.EMPTY;
+        }
+    }
+
+    public ItemStack getFrequencyStack1(Direction dir) {
+        return frequencies1[dir.ordinal()];
+    }
+
+    public ItemStack getFrequencyStack2(Direction dir) {
+        return frequencies2[dir.ordinal()];
+    }
+
+    public void setFrequencyStack1(Direction dir, ItemStack stack) {
+        frequencies1[dir.ordinal()] = stack != null ? stack.copy() : ItemStack.EMPTY;
+        setChanged();
+    }
+
+    public void setFrequencyStack2(Direction dir, ItemStack stack) {
+        frequencies2[dir.ordinal()] = stack != null ? stack.copy() : ItemStack.EMPTY;
+        setChanged();
     }
 
     @Override
@@ -79,10 +107,21 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
         float gY = ccGimbalY;
         float gZ = ccGimbalZ;
 
+        // Process analog inputs from standard directions & Linked Receivers on specific sides
         for (Direction dir : DIRECTIONS) {
             if (dir.getAxis() != nozzle.getAxis()) {
+                // Add wireless signals received on this side
+                float strength = 0;
+                ItemStack f1 = frequencies1[dir.ordinal()];
+                ItemStack f2 = frequencies2[dir.ordinal()];
+                if (!f1.isEmpty() && !f2.isEmpty()) {
+                    strength = (float) (dev.devce.rocketnautics.content.blocks.LinkedSignalHandler.getSignal(level, f1, f2, worldPosition) * 0.033f);
+                }
+                
+                // Add analog redstone signal
                 int signal = level.getSignal(worldPosition.relative(dir), dir.getOpposite());
-                float strength = signal * 0.033f;
+                strength += signal * 0.033f;
+
                 gX += dir.getStepX() * strength;
                 gY += dir.getStepY() * strength;
                 gZ += dir.getStepZ() * strength;
@@ -106,10 +145,8 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
 
     @Override
     public void setGimbal(double val1, double val2) {
-        // Direct X and Z mapping as requested (-180..180 range)
         float xOffset = (float) (val1 / 180.0);
         float zOffset = (float) (val2 / 180.0);
-
         setComputerGimbal(xOffset, 0, zOffset);
     }
 
@@ -140,6 +177,15 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
         tag.putFloat("CCGimbalX", ccGimbalX);
         tag.putFloat("CCGimbalY", ccGimbalY);
         tag.putFloat("CCGimbalZ", ccGimbalZ);
+        
+        for (int i = 0; i < 6; i++) {
+            if (!frequencies1[i].isEmpty()) {
+                tag.put("freq1_" + i, frequencies1[i].save(registries));
+            }
+            if (!frequencies2[i].isEmpty()) {
+                tag.put("freq2_" + i, frequencies2[i].save(registries));
+            }
+        }
     }
 
     @Override
@@ -151,6 +197,19 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
         ccGimbalX = tag.getFloat("CCGimbalX");
         ccGimbalY = tag.getFloat("CCGimbalY");
         ccGimbalZ = tag.getFloat("CCGimbalZ");
+        
+        for (int i = 0; i < 6; i++) {
+            if (tag.contains("freq1_" + i)) {
+                frequencies1[i] = ItemStack.parse(registries, tag.getCompound("freq1_" + i)).orElse(ItemStack.EMPTY);
+            } else {
+                frequencies1[i] = ItemStack.EMPTY;
+            }
+            if (tag.contains("freq2_" + i)) {
+                frequencies2[i] = ItemStack.parse(registries, tag.getCompound("freq2_" + i)).orElse(ItemStack.EMPTY);
+            } else {
+                frequencies2[i] = ItemStack.EMPTY;
+            }
+        }
     }
 
     @Override

@@ -2,12 +2,14 @@ package dev.devce.rocketnautics.content.blocks;
 
 import dev.devce.rocketnautics.registry.RocketBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.world.phys.BlockHitResult;
 
 public class VectorThrusterBlock extends AbstractRocketThrusterBlock<VectorThrusterBlockEntity> {
     public static final com.mojang.serialization.MapCodec<VectorThrusterBlock> CODEC = simpleCodec(VectorThrusterBlock::new);
@@ -26,13 +28,10 @@ public class VectorThrusterBlock extends AbstractRocketThrusterBlock<VectorThrus
         if (!level.isClientSide) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof VectorThrusterBlockEntity vectorBE) {
-                // TODO attach this as a behavior in the block entity instead
                 vectorBE.updateGimbalAngles();
             }
         }
     }
-
-
 
     @Override
     public Class<VectorThrusterBlockEntity> getBlockEntityClass() {

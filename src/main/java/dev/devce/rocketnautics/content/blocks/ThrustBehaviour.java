@@ -85,11 +85,21 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
 
         if (level.isClientSide) {
             updateSound();
-            // Register/update plume renderer during the client tick
-            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.tickClientThruster(blockEntity);
             if (active && throttle > 0.01f) {
+                // Register/update plume renderer with dynamic offset and exhaust direction
+                dev.devce.rocketnautics.client.render.ExhaustClientRenderer.registerPlume(
+                    level,
+                    blockEntity.getBlockPos(),
+                    this.offset,
+                    this.exhaustDir,
+                    this.throttle,
+                    (float) this.ignitionTicks,
+                    this.engineType == EngineType.RCS
+                );
                 spawnParticles(level);
                 handleCameraShake(level);
+            } else {
+                dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(level, blockEntity.getBlockPos());
             }
         } else {
             if (active && throttle > 0.01f) {
@@ -107,12 +117,7 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
                 .add(exhaustDir.scale(0.2)); // Slight offset to exit nozzle
 
         if (engineType == EngineType.RCS) {
-            for (int i = 0; i < 2; i++) {
-                double speedX = exhaustDir.x * (0.3 + random.nextDouble() * 0.2) + (random.nextDouble() - 0.5) * 0.05;
-                double speedY = exhaustDir.y * (0.3 + random.nextDouble() * 0.2) + (random.nextDouble() - 0.5) * 0.05;
-                double speedZ = exhaustDir.z * (0.3 + random.nextDouble() * 0.2) + (random.nextDouble() - 0.5) * 0.05;
-                level.addParticle(RocketParticles.RCS_GAS.get(), start.x, start.y, start.z, speedX, speedY, speedZ);
-            }
+            // Disable legacy particles in favor of custom 3D shader plume
             return;
         }
 
@@ -247,8 +252,6 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
         List<LivingEntity> affectedEntities = level.getEntitiesOfClass(LivingEntity.class, damageArea);
         affectedEntities.forEach(entity -> {
             if (entity.isAlive()) {
-                double pushStrength = (visualPower / 150.0);
-                entity.push(exhaustDir.x * pushStrength, exhaustDir.y * pushStrength, exhaustDir.z * pushStrength);
                 entity.hurt(level.damageSources().lava(), (float) (visualPower / 10.0));
                 entity.setRemainingFireTicks(entity.getRemainingFireTicks() + 40);
                 entity.hurtMarked = true;
@@ -313,7 +316,7 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
         super.unload();
         if (getWorld() != null && getWorld().isClientSide) {
             ThrusterClientHelper.stopSound(this);
-            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getPos());
+            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getWorld(), getPos());
         }
     }
 

@@ -429,9 +429,12 @@ public class WNode {
     public void setHeight(int height) { this.height = height; }
 
     public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
     public ResourceLocation getTypeId() { return typeId; }
     public int getX() { return x; }
     public int getY() { return y; }
+    public void setX(int x) { this.x = x; }
+    public void setY(int y) { this.y = y; }
     public void setPos(int x, int y) { this.x = x; this.y = y; }
     public int getWidth() { return width; }
     public int getHeight() { return height; }

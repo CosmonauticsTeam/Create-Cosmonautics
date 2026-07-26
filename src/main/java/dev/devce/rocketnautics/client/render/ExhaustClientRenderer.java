@@ -2,65 +2,113 @@ package dev.devce.rocketnautics.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.content.blocks.AbstractThrusterBlockEntity;
 import dev.devce.rocketnautics.content.blocks.BoosterThrusterBlockEntity;
 import dev.devce.rocketnautics.content.blocks.EngineNozzleBlockEntity;
 import dev.devce.rocketnautics.content.blocks.RocketThrusterBlockEntity;
-import dev.devce.rocketnautics.content.blocks.RocketThrusterBlock;
-import dev.devce.rocketnautics.content.blocks.EngineNozzleBlock;
+import dev.devce.rocketnautics.content.blocks.ThrustBehaviour;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Camera;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+import org.joml.Vector3d;
 
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @OnlyIn(Dist.CLIENT)
 @EventBusSubscriber(modid = RocketNautics.MODID, value = Dist.CLIENT)
 public class ExhaustClientRenderer {
 
-    // Thread-safe map to track active plume sources in the loaded world sections
-    private static final Map<BlockPos, PlumeInfo> ACTIVE_PLUMES = new ConcurrentHashMap<>();
+    private static final Map<PlumeKey, PlumeInfo> ACTIVE_PLUMES = new ConcurrentHashMap<>();
+
+    public static class PlumeKey {
+        public final Level level;
+        public final BlockPos pos;
+
+        public PlumeKey(Level level, BlockPos pos) {
+            this.level = level;
+            this.pos = pos;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            PlumeKey plumeKey = (PlumeKey) o;
+            return Objects.equals(level, plumeKey.level) && Objects.equals(pos, plumeKey.pos);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(level, pos);
+        }
+    }
 
     public static class PlumeInfo {
+        public final Level level;
         public final BlockPos pos;
-        public final Direction facing;
+        public final Vec3 offset;
+        public final Vec3 exhaustDir;
         public final float throttle;
         public final float ignitionTicks;
-        public final float yOffset;
+        public final boolean isRCS;
 
-        public PlumeInfo(BlockPos pos, Direction facing, float throttle, float ignitionTicks, float yOffset) {
+        public PlumeInfo(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float throttle, float ignitionTicks, boolean isRCS) {
+            this.level = level;
             this.pos = pos;
-            this.facing = facing;
+            this.offset = offset;
+            this.exhaustDir = exhaustDir;
             this.throttle = throttle;
             this.ignitionTicks = ignitionTicks;
-            this.yOffset = yOffset;
+            this.isRCS = isRCS;
+        }
+    }
+
+    public static class RenderablePlume {
+        public final PlumeInfo plume;
+        public final Vec3 worldPos;
+        public final Vec3 worldExhaustDir;
+        public final double distanceSq;
+
+        public RenderablePlume(PlumeInfo plume, Vec3 worldPos, Vec3 worldExhaustDir, double distanceSq) {
+            this.plume = plume;
+            this.worldPos = worldPos;
+            this.worldExhaustDir = worldExhaustDir;
+            this.distanceSq = distanceSq;
         }
     }
 
     /**
      * Registers or updates an active engine plume to be rendered in the level translucent stage.
      */
-    public static void registerPlume(BlockPos pos, Direction facing, float throttle, float ignitionTicks, float yOffset) {
-        ACTIVE_PLUMES.put(pos, new PlumeInfo(pos, facing, throttle, ignitionTicks, yOffset));
+    public static void registerPlume(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float throttle, float ignitionTicks, boolean isRCS) {
+        if (level == null || pos == null) return;
+        PlumeKey key = new PlumeKey(level, pos);
+        ACTIVE_PLUMES.put(key, new PlumeInfo(level, pos, offset, exhaustDir, throttle, ignitionTicks, isRCS));
     }
 
     /**
-     * Removes an engine plume from the active rendering list when it cools down or is unloaded.
+     * Removes an engine plume from the active rendering list.
      */
-    public static void removePlume(BlockPos pos) {
-        ACTIVE_PLUMES.remove(pos);
+    public static void removePlume(Level level, BlockPos pos) {
+        if (level == null || pos == null) return;
+        ACTIVE_PLUMES.remove(new PlumeKey(level, pos));
     }
 
     /**
-     * Clears all tracked plumes (e.g. when changing dimensions or leaving world).
+     * Clears all tracked plumes.
      */
     public static void clear() {
         ACTIVE_PLUMES.clear();
@@ -68,57 +116,132 @@ public class ExhaustClientRenderer {
 
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        // Render exhaust plumes AFTER particles and translucent blocks (water/clouds) have been fully drawn.
-        // This ensures the custom shader depth-tests against them perfectly without any bleed-through.
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_WEATHER) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || ACTIVE_PLUMES.isEmpty()) return;
 
         Camera camera = event.getCamera();
-        double camX = camera.getPosition().x;
-        double camY = camera.getPosition().y;
-        double camZ = camera.getPosition().z;
+        Vec3 cameraPos = camera.getPosition();
+        double camX = cameraPos.x;
+        double camY = cameraPos.y;
+        double camZ = cameraPos.z;
 
         PoseStack ms = event.getPoseStack();
 
-        for (PlumeInfo plume : ACTIVE_PLUMES.values()) {
-            // Verify if block entity is still loaded/valid to prevent phantom rendering
-            BlockEntity be = mc.level.getBlockEntity(plume.pos);
+        // 1. Gather all active plumes and compute their absolute world positions
+        List<RenderablePlume> rawList = new ArrayList<>();
+
+        for (Map.Entry<PlumeKey, PlumeInfo> entry : ACTIVE_PLUMES.entrySet()) {
+            PlumeKey key = entry.getKey();
+            PlumeInfo plume = entry.getValue();
+
+            BlockEntity be = plume.level.getBlockEntity(plume.pos);
             if (be == null) {
-                ACTIVE_PLUMES.remove(plume.pos);
+                ACTIVE_PLUMES.remove(key);
                 continue;
             }
 
-            // Frustum/Distance check to skip far away plumes
-            double distanceSq = plume.pos.distToCenterSqr(camX, camY, camZ);
-            if (distanceSq > 16384.0) continue; // 128 block render limit
+            Vec3 worldPos;
+            Vec3 worldExhaustDir;
 
+            // Offset adjustment to fit the physical model nozzle exit planes
+            Vec3 adjustedOffset = plume.offset;
+            if (plume.isRCS) {
+                // Shift the starting point 0.18 blocks back (inward) to sit exactly on the RCS nozzle face
+                adjustedOffset = plume.offset.subtract(plume.exhaustDir.scale(0.18));
+            }
+
+            dev.ryanhcode.sable.sublevel.ClientSubLevel subLevel = dev.ryanhcode.sable.Sable.HELPER.getContainingClient(be);
+            if (subLevel != null) {
+                // Engine is inside a moving Sable ship
+                dev.ryanhcode.sable.companion.math.Pose3dc renderPose = subLevel.renderPose();
+
+                // Transform local coordinate to absolute world space
+                Vector3d localOffsetPos = new Vector3d(
+                    plume.pos.getX() + adjustedOffset.x, 
+                    plume.pos.getY() + adjustedOffset.y, 
+                    plume.pos.getZ() + adjustedOffset.z
+                );
+                Vector3d projectedWorldPos = renderPose.transformPosition(localOffsetPos, new Vector3d());
+                worldPos = new Vec3(projectedWorldPos.x, projectedWorldPos.y, projectedWorldPos.z);
+
+                // Transform normal direction to absolute world space
+                Vector3d localDir = new Vector3d(plume.exhaustDir.x, plume.exhaustDir.y, plume.exhaustDir.z);
+                Vector3d projectedDir = renderPose.transformNormal(localDir, new Vector3d());
+                worldExhaustDir = new Vec3(projectedDir.x, projectedDir.y, projectedDir.z);
+            } else {
+                // Static engine in main world
+                worldPos = new Vec3(plume.pos.getX() + adjustedOffset.x, plume.pos.getY() + adjustedOffset.y, plume.pos.getZ() + adjustedOffset.z);
+                worldExhaustDir = plume.exhaustDir;
+            }
+
+            rawList.add(new RenderablePlume(plume, worldPos, worldExhaustDir, 0));
+        }
+
+        // 2. Cluster nearby plumes together
+        List<PlumeCluster> clusters = new ArrayList<>();
+        for (RenderablePlume plume : rawList) {
+            boolean added = false;
+            for (PlumeCluster cluster : clusters) {
+                if (cluster.isRCS == plume.plume.isRCS) {
+                    // Ensure they point in roughly the same direction
+                    if (cluster.worldExhaustDir.dot(plume.worldExhaustDir) > 0.95) {
+                        // If within ~4 blocks radius (16.0 squared)
+                        if (cluster.getCenter().distanceToSqr(plume.worldPos) < 16.0) {
+                            cluster.add(plume);
+                            added = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!added) {
+                clusters.add(new PlumeCluster(plume));
+            }
+        }
+
+        // 3. Prepare final clusters for rendering
+        List<RenderableCluster> renderList = new ArrayList<>();
+        for (PlumeCluster cluster : clusters) {
+            Vec3 center = cluster.getCenter();
+            double distSq = center.distanceToSqr(cameraPos);
+            float avgThrottle = cluster.totalThrottle / cluster.count;
+            renderList.add(new RenderableCluster(center, cluster.worldExhaustDir, avgThrottle, cluster.maxIgnitionTicks, cluster.isRCS, cluster.count, distSq));
+        }
+
+        // 4. Sort clusters by distance (furthest first) for proper transparency
+        renderList.sort((c1, c2) -> Double.compare(c2.distanceSq, c1.distanceSq));
+
+        // 5. Render the merged clusters
+        for (RenderableCluster cluster : renderList) {
             ms.pushPose();
 
-            // Translate matrix to plume position relative to the main camera
-            double relX = plume.pos.getX() - camX;
-            double relY = plume.pos.getY() - camY;
-            double relZ = plume.pos.getZ() - camZ;
+            // Translate matrix to absolute world position relative to the main camera
+            double relX = cluster.worldPos.x - camX;
+            double relY = cluster.worldPos.y - camY;
+            double relZ = cluster.worldPos.z - camZ;
             ms.translate(relX, relY, relZ);
 
-            // Rotate based on thruster facing direction (similar to block renderer translations)
-            ms.translate(0.5, 0.5, 0.5);
-            ms.mulPose(plume.facing.getRotation());
-            ms.mulPose(com.mojang.math.Axis.XP.rotationDegrees(180));
-            ms.translate(-0.5, -0.5, -0.5);
+            // ── VECTOR THRUSTER / DIRECTION ROTATION ────────────────────────────
+            Vector3f defaultDir = new Vector3f(0.0f, -1.0f, 0.0f);
+            Vector3f targetDir = new Vector3f((float) cluster.worldExhaustDir.x, (float) cluster.worldExhaustDir.y, (float) cluster.worldExhaustDir.z);
+            
+            Quaternionf rot = new Quaternionf().rotationTo(defaultDir, targetDir);
+            ms.mulPose(rot);
 
-            // Apply translation offset to sit on the nozzle exit face
-            ms.pushPose();
-            ms.translate(0.5, plume.yOffset, 0.5);
+            Direction direction = Direction.getNearest(cluster.worldExhaustDir.x, cluster.worldExhaustDir.y, cluster.worldExhaustDir.z);
+            
+            // The scale of the flame increases based on the number of merged engines (square root prevents it from getting too insanely huge)
+            float scale = (float) Math.sqrt(cluster.count);
+            ExhaustRenderer.renderExhaustPlume(ms, mc.renderBuffers().bufferSource(), cluster.throttle, cluster.ignitionTicks, direction, cluster.isRCS, scale);
 
-            // Draw the volumetric plume using the MultiBufferSource.
-            // Under AFTER_PARTICLES, the buffers are flushed immediately at the correct pipeline order.
-            ExhaustRenderer.renderExhaustPlume(ms, mc.renderBuffers().bufferSource(), plume.throttle, plume.ignitionTicks, plume.facing);
-
-            ms.popPose();
             ms.popPose();
         }
+
+        // Explicitly flush buffers to force rendering immediately and override particle depth ordering
+        mc.renderBuffers().bufferSource().endBatch(ExhaustRenderer.getExhaustRenderType());
+        mc.renderBuffers().bufferSource().endBatch(ExhaustRenderer.getRcsRenderType());
     }
 
     /**
@@ -127,33 +250,61 @@ public class ExhaustClientRenderer {
     public static void tickClientThruster(BlockEntity be) {
         if (be.getLevel() == null || !be.getLevel().isClientSide) return;
 
-        if (be instanceof RocketThrusterBlockEntity rocket) {
-            var thrust = rocket.thrust;
-            if (thrust != null && thrust.isActive() && thrust.getThrottle() > 0.01f) {
-                Direction facing = rocket.getBlockState().getValue(RocketThrusterBlock.FACING);
-                registerPlume(rocket.getBlockPos(), facing, thrust.getThrottle(), thrust.getIgnitionTicks(), 0.1f);
-            } else {
-                removePlume(rocket.getBlockPos());
-            }
-        } 
-        else if (be instanceof BoosterThrusterBlockEntity booster) {
-            if (booster.isActive()) {
-                Direction facing = booster.getBlockState().getValue(RocketThrusterBlock.FACING);
-                int maxLimit = dev.devce.rocketnautics.RocketConfig.SERVER.brokenBarrier.get() ? 100 : 20;
-                float throttle = booster.thrustPower != null ? (booster.thrustPower.getValue() / (float) maxLimit) : 1.0f;
-                registerPlume(booster.getBlockPos(), facing, throttle, booster.ignitionTicks, 0.1f);
-            } else {
-                removePlume(booster.getBlockPos());
-            }
-        } 
-        else if (be instanceof EngineNozzleBlockEntity nozzle) {
+        if (be instanceof EngineNozzleBlockEntity nozzle) {
             if (nozzle.smoothedHeat > 0.05f) {
-                Direction facing = nozzle.getBlockState().getValue(EngineNozzleBlock.FACING);
+                Direction facing = nozzle.getBlockState().getValue(dev.devce.rocketnautics.content.blocks.EngineNozzleBlock.FACING);
+                Vec3 exhaustDir = new Vec3(facing.getOpposite().step()); // Vector pointing out of the nozzle
                 float throttle = Mth.clamp(nozzle.smoothedHeat / 1.5f, 0f, 1f);
-                registerPlume(nozzle.getBlockPos(), facing, throttle, throttle * 40.0f, 0.1f);
+                registerPlume(nozzle.getLevel(), nozzle.getBlockPos(), new Vec3(0.5, 0.1, 0.5), exhaustDir, throttle, throttle * 40.0f, false);
             } else {
-                removePlume(nozzle.getBlockPos());
+                removePlume(nozzle.getLevel(), nozzle.getBlockPos());
             }
+        }
+    }
+
+    public static class PlumeCluster {
+        public Vec3 worldPosSum = Vec3.ZERO;
+        public final Vec3 worldExhaustDir;
+        public final boolean isRCS;
+        public float totalThrottle = 0;
+        public float maxIgnitionTicks = 0;
+        public int count = 0;
+
+        public PlumeCluster(RenderablePlume initial) {
+            this.worldExhaustDir = initial.worldExhaustDir;
+            this.isRCS = initial.plume.isRCS;
+            add(initial);
+        }
+
+        public void add(RenderablePlume plume) {
+            worldPosSum = worldPosSum.add(plume.worldPos);
+            totalThrottle += plume.plume.throttle;
+            maxIgnitionTicks = Math.max(maxIgnitionTicks, plume.plume.ignitionTicks);
+            count++;
+        }
+
+        public Vec3 getCenter() {
+            return worldPosSum.scale(1.0 / count);
+        }
+    }
+
+    public static class RenderableCluster {
+        public final Vec3 worldPos;
+        public final Vec3 worldExhaustDir;
+        public final float throttle;
+        public final float ignitionTicks;
+        public final boolean isRCS;
+        public final int count;
+        public final double distanceSq;
+
+        public RenderableCluster(Vec3 worldPos, Vec3 worldExhaustDir, float throttle, float ignitionTicks, boolean isRCS, int count, double distanceSq) {
+            this.worldPos = worldPos;
+            this.worldExhaustDir = worldExhaustDir;
+            this.throttle = throttle;
+            this.ignitionTicks = ignitionTicks;
+            this.isRCS = isRCS;
+            this.count = count;
+            this.distanceSq = distanceSq;
         }
     }
 }

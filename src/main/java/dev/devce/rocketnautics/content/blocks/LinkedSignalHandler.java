@@ -15,7 +15,7 @@ import net.minecraft.world.level.Level;
 
 /**
  * Real Bridge to Create's Wireless Redstone Network.
- * Improved with automatic cleanup for ghost signals.
+ * Improved with automatic cleanup for ghost signals and Sable coordinates projection.
  */
 public class LinkedSignalHandler {
 
@@ -125,6 +125,16 @@ public class LinkedSignalHandler {
 
         @Override
         public BlockPos getLocation() {
+            // Project the block coordinates to actual world coordinates if inside a moving Sable sublevel.
+            // This prevents Create from calculating 20M+ block distance attenuation.
+            if (level != null) {
+                dev.ryanhcode.sable.sublevel.SubLevel subLevel = dev.ryanhcode.sable.Sable.HELPER.getContaining(level, pos);
+                if (subLevel != null) {
+                    org.joml.Vector3d realPos = new org.joml.Vector3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+                    subLevel.logicalPose().transformPosition(realPos);
+                    return new BlockPos((int) realPos.x, (int) realPos.y, (int) realPos.z);
+                }
+            }
             return pos;
         }
     }

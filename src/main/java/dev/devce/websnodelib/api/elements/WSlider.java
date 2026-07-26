@@ -61,4 +61,19 @@ public class WSlider extends WElement {
 
     public double getValue() { return value; }
     public void setValue(double value) { this.value = value; }
+
+    @Override
+    public net.minecraft.nbt.CompoundTag save() {
+        net.minecraft.nbt.CompoundTag tag = super.save();
+        tag.putDouble("value", value);
+        return tag;
+    }
+
+    @Override
+    public void load(net.minecraft.nbt.CompoundTag tag) {
+        super.load(tag);
+        if (tag.contains("value")) {
+            this.value = tag.getDouble("value");
+        }
+    }
 }

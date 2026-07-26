@@ -1479,17 +1479,28 @@ public class WNodeScreen extends Screen {
             String decoded = new String(Base64.getDecoder().decode(data));
             CompoundTag root = TagParser.parseTag(decoded);
             ListTag nodesTag = root.getList("nodes", 10);
+            if (nodesTag.isEmpty()) return;
+
+            pushUndo();
             Map<UUID, UUID> oldToNew = new HashMap<>();
             graph.getNodes().forEach(n -> n.setSelected(false));
+
             for (int i = 0; i < nodesTag.size(); i++) {
                 CompoundTag nTag = nodesTag.getCompound(i);
                 net.minecraft.resources.ResourceLocation type = net.minecraft.resources.ResourceLocation.parse(nTag.getString("typeId"));
-                WNode newNode = dev.devce.websnodelib.api.NodeRegistry.createNode(type, nTag.getInt("x") + 10, nTag.getInt("y") + 10);
+                int pastedX = nTag.getInt("x") + 20;
+                int pastedY = nTag.getInt("y") + 20;
+                WNode newNode = dev.devce.websnodelib.api.NodeRegistry.createNode(type, pastedX, pastedY);
                 if (newNode != null) {
-                    newNode.load(nTag); 
                     UUID oldId = nTag.hasUUID("id") ? nTag.getUUID("id") : UUID.fromString(nTag.getString("id"));
-                    oldToNew.put(oldId, newNode.getId()); 
-                    graph.addNode(newNode); 
+                    newNode.load(nTag);
+                    UUID newId = UUID.randomUUID();
+                    newNode.setId(newId);
+                    newNode.setX(pastedX);
+                    newNode.setY(pastedY);
+
+                    oldToNew.put(oldId, newId);
+                    graph.addNode(newNode);
                     newNode.setSelected(true);
                 }
             }
@@ -1498,11 +1509,15 @@ public class WNodeScreen extends Screen {
                 CompoundTag c = connTag.getCompound(i);
                 UUID oldSrc = c.hasUUID("src") ? c.getUUID("src") : (c.contains("src") ? UUID.fromString(c.getString("src")) : null);
                 UUID oldTgt = c.hasUUID("tgt") ? c.getUUID("tgt") : (c.contains("tgt") ? UUID.fromString(c.getString("tgt")) : null);
-                
+
                 UUID newSrc = oldToNew.get(oldSrc);
                 UUID newTgt = oldToNew.get(oldTgt);
-                if (newSrc != null && newTgt != null) graph.connect(newSrc, c.getInt("srcP"), newTgt, c.getInt("tgtP"));
+                if (newSrc != null && newTgt != null) {
+                    graph.connect(newSrc, c.getInt("srcP"), newTgt, c.getInt("tgtP"));
+                }
             }
+            graph.updateTopology();
+            if (onSave != null) onSave.accept(graph.save());
         } catch (Exception e) {}
     }
 

@@ -8,6 +8,11 @@ out vec4 fragColor;
 uniform float u_Time;       // Animates the plume motion
 uniform float u_Throttle;   // Current engine throttle level [0.0 - 1.0]
 
+// Simple 2D Pseudo-noise function
+float noise(vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+}
+
 // Multi-layered sine wave fractal for smooth organic gas movement
 float heightNoise(float u, float time) {
     float n = sin(u * 12.0 - time * 0.15) * 0.15;
@@ -23,23 +28,13 @@ void main() {
     float u = texCoord.x;
     float v = texCoord.y;
 
-    // --- PIXELATION FILTER ---
-    // Grids the UV space into pixel steps to give a retro pixelated flame shape.
-    // 32.0 pixels wide, 48.0 pixels tall down the plume stream.
-    float uPixelSteps = 32.0;
-    float vPixelSteps = 48.0;
-    
-    float steppedU = floor(u * uPixelSteps) / uPixelSteps;
-    float steppedV = floor(v * vPixelSteps) / vPixelSteps;
+    float time = u_Time * 50.0; // Fast scale for flame speed
 
-    // Continuous time for smooth 60+ FPS animation of pixelated flame
-    float smoothTime = u_Time * 50.0;
-
-    // Generate quantised height threshold using pixelated coordinates
-    float noiseVal = heightNoise(steppedU, smoothTime);
+    // Generate dynamic height threshold using height noise
+    float noiseVal = heightNoise(u, time);
     
-    // Core boundary (white-hot inner flame) with jagged pixelated height noise edge
-    float coreBoundary = 0.52 * u_Throttle + noiseVal;
+    // Core boundary (white-hot inner flame) with jagged height noise edge
+    float coreBoundary = 0.55 * u_Throttle + noiseVal;
     
     // Outer plume boundary (colored gas fading to transparent)
     float outerBoundary = 0.95 * u_Throttle + noiseVal * 1.5;
@@ -47,18 +42,18 @@ void main() {
     vec4 finalColor = vec4(0.0);
 
     // 1. Calculate White-Hot Core
-    if (steppedV < coreBoundary) {
+    if (v < coreBoundary) {
         // High intensity core fading slightly towards the boundary
-        float coreIntensity = smoothstep(coreBoundary, 0.0, steppedV);
+        float coreIntensity = smoothstep(coreBoundary, 0.0, v);
         
         // Pure blinding white center, fading into a yellowish edge
         vec3 coreColor = mix(vec3(1.0, 0.85, 0.5), vec3(1.0, 1.0, 1.0), coreIntensity);
         finalColor = vec4(coreColor, 0.95);
     } 
     // 2. Calculate Outer Plume Shell (Gradients from Hot Orange to Cosmic Violet)
-    else if (steppedV < outerBoundary) {
+    else if (v < outerBoundary) {
         // Relative position inside the outer shell region
-        float shellFactor = (steppedV - coreBoundary) / (outerBoundary - coreBoundary);
+        float shellFactor = (v - coreBoundary) / (outerBoundary - coreBoundary);
         
         // Colors mapping: base (0.0) is fiery orange/yellow, middle is red, tail (1.0) is violet/magenta
         vec3 fieryBase = vec3(1.0, 0.5, 0.1);    // Bright orange
@@ -66,8 +61,8 @@ void main() {
         
         vec3 outerColor = mix(fieryBase, violetTip, shellFactor);
         
-        // Soft edge fadeout at the tail of the plume (with stepped gradient)
-        float alpha = (1.0 - floor(shellFactor * 8.0) / 8.0) * 0.75 * vertexColor.a;
+        // Soft edge fadeout at the tail of the plume
+        float alpha = (1.0 - shellFactor) * 0.75 * vertexColor.a;
         
         finalColor = vec4(outerColor, alpha);
     } 
@@ -76,8 +71,8 @@ void main() {
         discard;
     }
 
-    // Additive glow flare near the engine nozzle exit (stepped V)
-    float exitGlow = (1.0 - smoothstep(0.0, 0.25, steppedV)) * 0.35 * u_Throttle;
+    // Additive glow flare near the engine nozzle exit (V = 0.0)
+    float exitGlow = (1.0 - smoothstep(0.0, 0.25, v)) * 0.35 * u_Throttle;
     finalColor.rgb += vec3(1.0, 0.75, 1.0) * exitGlow;
     finalColor.a = clamp(finalColor.a + exitGlow, 0.0, 1.0);
 

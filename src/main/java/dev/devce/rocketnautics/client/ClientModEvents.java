@@ -32,6 +32,22 @@ public class ClientModEvents {
             ),
             shader -> dev.devce.rocketnautics.client.render.ExhaustRenderer.exhaustShader = shader
         );
+        event.registerShader(
+            new net.minecraft.client.renderer.ShaderInstance(
+                event.getResourceProvider(),
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.devce.rocketnautics.RocketNautics.MODID, "rcs"),
+                com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR
+            ),
+            shader -> dev.devce.rocketnautics.client.render.ExhaustRenderer.rcsShader = shader
+        );
+        event.registerShader(
+            new net.minecraft.client.renderer.ShaderInstance(
+                event.getResourceProvider(),
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.devce.rocketnautics.RocketNautics.MODID, "reentry"),
+                com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR
+            ),
+            shader -> dev.devce.rocketnautics.client.render.ReentryClientRenderer.reentryShader = shader
+        );
     }
 
     /**

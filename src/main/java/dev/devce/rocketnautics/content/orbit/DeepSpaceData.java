@@ -148,7 +148,7 @@ public class DeepSpaceData extends SavedData implements SubLevelObserver {
 
     public DeepSpaceInstance claimNewInstance(int chunkSize) {
         setDirty();
-        int powerSize = (int) Math.ceil(Math.log(chunkSize) / Math.log(2)) - 1;
+        int powerSize = (int) Math.ceil(Math.log(chunkSize * 4) / Math.log(2)) - 1;
         return instances.computeIfAbsent(powerSize, InstanceList::new).createInstance(this);
     }
 
@@ -196,7 +196,7 @@ public class DeepSpaceData extends SavedData implements SubLevelObserver {
     }
 
     public UniverseDefinition getUniverse() {
-        return universe;
+        return UniverseLoader.INSTANCE.getLoaded();
     }
 
     public long getUniverseTicks() {

@@ -104,14 +104,22 @@ public class GlobalSpacePhysicsHandler {
         });
     }
 
+    public static boolean reentryDebugEnabled = false;
+
     private static void processSubLevelPhysics(ServerSubLevel subLevel, RigidBodyHandle handle, ServerLevel level, double timeStep) {
         Vector3d worldPos = subLevel.logicalPose().position();
         if (worldPos == null) return;
 
         applyZeroGravity(subLevel, handle, level, worldPos, timeStep);
         applySonicBoom(subLevel, handle, level);
-        // applyReentryHeat(subLevel, handle, level, worldPos, timeStep);
+        applyReentryHeat(subLevel, handle, level, worldPos, timeStep);
         // applyMaxQStress(subLevel, handle, level, worldPos, timeStep);
+
+        if (reentryDebugEnabled) {
+            for (net.minecraft.server.level.ServerPlayer player : level.players()) {
+                PacketDistributor.sendToPlayer(player, new ReentryHeatPayload(worldPos.x, worldPos.y, worldPos.z, 1.0f));
+            }
+        }
     }
 
     private static final Map<UUID, Boolean> SUPERSONIC_SHIPS = new ConcurrentHashMap<>();

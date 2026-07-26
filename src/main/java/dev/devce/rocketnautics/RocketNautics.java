@@ -152,6 +152,7 @@ public class RocketNautics {
         JetpackCommand.register(event.getDispatcher());
         dev.devce.rocketnautics.content.commands.AsteroidCommand.register(event.getDispatcher());
         dev.devce.rocketnautics.content.commands.BreakBarrierCommand.register(event.getDispatcher());
+        dev.devce.rocketnautics.content.commands.ReentryCommand.register(event.getDispatcher());
         TimescaleCommand.register(event.getDispatcher());
         dev.devce.rocketnautics.content.commands.NodesReloadCommand.register(event.getDispatcher());
     }

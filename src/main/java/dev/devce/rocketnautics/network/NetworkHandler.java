@@ -20,6 +20,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
+import net.minecraft.core.Direction;
+import net.minecraft.world.item.ItemStack;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class NetworkHandler {
@@ -127,6 +130,7 @@ public class NetworkHandler {
             sputnik.graph.setContext(sputnik);
 
             sputnik.setChanged();
+            foundLevel.sendBlockUpdated(pos, sputnik.getBlockState(), sputnik.getBlockState(), 3);
 /*
             if (dev.devce.rocketnautics.RocketConfig.SERVER.enableEngineDebugLogging.get()) {
                 dev.devce.rocketnautics.RocketNautics.LOGGER.info("Sputnik at {} (level {}) SYNCED. Nodes: {}, Connections: {}, Engines Found: {}",

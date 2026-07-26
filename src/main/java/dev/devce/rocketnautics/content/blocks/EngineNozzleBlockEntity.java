@@ -115,7 +115,7 @@ public class EngineNozzleBlockEntity extends BlockEntity {
     public void setRemoved() {
         super.setRemoved();
         if (level != null && level.isClientSide) {
-            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getBlockPos());
+            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(level, getBlockPos());
         }
     }
 
@@ -123,7 +123,7 @@ public class EngineNozzleBlockEntity extends BlockEntity {
     public void onChunkUnloaded() {
         super.onChunkUnloaded();
         if (level != null && level.isClientSide) {
-            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getBlockPos());
+            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(level, getBlockPos());
         }
     }
 }

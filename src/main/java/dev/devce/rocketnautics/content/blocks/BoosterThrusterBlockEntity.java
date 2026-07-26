@@ -84,7 +84,6 @@ public class BoosterThrusterBlockEntity extends AbstractThrusterBlockEntity {
 
         if (level.isClientSide()) {
             updateSound();
-            dev.devce.rocketnautics.client.render.ExhaustClientRenderer.tickClientThruster(this);
 
             if (active) {
                 BlockPos fuelPos = findFuelPos();

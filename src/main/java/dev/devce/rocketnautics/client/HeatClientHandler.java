@@ -15,6 +15,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,12 +28,21 @@ import java.util.UUID;
 public class HeatClientHandler {
     private static final Map<Vec3, Float> HEAT_MAP = new HashMap<>();
 
+    public static Map<Vec3, Float> getHeatMap() {
+        return HEAT_MAP;
+    }
+
     /**
      * Updates or adds a heat source at the specified coordinates.
      */
     public static void updateHeat(double x, double y, double z, float intensity) {
+        if (intensity >= 0.99f) {
+            dev.devce.rocketnautics.client.render.ReentryClientRenderer.clearCache();
+        }
         HEAT_MAP.put(new Vec3(x, y, z), intensity);
     }
+
+    private static final Map<UUID, Vector3d> PREVIOUS_POSITIONS = new HashMap<>();
 
     /**
      * Ticks the heat sources, decays intensity, and triggers particle spawning.
@@ -44,11 +54,56 @@ public class HeatClientHandler {
         ClientLevel level = (ClientLevel) event.getLevel();
         if (level == null) {
             HEAT_MAP.clear();
+            PREVIOUS_POSITIONS.clear();
             return;
         }
 
         SubLevelContainer container = SubLevelContainer.getContainer(level);
         if (container == null) return;
+
+        // Auto-generate reentry heat for ships traveling extremely fast in the upper atmosphere
+        if (level.dimension() == net.minecraft.world.level.Level.OVERWORLD) {
+            for (SubLevel sl : container.getAllSubLevels()) {
+                if (sl instanceof dev.ryanhcode.sable.sublevel.ClientSubLevel clientShip) {
+                    Vector3d currentPos = clientShip.logicalPose().position();
+                    
+                    // Track velocity via position delta
+                    Vector3d prevPos = PREVIOUS_POSITIONS.get(clientShip.getUniqueId());
+                    if (prevPos != null) {
+                        double deltaDist = currentPos.distance(prevPos);
+                        double currentY = currentPos.y();
+
+                        // Altitude check: between 1000 and 5000 blocks
+                        if (currentY > 1000 && currentY < 5000) {
+                            // In real life sonic boom is ~17 blocks/tick, but in Minecraft engine speeds are lower.
+                            // Start effect at 2.5 blocks/tick (50 m/s), max out at 6.0 blocks/tick (120 m/s)
+                            if (deltaDist > 2.5) {
+                                float speedFactor = (float) ((deltaDist - 2.5) / 3.5);
+                                speedFactor = Math.min(1.0f, Math.max(0.0f, speedFactor));
+                                
+                                // Smoothly fade in/out based on altitude edges (1000-1500 and 4500-5000)
+                                float altFactor = 1.0f;
+                                if (currentY < 1500) {
+                                    altFactor = (float) ((currentY - 1000) / 500.0);
+                                } else if (currentY > 4500) {
+                                    altFactor = (float) ((5000 - currentY) / 500.0);
+                                }
+                                
+                                float finalIntensity = speedFactor * altFactor;
+                                if (finalIntensity > 0.05f) {
+                                    updateHeat(currentPos.x(), currentPos.y(), currentPos.z(), finalIntensity);
+                                }
+                            }
+                        }
+                    }
+                    PREVIOUS_POSITIONS.put(clientShip.getUniqueId(), currentPos);
+                }
+            }
+            
+            // Clean up old positions for removed ships
+            List<UUID> activeIds = container.getAllSubLevels().stream().map(SubLevel::getUniqueId).toList();
+            PREVIOUS_POSITIONS.keySet().retainAll(activeIds);
+        }
 
         // Iterate through active heat sources
         HEAT_MAP.entrySet().removeIf(entry -> {
@@ -82,26 +137,6 @@ public class HeatClientHandler {
      * Spawns reentry particles (blue flames and smoke) around the ship.
      */
     private static void spawnHeatParticles(ClientLevel level, SubLevel subLevel, float intensity) {
-        Vector3d pos = subLevel.logicalPose().position();
-        if (pos == null) return;
-
-        // Density of particles based on heat intensity
-        int count = (int) (intensity * 15); 
-        for (int i = 0; i < count; i++) {
-            // Randomize position around the ship's center
-            double px = pos.x + (level.random.nextDouble() - 0.5) * 4.5;
-            double py = pos.y + (level.random.nextDouble() - 0.5) * 2.0; 
-            double pz = pos.z + (level.random.nextDouble() - 0.5) * 4.5;
-            
-            // Particles move upward relative to the ship (descent direction)
-            double trailSpeed = 0.4 * intensity;
-            level.addParticle(dev.devce.rocketnautics.registry.RocketParticles.BLUE_FLAME.get(), px, py, pz, 
-                (level.random.nextDouble() - 0.5) * 0.1, trailSpeed, (level.random.nextDouble() - 0.5) * 0.1);
-            
-            if (level.random.nextFloat() < intensity * 0.7) {
-                level.addParticle(dev.devce.rocketnautics.registry.RocketParticles.JET_SMOKE.get(), px, py, pz, 
-                    (level.random.nextDouble() - 0.5) * 0.3, trailSpeed * 0.5, (level.random.nextDouble() - 0.5) * 0.3);
-            }
-        }
+        // Disabled legacy particles in favor of custom 3D shader reentry plasma
     }
 }

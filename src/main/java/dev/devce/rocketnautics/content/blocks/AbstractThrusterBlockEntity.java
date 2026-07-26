@@ -50,7 +50,7 @@ public abstract class AbstractThrusterBlockEntity extends SmartBlockEntity
             if (!level.isClientSide) {
                 PeripheralRegistry.unregister(level, this);
             } else {
-                dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getBlockPos());
+                dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(level, getBlockPos());
             }
         }
     }
@@ -62,7 +62,7 @@ public abstract class AbstractThrusterBlockEntity extends SmartBlockEntity
             if (!level.isClientSide) {
                 PeripheralRegistry.unregister(level, this);
             } else {
-                dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(getBlockPos());
+                dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(level, getBlockPos());
             }
         }
     }

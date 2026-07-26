@@ -40,4 +40,19 @@ public class WCheckbox extends WElement {
 
     public boolean isChecked() { return checked; }
     public void setChecked(boolean checked) { this.checked = checked; }
+
+    @Override
+    public net.minecraft.nbt.CompoundTag save() {
+        net.minecraft.nbt.CompoundTag tag = super.save();
+        tag.putBoolean("checked", checked);
+        return tag;
+    }
+
+    @Override
+    public void load(net.minecraft.nbt.CompoundTag tag) {
+        super.load(tag);
+        if (tag.contains("checked")) {
+            this.checked = tag.getBoolean("checked");
+        }
+    }
 }
