@@ -199,6 +199,14 @@ tasks.named('jar') {
     finalizedBy('shadowJar')
 }
 
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+            "Implementation-Version": project.version
+        ])
+    }
+}
+
 artifacts {
     archives shadowJar
 }
