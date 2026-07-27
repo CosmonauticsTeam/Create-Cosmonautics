@@ -59,20 +59,31 @@ public class ExhaustClientRenderer {
     public static class PlumeInfo {
         public final Level level;
         public final BlockPos pos;
-        public final Vec3 offset;
-        public final Vec3 exhaustDir;
-        public final float throttle;
-        public final float ignitionTicks;
+        public Vec3 offset;
+        public Vec3 exhaustDir;
+        public float targetThrottle;
+        public float currentThrottle;
+        public float ignitionTicks;
         public final boolean isRCS;
+        public long lastUpdateTime;
 
-        public PlumeInfo(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float throttle, float ignitionTicks, boolean isRCS) {
+        public PlumeInfo(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float targetThrottle, float ignitionTicks, boolean isRCS) {
             this.level = level;
             this.pos = pos;
             this.offset = offset;
             this.exhaustDir = exhaustDir;
-            this.throttle = throttle;
+            this.targetThrottle = targetThrottle;
+            this.currentThrottle = isRCS ? 0.0f : targetThrottle;
             this.ignitionTicks = ignitionTicks;
             this.isRCS = isRCS;
+            this.lastUpdateTime = System.currentTimeMillis();
+        }
+
+        public void update(Vec3 offset, Vec3 exhaustDir, float targetThrottle, float ignitionTicks) {
+            this.offset = offset;
+            this.exhaustDir = exhaustDir;
+            this.targetThrottle = targetThrottle;
+            this.ignitionTicks = ignitionTicks;
         }
     }
 
@@ -96,7 +107,12 @@ public class ExhaustClientRenderer {
     public static void registerPlume(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float throttle, float ignitionTicks, boolean isRCS) {
         if (level == null || pos == null) return;
         PlumeKey key = new PlumeKey(level, pos);
-        ACTIVE_PLUMES.put(key, new PlumeInfo(level, pos, offset, exhaustDir, throttle, ignitionTicks, isRCS));
+        PlumeInfo existing = ACTIVE_PLUMES.get(key);
+        if (existing != null) {
+            existing.update(offset, exhaustDir, throttle, ignitionTicks);
+        } else {
+            ACTIVE_PLUMES.put(key, new PlumeInfo(level, pos, offset, exhaustDir, throttle, ignitionTicks, isRCS));
+        }
     }
 
     /**
@@ -104,7 +120,15 @@ public class ExhaustClientRenderer {
      */
     public static void removePlume(Level level, BlockPos pos) {
         if (level == null || pos == null) return;
-        ACTIVE_PLUMES.remove(new PlumeKey(level, pos));
+        PlumeKey key = new PlumeKey(level, pos);
+        PlumeInfo existing = ACTIVE_PLUMES.get(key);
+        if (existing != null) {
+            if (existing.isRCS) {
+                existing.targetThrottle = 0.0f;
+            } else {
+                ACTIVE_PLUMES.remove(key);
+            }
+        }
     }
 
     /**
@@ -120,6 +144,40 @@ public class ExhaustClientRenderer {
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || ACTIVE_PLUMES.isEmpty()) return;
+
+        long currentTime = System.currentTimeMillis();
+        Iterator<Map.Entry<PlumeKey, PlumeInfo>> iterator = ACTIVE_PLUMES.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<PlumeKey, PlumeInfo> entry = iterator.next();
+            PlumeInfo plume = entry.getValue();
+
+            BlockEntity be = plume.level.getBlockEntity(plume.pos);
+            if (be == null) {
+                iterator.remove();
+                continue;
+            }
+
+            float dt = Math.min((currentTime - plume.lastUpdateTime) / 1000.0f, 0.1f);
+            plume.lastUpdateTime = currentTime;
+
+            if (plume.isRCS) {
+                if (plume.currentThrottle < plume.targetThrottle) {
+                    plume.currentThrottle = Math.min(plume.targetThrottle, plume.currentThrottle + dt * 8.5f);
+                } else if (plume.currentThrottle > plume.targetThrottle) {
+                    plume.currentThrottle = Math.max(0.0f, plume.currentThrottle - dt * 4.5f);
+                }
+
+                if (plume.targetThrottle <= 0.001f && plume.currentThrottle <= 0.001f) {
+                    iterator.remove();
+                    continue;
+                }
+            } else {
+                plume.currentThrottle = plume.targetThrottle;
+            }
+        }
+
+        if (ACTIVE_PLUMES.isEmpty()) return;
 
         Camera camera = event.getCamera();
         Vec3 cameraPos = camera.getPosition();
@@ -278,7 +336,7 @@ public class ExhaustClientRenderer {
 
         public void add(RenderablePlume plume) {
             worldPosSum = worldPosSum.add(plume.worldPos);
-            totalThrottle += plume.plume.throttle;
+            totalThrottle += plume.plume.currentThrottle;
             maxIgnitionTicks = Math.max(maxIgnitionTicks, plume.plume.ignitionTicks);
             count++;
         }

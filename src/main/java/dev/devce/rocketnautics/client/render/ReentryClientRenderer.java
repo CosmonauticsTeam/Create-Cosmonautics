@@ -149,6 +149,16 @@ public class ReentryClientRenderer {
         List<GreedyFaceQuad> greedyQuads = computeGreedyMeshes(shipLevel, minX, maxX, minY, maxY, minZ, maxZ, localFlowDir);
         if (greedyQuads.isEmpty()) return;
 
+        // Transform local flow direction to world space for main-world terrain ray cast
+        Quaternionf worldQuat = new Quaternionf((float) worldRot.x(), (float) worldRot.y(), (float) worldRot.z(), (float) worldRot.w());
+        Vector3f worldFlowDir = new Vector3f(localFlowDir).rotate(worldQuat);
+        var rawCenter = renderPose.position();
+        Vector3d shipWorldCenter = new Vector3d(rawCenter.x(), rawCenter.y(), rawCenter.z());
+
+        // Limit trail length to avoid clipping through main-world terrain
+        float maxTrailLength = computeMaxTrailLength(mc.level, shipWorldCenter, worldFlowDir,
+                shipSize * 0.5f, 32.0f);
+
         if (reentryShader != null) {
             var uTime = reentryShader.getUniform("u_Time");
             if (uTime != null) {
@@ -166,7 +176,7 @@ public class ReentryClientRenderer {
             double midX = 0, midY = 0, midZ = 0;
             
             // Correct coordinate projection for the merged quad center
-            switch (quad.face.getAxis()) {
+            switch (quad.face().getAxis()) {
                 case Y: // DOWN, UP -> U=X, V=Z
                     midX = (quad.minU + quad.maxU + 1) * 0.5;
                     midY = quad.layerCoord + 0.5;
@@ -195,7 +205,7 @@ public class ReentryClientRenderer {
 
             ms.mulPose(new Quaternionf((float) worldRot.x(), (float) worldRot.y(), (float) worldRot.z(), (float) worldRot.w()));
 
-            renderSingleGreedyQuad(consumer, ms.last().pose(), shipLevel, quad, localFlowDir, intensity, localCoord, shipCenter, shipSize);
+            renderSingleGreedyQuad(consumer, ms.last().pose(), shipLevel, quad, localFlowDir, intensity, localCoord, shipCenter, shipSize, maxTrailLength);
 
             ms.popPose();
         }
@@ -359,10 +369,42 @@ public class ReentryClientRenderer {
         return false;
     }
 
+    /**
+     * Ray-casts along worldFlowDir from shipWorldCenter in mc.level to find the first solid block.
+     * Returns a safe maximum trail length so the plasma tail doesn't clip into terrain.
+     */
+    private static float computeMaxTrailLength(net.minecraft.world.level.Level mainLevel,
+                                               Vector3d shipWorldCenter, Vector3f worldFlowDir,
+                                               float startOffset, float absoluteMax) {
+        float stepSize = 0.5f;
+        int maxSteps = (int) ((absoluteMax + startOffset) / stepSize) + 4;
+
+        double x = shipWorldCenter.x + worldFlowDir.x * startOffset;
+        double y = shipWorldCenter.y + worldFlowDir.y * startOffset;
+        double z = shipWorldCenter.z + worldFlowDir.z * startOffset;
+
+        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
+
+        for (int i = 0; i < maxSteps; i++) {
+            x += worldFlowDir.x * stepSize;
+            y += worldFlowDir.y * stepSize;
+            z += worldFlowDir.z * stepSize;
+
+            mpos.set(x, y, z);
+            net.minecraft.world.level.block.state.BlockState state = mainLevel.getBlockState(mpos);
+            if (!state.isAir() && state.isSolidRender(mainLevel, mpos)) {
+                // Leave 1 block clearance before solid surface so trail fades out just before it
+                return Math.max(0.5f, i * stepSize - 1.0f);
+            }
+        }
+        return absoluteMax;
+    }
+
     private static void renderSingleGreedyQuad(VertexConsumer consumer, Matrix4f matrix, 
                                                net.minecraft.world.level.Level level, GreedyFaceQuad quad, 
                                                Vector3f localFlowDir, float intensity,
-                                               Vector3d quadCenter, Vector3f shipCenter, float shipSize) {
+                                               Vector3d quadCenter, Vector3f shipCenter, float shipSize,
+                                               float maxTrailLength) {
         Direction face = quad.face();
         float cosAngle = quad.cosAngle();
 
@@ -433,8 +475,9 @@ public class ReentryClientRenderer {
 
         // 2. CONTINUOUS AERODYNAMIC SLIPSTREAM FLAME
         // Trail stretches across the ship's length but is capped so it doesn't become absurdly long on huge ships
-        float scaledLength = Math.min(30.0f, Math.max(4.0f, shipSize * 0.6f));
-        float trailLength = scaledLength * intensity * Math.max(0.2f, alphaFactor);
+        // Also capped by maxTrailLength derived from terrain ray cast to prevent clipping into main-world blocks
+        float scaledLength = Math.min(40.0f, Math.max(14.0f, shipSize * 0.6f + 10.0f));
+        float trailLength = Math.min(scaledLength * intensity * Math.max(0.2f, alphaFactor), maxTrailLength);
 
         Vector3f faceNormal = new Vector3f(face.step());
         float normalDot = faceNormal.dot(localFlowDir);

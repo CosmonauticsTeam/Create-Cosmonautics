@@ -79,7 +79,7 @@ public class ExhaustRenderer {
     public static void renderExhaustPlume(PoseStack ms, MultiBufferSource buffer, float throttle, float ignitionTick, Direction direction, boolean isRCS, float scale) {
         if (throttle <= 0.01f) return;
 
-        float startupScale = Mth.clamp(ignitionTick / 40.0f, 0.0f, 1.0f);
+        float startupScale = isRCS ? 1.0f : Mth.clamp(ignitionTick / 40.0f, 0.0f, 1.0f);
         float activeThrottle = throttle * startupScale;
 
         long time = System.currentTimeMillis();
@@ -122,17 +122,17 @@ public class ExhaustRenderer {
         
         // --- LAYER 1: OUTER PLUME (Longest, widest, purple-pink) ---
         float l1Width = 0.42f * scale;
-        float l1Length = 7.8f * activeThrottle * scale;
+        float l1Length = 17.8f * activeThrottle * scale;
         drawStandardPlumeLayer(consumer, matrix, l1Width, l1Length, 255, 200, 255, 75);
 
         // --- LAYER 2: INTERMEDIATE PLUME (Medium length, fiery orange) ---
         float l2Width = 0.35f * scale;
-        float l2Length = 6.0f * activeThrottle * scale;
+        float l2Length = 16.0f * activeThrottle * scale;
         drawStandardPlumeLayer(consumer, matrix, l2Width, l2Length, 255, 150, 50, 130);
 
         // --- LAYER 3: CORE PLUME (Shortest, bright white core) ---
         float l3Width = 0.28f * scale;
-        float l3Length = 4.5f * activeThrottle * scale;
+        float l3Length = 14.5f * activeThrottle * scale;
         drawStandardPlumeLayer(consumer, matrix, l3Width, l3Length, 255, 255, 255, 220);
     }
 
