@@ -25,6 +25,7 @@ public class RocketNauticsClientEvents {
 
     /** Deep space ambient music manager — one instance per client session. */
     private static final DeepSpaceMusicManager DEEP_SPACE_MUSIC = new DeepSpaceMusicManager();
+    private static boolean hasCheckedWorldBorder = false;
 
     /**
      * Handles dynamic render distance adjustment and jetpack input processing every tick.
@@ -34,6 +35,13 @@ public class RocketNauticsClientEvents {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
         if (mc.screen instanceof net.minecraft.client.gui.screens.ReceivingLevelScreen) return;
+
+        if (!hasCheckedWorldBorder) {
+            hasCheckedWorldBorder = true;
+            if (!RocketConfig.CLIENT.hasShownWorldBorderWarning.get()) {
+                showWorldBorderWarning(mc.player);
+            }
+        }
 
         dev.simulated_team.simulated.content.blocks.rope.strand.client.ClientLevelRopeManager ropeManager =    
                 dev.simulated_team.simulated.content.blocks.rope.strand.client.ClientLevelRopeManager.getOrCreate(mc.level);
@@ -133,5 +141,34 @@ public class RocketNauticsClientEvents {
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
         RocketNauticsClient.onRenderLevelStage(event);
+    }
+
+    private static void showWorldBorderWarning(net.minecraft.world.entity.player.Player player) {
+        RocketConfig.CLIENT.hasShownWorldBorderWarning.set(true);
+        RocketConfig.CLIENT.hasShownWorldBorderWarning.save();
+
+        net.minecraft.network.chat.MutableComponent message = net.minecraft.network.chat.Component.literal("\n========================================\n").withStyle(net.minecraft.ChatFormatting.GOLD);
+        message.append(net.minecraft.network.chat.Component.translatable("chat.rocketnautics.world_border_warning.text1").withStyle(net.minecraft.ChatFormatting.YELLOW));
+        message.append("\n\n");
+        message.append(net.minecraft.network.chat.Component.translatable("chat.rocketnautics.world_border_warning.text2").withStyle(net.minecraft.ChatFormatting.AQUA));
+        message.append("\n\n");
+
+        net.minecraft.network.chat.MutableComponent yesBtn = net.minecraft.network.chat.Component.translatable("chat.rocketnautics.world_border_warning.yes")
+            .withStyle(style -> style
+                .withColor(net.minecraft.ChatFormatting.GREEN)
+                .withBold(true)
+                .withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/rn limit_world_border"))
+                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, net.minecraft.network.chat.Component.literal("Limit world border to 40,000 blocks"))));
+
+        net.minecraft.network.chat.MutableComponent noBtn = net.minecraft.network.chat.Component.translatable("chat.rocketnautics.world_border_warning.no")
+            .withStyle(style -> style
+                .withColor(net.minecraft.ChatFormatting.RED)
+                .withBold(true)
+                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, net.minecraft.network.chat.Component.literal("Keep current world border"))));
+
+        message.append("   ").append(yesBtn).append("      ").append(noBtn);
+        message.append(net.minecraft.network.chat.Component.literal("\n========================================\n").withStyle(net.minecraft.ChatFormatting.GOLD));
+
+        player.sendSystemMessage(message);
     }
 }

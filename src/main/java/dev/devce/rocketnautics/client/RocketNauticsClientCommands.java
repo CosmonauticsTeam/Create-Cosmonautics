@@ -39,6 +39,12 @@ public class RocketNauticsClientCommands {
                         return 1;
                     })
                 )
+            )
+            .then(Commands.literal("limit_world_border")
+                .executes(context -> {
+                    net.neoforged.neoforge.network.PacketDistributor.sendToServer(new dev.devce.rocketnautics.network.LimitWorldBorderPayload());
+                    return 1;
+                })
             );
             
         dispatcher.register(builder);

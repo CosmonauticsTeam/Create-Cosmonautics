@@ -23,7 +23,8 @@
         "value": 0.0
       }
     ],
-    "linked_dimension": "minecraft:overworld"
+    "linked_dimension": "minecraft:overworld",
+    "render_universe_in_dimension": true
   },
   "name": "overworld",
   "planet_extras": {

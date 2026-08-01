@@ -2,6 +2,9 @@
   "block.rocketnautics.rocket_thruster": "Rocket Thruster",
   "block.rocketnautics.rocket_thruster.funny": "Turns _fuel_ into noise and _hope_. High-performance, _low-survival_.",
   "block.rocketnautics.rocket_thruster.summary": "The _core_ of any liquid-fueled _rocket_. Requires a constant supply of _propellant_ (Lava) to generate _thrust_. Throttling is controlled via pump _RPM_. _Warning_: exhaust is _extremely hot_!",
+  "block.rocketnautics.creative_thruster": "Creative Rocket Thruster",
+  "block.rocketnautics.creative_thruster.funny": "Infinite power, zero fuel, and absolute disregard for thermodynamics. The legal department is still screaming.",
+  "block.rocketnautics.creative_thruster.summary": "A creative-only rocket thruster. Generates up to _10,000 N_ of pure thrust without requiring fuel. Output scales linearly with the strength of the incoming _Redstone signal_.",
   "block.rocketnautics.vector_thruster": "Vector Thruster",
   "block.rocketnautics.vector_thruster.funny": "_Engineers_ discovered that if you _wiggle_ the engine, the rocket goes a _different_ way. _Revolutionary!_",
   "block.rocketnautics.vector_thruster.summary": "A _steerable_ _liquid_ engine. _Tilt angle_ is controlled by Redstone signals on its _sides_. Perfect for steering your _course_ without separate RCS _thrusters_.",
@@ -84,7 +87,7 @@
   "item.rocketnautics.copper_anchor_boots.tooltip.behaviour1": "Provides _weak gravity_ when standing on a block. Allows _walking around_ as if _grounded_. Also acts like _Copper Diving Boots_.",
 
   "item.rocketnautics.space_helmet": "Space Helmet",
-  "item.rocketnautics.space_helmet.tooltip.summary": "Protects you from vacuum and drowning when supplied with air.",
+  "item.rocketnautics.space_helmet.tooltip.summary": "Our engineers spent a long time racking their brains on how to protect the pilot's head from radiation, vacuum, and most importantly—panic. As a result of long experiments with duct tape and upside-down fish tanks, this masterpiece of engineering was born. We assure you that its use as a helmet has not received a single negative review.",
   "item.rocketnautics.space_helmet.tooltip.condition1": "When Worn",
   "item.rocketnautics.space_helmet.tooltip.behaviour1": "Allows breathing in space or underwater when coupled with a pressurized air source.",
 
@@ -207,5 +210,12 @@
   "gui.rocketnautics.hud.altitude": "ALT",
   "gui.rocketnautics.hud.speed": "SPD",
   "gui.rocketnautics.hud.eccentricity": "ECC",
-  "gui.rocketnautics.hud.escape": "Escape"
+  "gui.rocketnautics.hud.escape": "Escape",
+  "chat.rocketnautics.world_border_warning.text1": "We strongly recommend limiting the world size for playing with Cosmonautics. Unfortunately, Sable is unstable at large coordinates.",
+  "chat.rocketnautics.world_border_warning.text2": "Limit to recommended values?",
+  "chat.rocketnautics.world_border_warning.yes": "[ Yes ]",
+  "chat.rocketnautics.world_border_warning.no": "[ No ]",
+  "chat.rocketnautics.world_border_warning.success": "World size successfully limited to 40,000 blocks.",
+  "chat.rocketnautics.world_border_warning.no_permission": "You do not have permission to modify the world border.",
+  "rocketnautics.tooltip.creative_thruster.extra": "Requires a Redstone signal. Active thrust depends on signal strength."
 }

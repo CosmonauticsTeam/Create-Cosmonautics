@@ -338,6 +338,9 @@ public class RocketThrusterBlockEntity extends AbstractThrusterBlockEntity {
                 Component.literal("    ").append(Component.translatable(getBlockState().getBlock().getDescriptionId())
                         .withStyle(net.minecraft.ChatFormatting.GOLD)));
 
+        tooltip.add(Component.literal("  Engine ID: ")
+                .append(Component.literal(String.valueOf(getPeripheralId())).withStyle(net.minecraft.ChatFormatting.GOLD)));
+
         tooltip.add(Component.literal("  ").append(Component.translatable("rocketnautics.goggles.status")).append(": ")
                 .append(isActive()
                         ? Component.translatable("rocketnautics.goggles.active")

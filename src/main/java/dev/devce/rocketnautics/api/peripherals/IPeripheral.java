@@ -11,6 +11,8 @@ public interface IPeripheral {
     
     java.util.UUID getUniqueId();
 
+    default int getPeripheralId() { return -1; }
+
     /**
      * Get a value from the peripheral.
      * @param key The data key (e.g., "altitude", "velocity", "thrust")

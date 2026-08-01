@@ -109,6 +109,31 @@ public class NetworkHandler {
                 (payload, context) -> context.enqueueWork(() -> handleUniverseTime(payload.universeTicks(), payload.serverTickRate()))
         );
 
+        registrar.playToClient(
+                PlayAudioPayload.TYPE,
+                PlayAudioPayload.CODEC,
+                (payload, context) -> context.enqueueWork(() -> handlePlayAudio(payload))
+        );
+
+        registrar.playToServer(
+                LimitWorldBorderPayload.TYPE,
+                LimitWorldBorderPayload.CODEC,
+                (payload, context) -> context.enqueueWork(() -> handleLimitWorldBorder(context.player()))
+        );
+
+    }
+
+    private static void handleLimitWorldBorder(net.minecraft.world.entity.player.Player player) {
+        if (player.getServer() != null) {
+            if (player.getServer().isSingleplayerOwner(player.getGameProfile()) || player.hasPermissions(2)) {
+                player.getServer().execute(() -> {
+                    player.level().getWorldBorder().setSize(40000);
+                    player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("chat.rocketnautics.world_border_warning.success").withStyle(net.minecraft.ChatFormatting.GREEN));
+                });
+            } else {
+                player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("chat.rocketnautics.world_border_warning.no_permission").withStyle(net.minecraft.ChatFormatting.RED));
+            }
+        }
     }
 
     private static void handleSputnikSync(net.minecraft.world.entity.player.Player player, net.minecraft.core.BlockPos pos, net.minecraft.nbt.CompoundTag graphData) {
@@ -214,5 +239,17 @@ public class NetworkHandler {
     @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
     private static void handleUniverseTime(long universeTicks, float serverTickRate) {
         DeepSpaceHandler.receiveUniverseTime(universeTicks, serverTickRate);
+    }
+
+    @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
+    private static void handlePlayAudio(PlayAudioPayload payload) {
+        dev.devce.rocketnautics.client.ClientSynthAudio.play(payload);
+    }
+
+    public static void sendPlayAudio(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos, double frequency, double endFrequency, double volume, double duration, String waveform, double attack, double decay, double sustain, double release, double dutyCycle, double fmFreq, double fmDepth, double lfoFreq, double lfoDepth, String harmonics, String formula) {
+        if (level instanceof ServerLevel serverLevel) {
+            PlayAudioPayload payload = new PlayAudioPayload(pos, frequency, endFrequency, volume, duration, waveform, attack, decay, sustain, release, dutyCycle, fmFreq, fmDepth, lfoFreq, lfoDepth, harmonics, formula);
+            PacketDistributor.sendToPlayersNear(serverLevel, null, pos.getX(), pos.getY(), pos.getZ(), 64.0, payload);
+        }
     }
 }

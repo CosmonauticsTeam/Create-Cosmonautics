@@ -69,14 +69,18 @@ public class ExhaustRenderer {
     }
 
     public static void renderExhaustPlume(PoseStack ms, MultiBufferSource buffer, float throttle, float ignitionTick, Direction direction) {
-        renderExhaustPlume(ms, buffer, throttle, ignitionTick, direction, false, 1.0f);
+        renderExhaustPlume(ms, buffer, throttle, ignitionTick, direction, false, 1.0f, 1.0f, 1.0f, 1.0f);
     }
 
     public static void renderExhaustPlume(PoseStack ms, MultiBufferSource buffer, float throttle, float ignitionTick, Direction direction, boolean isRCS) {
-        renderExhaustPlume(ms, buffer, throttle, ignitionTick, direction, isRCS, 1.0f);
+        renderExhaustPlume(ms, buffer, throttle, ignitionTick, direction, isRCS, 1.0f, 1.0f, 1.0f, 1.0f);
     }
 
     public static void renderExhaustPlume(PoseStack ms, MultiBufferSource buffer, float throttle, float ignitionTick, Direction direction, boolean isRCS, float scale) {
+        renderExhaustPlume(ms, buffer, throttle, ignitionTick, direction, isRCS, scale, 1.0f, 1.0f, 1.0f);
+    }
+
+    public static void renderExhaustPlume(PoseStack ms, MultiBufferSource buffer, float throttle, float ignitionTick, Direction direction, boolean isRCS, float scale, float r, float g, float b) {
         if (throttle <= 0.01f) return;
 
         float startupScale = isRCS ? 1.0f : Mth.clamp(ignitionTick / 40.0f, 0.0f, 1.0f);
@@ -112,7 +116,7 @@ public class ExhaustRenderer {
             
             // Draw expanding/flaring gas jet
             // Start half-width set to 0.07f to match the physical diameter of the RCS block nozzle perfectly.
-            drawExpandingPlumeLayer(consumer, matrix, 0.07f * scale, gasWidth, gasLength, 255, 255, 255, 120);
+            drawExpandingPlumeLayer(consumer, matrix, 0.07f * scale, gasWidth, gasLength, (int)(r * 255), (int)(g * 255), (int)(b * 255), 120);
             return;
         }
 
@@ -120,20 +124,30 @@ public class ExhaustRenderer {
         // Order of drawing matters: Outer -> Intermediate -> Core
         // Renders as a standard converging pyramid to cover the nozzle exit properly.
         
-        // --- LAYER 1: OUTER PLUME (Longest, widest, purple-pink) ---
+        float redMult = r;
+        float greenMult = g;
+        float blueMult = b;
+        
+        if (Math.abs(r - 1.0f) < 0.01f && Math.abs(g - 1.0f) < 0.01f && Math.abs(b - 1.0f) < 0.01f) {
+            redMult = 1.0f;
+            greenMult = 0.5f;
+            blueMult = 0.1f;
+        }
+
+        // --- LAYER 1: OUTER PLUME (Longest, widest) ---
         float l1Width = 0.42f * scale;
         float l1Length = 17.8f * activeThrottle * scale;
-        drawStandardPlumeLayer(consumer, matrix, l1Width, l1Length, 255, 200, 255, 75);
+        drawStandardPlumeLayer(consumer, matrix, l1Width, l1Length, (int)(redMult * 255), (int)(greenMult * 255), (int)(blueMult * 255), 75);
 
-        // --- LAYER 2: INTERMEDIATE PLUME (Medium length, fiery orange) ---
+        // --- LAYER 2: INTERMEDIATE PLUME (Medium length) ---
         float l2Width = 0.35f * scale;
         float l2Length = 16.0f * activeThrottle * scale;
-        drawStandardPlumeLayer(consumer, matrix, l2Width, l2Length, 255, 150, 50, 130);
+        drawStandardPlumeLayer(consumer, matrix, l2Width, l2Length, (int)(redMult * 255), (int)(greenMult * 255), (int)(blueMult * 255), 130);
 
-        // --- LAYER 3: CORE PLUME (Shortest, bright white core) ---
+        // --- LAYER 3: CORE PLUME (Shortest) ---
         float l3Width = 0.28f * scale;
         float l3Length = 14.5f * activeThrottle * scale;
-        drawStandardPlumeLayer(consumer, matrix, l3Width, l3Length, 255, 255, 255, 220);
+        drawStandardPlumeLayer(consumer, matrix, l3Width, l3Length, (int)(redMult * 255), (int)(greenMult * 255), (int)(blueMult * 255), 220);
     }
 
     /**

@@ -2,6 +2,9 @@
   "block.rocketnautics.rocket_thruster": "火箭发动机",
   "block.rocketnautics.rocket_thruster.funny": "把燃料化作轰鸣与希望。性能拉满，生存堪忧。",
   "block.rocketnautics.rocket_thruster.summary": "液体燃料火箭的核心装置。需持续供给推进剂（熔岩）以产生推力，推力大小由泵的转速调控。警告：喷射尾焰温度极高！",
+  "block.rocketnautics.creative_thruster": "创造模式火箭发动机",
+  "block.rocketnautics.creative_thruster.funny": "无限能量，零燃料消耗，对热力学定律的绝对蔑视。法务部门至今还在尖叫。",
+  "block.rocketnautics.creative_thruster.summary": "创造模式专属火箭发动机。无需燃料即可产生高达 _10,000 N_ 的纯净推力。输出与输入的 _红石信号强度_ 成正比。",
   "block.rocketnautics.vector_thruster": "矢量火箭发动机",
   "block.rocketnautics.vector_thruster.funny": "工程师们发现，只要摆动一下发动机，火箭就能换个方向飞。简直是革命性突破。",
   "block.rocketnautics.vector_thruster.summary": "可转向液体火箭发动机。倾斜角度由侧面红石信号控制，无需额外姿控发动机就能调整飞行航向。",
@@ -72,7 +75,7 @@
   "item.rocketnautics.copper_anchor_boots.tooltip.behaviour1": "站在方块上时生成微弱重力，让你如同在地面般正常行走；同时兼具铜潜水靴的功能。",
 
   "item.rocketnautics.space_helmet": "太空头盔",
-  "item.rocketnautics.space_helmet.tooltip.summary": "当配备空气时，保护你免受真空和溺水伤害。",
+  "item.rocketnautics.space_helmet.tooltip.summary": "我们的工程师花了很长时间思索如何保护飞行员的头部免受辐射、真空、以及最重要——恐慌的危害。经过用胶带和倒置鱼缸进行的长期实验，这一工程杰作诞生了。我们向您保证，将其用作头盔没有收到过任何差评。",
   "item.rocketnautics.space_helmet.tooltip.condition1": "穿戴状态下",
   "item.rocketnautics.space_helmet.tooltip.behaviour1": "配合加压气源使用时，允许在太空或水下呼吸。",
   "block.rocketnautics.titanium_ore": "钛矿石",
@@ -180,5 +183,12 @@
   "rocketnautics.goggles.hose.role": "功能",
   "rocketnautics.goggles.hose.role.output": "输出",
   "rocketnautics.goggles.hose.role.input": "输入",
-  "rocketnautics.goggles.hose.contents": "内容"
+  "rocketnautics.goggles.hose.contents": "内容",
+  "chat.rocketnautics.world_border_warning.text1": "我们强烈建议您在使用 Cosmonautics 时限制世界大小。不幸的是，Sable 在大坐标下并不稳定。",
+  "chat.rocketnautics.world_border_warning.text2": "限制到推荐值吗？",
+  "chat.rocketnautics.world_border_warning.yes": "[ 是 ]",
+  "chat.rocketnautics.world_border_warning.no": "[ 否 ]",
+  "chat.rocketnautics.world_border_warning.success": "世界大小已成功限制为 40,000 格。",
+  "chat.rocketnautics.world_border_warning.no_permission": "您没有修改世界边界的权限。",
+  "rocketnautics.tooltip.creative_thruster.extra": "需要红石信号。实际推力取决于信号强度。"
 }

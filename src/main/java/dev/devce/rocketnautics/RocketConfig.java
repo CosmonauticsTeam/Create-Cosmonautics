@@ -112,6 +112,7 @@ public class RocketConfig {
      * These settings are local to each player's client.
      */
     public static class Client {
+        public final ModConfigSpec.BooleanValue hasShownWorldBorderWarning;
         public final ModConfigSpec.DoubleValue shakeIntensity;
         public final ModConfigSpec.DoubleValue shakeRadius;
         public final ModConfigSpec.BooleanValue enableDynamicRenderDistance;
@@ -119,9 +120,14 @@ public class RocketConfig {
         public final ModConfigSpec.IntValue planetRenderMaximumScale;
         public final ModConfigSpec.DoubleValue orbitPredictionAngularThreshold;
         public final ModConfigSpec.IntValue orbitPredictionSteps;
-
+        public final ModConfigSpec.BooleanValue enablePlumeMerging;
+        public final ModConfigSpec.DoubleValue plumeMergeRadius;
 
         public Client(ModConfigSpec.Builder builder) {
+            hasShownWorldBorderWarning = builder
+                    .comment("Has the world border warning been shown to the player?")
+                    .define("hasShownWorldBorderWarning", false);
+
             builder.push("Visuals");
             shakeIntensity = builder
                     .comment("Intensity multiplier for camera shake near engines")
@@ -132,6 +138,12 @@ public class RocketConfig {
             enableDynamicRenderDistance = builder
                     .comment("Enable automatic render distance adjustment based on altitude")
                     .define("enableDynamicRenderDistance", true);
+            enablePlumeMerging = builder
+                    .comment("Enable merging of adjacent thruster plumes into a single larger plume cluster")
+                    .define("enablePlumeMerging", true);
+            plumeMergeRadius = builder
+                    .comment("Distance threshold in blocks within which adjacent engine plumes are clustered and merged")
+                    .defineInRange("plumeMergeRadius", 4.0, 1.0, 16.0);
             showDebugOverlay = builder
                     .comment("Show the Cosmonautics debug overlay (Alt/Speed/etc)")
                     .define("showDebugOverlay", false);

@@ -20,6 +20,7 @@ public abstract class AbstractThrusterBlockEntity extends SmartBlockEntity
     public int ignitionTicks = 0;
     protected Object soundInstance;
     private java.util.UUID uniqueId = java.util.UUID.randomUUID();
+    private int peripheralId = -1;
 
     public AbstractThrusterBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -28,6 +29,11 @@ public abstract class AbstractThrusterBlockEntity extends SmartBlockEntity
     @Override
     public java.util.UUID getUniqueId() {
         return uniqueId;
+    }
+
+    @Override
+    public int getPeripheralId() {
+        return peripheralId;
     }
 
     /**
@@ -39,6 +45,10 @@ public abstract class AbstractThrusterBlockEntity extends SmartBlockEntity
     public void onLoad() {
         super.onLoad();
         if (level != null && !level.isClientSide) {
+            if (peripheralId == -1) {
+                peripheralId = dev.devce.rocketnautics.api.peripherals.EngineIdManager.getNextPeripheralId(level);
+                notifyUpdate();
+            }
             PeripheralRegistry.register(level, this);
         }
     }
@@ -72,6 +82,7 @@ public abstract class AbstractThrusterBlockEntity extends SmartBlockEntity
         super.write(tag, registries, clientPacket);
         tag.putUUID("UniqueId", uniqueId);
         tag.putInt("IgnitionTicks", ignitionTicks);
+        tag.putInt("PeripheralId", peripheralId);
     }
 
     @Override
@@ -81,6 +92,11 @@ public abstract class AbstractThrusterBlockEntity extends SmartBlockEntity
             uniqueId = tag.getUUID("UniqueId");
         }
         ignitionTicks = tag.getInt("IgnitionTicks");
+        if (tag.contains("PeripheralId")) {
+            peripheralId = tag.getInt("PeripheralId");
+        } else {
+            peripheralId = -1;
+        }
     }
 
     @Override

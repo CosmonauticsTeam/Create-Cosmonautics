@@ -64,4 +64,23 @@ public class PeripheralRegistry {
         Map<UUID, IPeripheral> map = REGISTRY.get(level);
         return map != null ? map.get(id) : null;
     }
+
+    /**
+     * Finds a registered peripheral by its integer peripheral ID in the given level.
+     *
+     * @param level The level containing the peripheral.
+     * @param id    The integer ID of the peripheral.
+     * @return The peripheral instance, or null if not registered.
+     */
+    public static IPeripheral getPeripheralById(Level level, int id) {
+        Map<UUID, IPeripheral> map = REGISTRY.get(level);
+        if (map != null) {
+            for (IPeripheral p : map.values()) {
+                if (p.getPeripheralId() == id) {
+                    return p;
+                }
+            }
+        }
+        return null;
+    }
 }

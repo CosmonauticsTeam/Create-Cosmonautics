@@ -25,6 +25,11 @@ public class RocketBlockEntities {
             .validBlocks(RocketBlocks.ROCKET_THRUSTER)
             .register();
 
+    public static final BlockEntityEntry<CreativeThrusterBlockEntity> CREATIVE_THRUSTER = REGISTRATE
+            .blockEntity("creative_thruster", CreativeThrusterBlockEntity::new)
+            .validBlocks(RocketBlocks.CREATIVE_THRUSTER)
+            .register();
+
     public static final BlockEntityEntry<BoosterThrusterBlockEntity> BOOSTER_THRUSTER = REGISTRATE
             .blockEntity("booster_thruster", BoosterThrusterBlockEntity::new)
             .validBlocks(RocketBlocks.BOOSTER_THRUSTER)

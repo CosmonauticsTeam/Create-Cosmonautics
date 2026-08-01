@@ -29,9 +29,20 @@ import java.util.StringJoiner;
 public class SputnikBlockEntity extends BlockEntity {
     public final WGraph graph = new WGraph();
     private final java.util.Map<String, String> displayBridge = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<String, Double> lastWirelessRedstone = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<String, Double> lastRadioPackets = new java.util.concurrent.ConcurrentHashMap<>();
+    private int syncCooldown = 0;
 
     public java.util.Map<String, String> getDisplayBridge() {
         return displayBridge;
+    }
+
+    public java.util.Map<String, Double> getLastWirelessRedstone() {
+        return lastWirelessRedstone;
+    }
+
+    public java.util.Map<String, Double> getLastRadioPackets() {
+        return lastRadioPackets;
     }
 
     public SputnikBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -61,6 +72,10 @@ public class SputnikBlockEntity extends BlockEntity {
     public static void tick(Level level, BlockPos pos, BlockState state, SputnikBlockEntity blockEntity) {
         if (!level.isClientSide) {
             blockEntity.tickNodes();
+            if (blockEntity.syncCooldown++ >= 10) {
+                blockEntity.syncCooldown = 0;
+                level.sendBlockUpdated(pos, state, state, 2);
+            }
         }
     }
 
@@ -148,6 +163,31 @@ public class SputnikBlockEntity extends BlockEntity {
             return Math.toDegrees(euler.z);
         }
         return 0;
+    }
+
+    public double getShipMass() {
+        SubLevel subLevel = getSubLevel();
+        if (subLevel instanceof dev.ryanhcode.sable.sublevel.ServerSubLevel ssl) {
+            var tracker = ssl.getMassTracker();
+            if (tracker != null) {
+                return tracker.getMass();
+            }
+        }
+        return 0.0;
+    }
+
+    public org.joml.Vector3d getInertiaTensorDiagonal() {
+        SubLevel subLevel = getSubLevel();
+        if (subLevel instanceof dev.ryanhcode.sable.sublevel.ServerSubLevel ssl) {
+            var tracker = ssl.getMassTracker();
+            if (tracker != null) {
+                var matrix = tracker.getInertiaTensor();
+                if (matrix != null) {
+                    return new org.joml.Vector3d(matrix.m00(), matrix.m11(), matrix.m22());
+                }
+            }
+        }
+        return new org.joml.Vector3d(0, 0, 0);
     }
 
     public int getBiomeColor() {
@@ -515,6 +555,18 @@ public class SputnikBlockEntity extends BlockEntity {
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         tag.put("NodeGraph", graph.save());
+        
+        CompoundTag redstoneTag = new CompoundTag();
+        for (var entry : lastWirelessRedstone.entrySet()) {
+            redstoneTag.putDouble(entry.getKey(), entry.getValue());
+        }
+        tag.put("WirelessRedstoneCache", redstoneTag);
+
+        CompoundTag radioTag = new CompoundTag();
+        for (var entry : lastRadioPackets.entrySet()) {
+            radioTag.putDouble(entry.getKey(), entry.getValue());
+        }
+        tag.put("RadioPacketsCache", radioTag);
     }
 
     @Override
@@ -525,6 +577,22 @@ public class SputnikBlockEntity extends BlockEntity {
             graph.setRegistries(registries);
             graph.load(graphTag);
             graph.setContext(this);
+        }
+        
+        lastWirelessRedstone.clear();
+        if (tag.contains("WirelessRedstoneCache")) {
+            CompoundTag redstoneTag = tag.getCompound("WirelessRedstoneCache");
+            for (String key : redstoneTag.getAllKeys()) {
+                lastWirelessRedstone.put(key, redstoneTag.getDouble(key));
+            }
+        }
+
+        lastRadioPackets.clear();
+        if (tag.contains("RadioPacketsCache")) {
+            CompoundTag radioTag = tag.getCompound("RadioPacketsCache");
+            for (String key : radioTag.getAllKeys()) {
+                lastRadioPackets.put(key, radioTag.getDouble(key));
+            }
         }
     }
 }

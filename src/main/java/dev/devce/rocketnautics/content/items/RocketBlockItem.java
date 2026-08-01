@@ -26,6 +26,9 @@ public class RocketBlockItem extends BlockItem {
             if (id.contains("rocket_thruster")) {
                 tooltipComponents.add(Component.literal(" ")); 
                 tooltipComponents.add(Component.translatable("rocketnautics.tooltip.rocket_thruster.extra").withStyle(ChatFormatting.GRAY));
+            } else if (id.contains("creative_thruster")) {
+                tooltipComponents.add(Component.literal(" ")); 
+                tooltipComponents.add(Component.translatable("rocketnautics.tooltip.creative_thruster.extra").withStyle(ChatFormatting.GRAY));
             } else if (id.contains("booster_thruster")) {
                 tooltipComponents.add(Component.literal(" "));
                 tooltipComponents.add(Component.translatable("rocketnautics.tooltip.booster_thruster.extra").withStyle(ChatFormatting.GRAY));

@@ -73,6 +73,14 @@ public class RocketBlocks {
             .transform(existingDirectionalModel("rocket_thruster"))
             .item(RocketBlockItem::new).build().register();
 
+    public static final BlockEntry<CreativeThrusterBlock> CREATIVE_THRUSTER = REGISTRATE.block("creative_thruster", CreativeThrusterBlock::new)
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .properties(BlockBehaviour.Properties::noOcclusion)
+            .transform(pickaxeOnly())
+            .tag(RocketTags.BlockTags.THRUSTERS.tag)
+            .transform(existingDirectionalModel("creative_thruster"))
+            .item(RocketBlockItem::new).build().register();
+
     public static final BlockEntry<VectorThrusterBlock> VECTOR_THRUSTER = REGISTRATE.block("vector_thruster", VectorThrusterBlock::new)
             .initialProperties(() -> Blocks.IRON_BLOCK)
             .properties(BlockBehaviour.Properties::noOcclusion)

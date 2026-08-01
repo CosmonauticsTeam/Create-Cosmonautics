@@ -239,17 +239,23 @@ public class ExhaustClientRenderer {
 
         // 2. Cluster nearby plumes together
         List<PlumeCluster> clusters = new ArrayList<>();
+        boolean mergeEnabled = dev.devce.rocketnautics.RocketConfig.CLIENT.enablePlumeMerging.get();
+        double mergeRadius = dev.devce.rocketnautics.RocketConfig.CLIENT.plumeMergeRadius.get();
+        double mergeRadiusSqr = mergeRadius * mergeRadius;
+
         for (RenderablePlume plume : rawList) {
             boolean added = false;
-            for (PlumeCluster cluster : clusters) {
-                if (cluster.isRCS == plume.plume.isRCS) {
-                    // Ensure they point in roughly the same direction
-                    if (cluster.worldExhaustDir.dot(plume.worldExhaustDir) > 0.95) {
-                        // If within ~4 blocks radius (16.0 squared)
-                        if (cluster.getCenter().distanceToSqr(plume.worldPos) < 16.0) {
-                            cluster.add(plume);
-                            added = true;
-                            break;
+            if (mergeEnabled) {
+                for (PlumeCluster cluster : clusters) {
+                    if (cluster.isRCS == plume.plume.isRCS) {
+                        // Ensure they point in roughly the same direction
+                        if (cluster.worldExhaustDir.dot(plume.worldExhaustDir) > 0.95) {
+                            // If within config-defined radius
+                            if (cluster.getCenter().distanceToSqr(plume.worldPos) < mergeRadiusSqr) {
+                                cluster.add(plume);
+                                added = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -265,7 +271,20 @@ public class ExhaustClientRenderer {
             Vec3 center = cluster.getCenter();
             double distSq = center.distanceToSqr(cameraPos);
             float avgThrottle = cluster.totalThrottle / cluster.count;
-            renderList.add(new RenderableCluster(center, cluster.worldExhaustDir, avgThrottle, cluster.maxIgnitionTicks, cluster.isRCS, cluster.count, distSq));
+            
+            float weightSum = cluster.count;
+            float r = cluster.totalR / weightSum;
+            float g = cluster.totalG / weightSum;
+            float b = cluster.totalB / weightSum;
+            
+            float maxVal = Math.max(r, Math.max(g, b));
+            if (maxVal > 1.0f) {
+                r /= maxVal;
+                g /= maxVal;
+                b /= maxVal;
+            }
+            
+            renderList.add(new RenderableCluster(center, cluster.worldExhaustDir, avgThrottle, cluster.maxIgnitionTicks, cluster.isRCS(), r, g, b, cluster.count, distSq));
         }
 
         // 4. Sort clusters by distance (furthest first) for proper transparency
@@ -292,7 +311,7 @@ public class ExhaustClientRenderer {
             
             // The scale of the flame increases based on the number of merged engines (square root prevents it from getting too insanely huge)
             float scale = (float) Math.sqrt(cluster.count);
-            ExhaustRenderer.renderExhaustPlume(ms, mc.renderBuffers().bufferSource(), cluster.throttle, cluster.ignitionTicks, direction, cluster.isRCS, scale);
+            ExhaustRenderer.renderExhaustPlume(ms, mc.renderBuffers().bufferSource(), cluster.throttle, cluster.ignitionTicks, direction, cluster.isRCS, scale, cluster.r, cluster.g, cluster.b);
 
             ms.popPose();
         }
@@ -300,6 +319,22 @@ public class ExhaustClientRenderer {
         // Explicitly flush buffers to force rendering immediately and override particle depth ordering
         mc.renderBuffers().bufferSource().endBatch(ExhaustRenderer.getExhaustRenderType());
         mc.renderBuffers().bufferSource().endBatch(ExhaustRenderer.getRcsRenderType());
+    }
+
+    public static Vector3f getEngineColor(BlockEntity be) {
+        if (be instanceof dev.devce.rocketnautics.content.blocks.BoosterThrusterBlockEntity) {
+            return new Vector3f(0.3f, 0.65f, 1.0f); // Sky Blue (like the screenshot)
+        } else if (be instanceof dev.devce.rocketnautics.content.blocks.VectorThrusterBlockEntity) {
+            return new Vector3f(0.82f, 0.92f, 1.0f); // White-blue (mostly white, slightly blue)
+        } else if (be instanceof dev.devce.rocketnautics.content.blocks.RCSThrusterBlockEntity) {
+            return new Vector3f(0.5f, 0.8f, 1.0f); // Ice Blue
+        } else if (be instanceof dev.devce.rocketnautics.content.blocks.CreativeThrusterBlockEntity) {
+            return new Vector3f(0.9f, 0.1f, 0.9f); // Vibrant Purple/Magenta
+        } else if (be instanceof dev.devce.rocketnautics.content.blocks.RocketThrusterBlockEntity) {
+            return new Vector3f(1.0f, 1.0f, 1.0f); // Original (No multiplier tint)
+        } else {
+            return new Vector3f(1.0f, 1.0f, 1.0f); // Default to original
+        }
     }
 
     /**
@@ -326,6 +361,9 @@ public class ExhaustClientRenderer {
         public final boolean isRCS;
         public float totalThrottle = 0;
         public float maxIgnitionTicks = 0;
+        public float totalR = 0;
+        public float totalG = 0;
+        public float totalB = 0;
         public int count = 0;
 
         public PlumeCluster(RenderablePlume initial) {
@@ -338,11 +376,24 @@ public class ExhaustClientRenderer {
             worldPosSum = worldPosSum.add(plume.worldPos);
             totalThrottle += plume.plume.currentThrottle;
             maxIgnitionTicks = Math.max(maxIgnitionTicks, plume.plume.ignitionTicks);
+            
+            BlockEntity be = plume.plume.level.getBlockEntity(plume.plume.pos);
+            Vector3f col = getEngineColor(be);
+            
+            float weight = 1.0f;
+            totalR += col.x * weight;
+            totalG += col.y * weight;
+            totalB += col.z * weight;
+            
             count++;
         }
 
         public Vec3 getCenter() {
             return worldPosSum.scale(1.0 / count);
+        }
+        
+        public boolean isRCS() {
+            return isRCS;
         }
     }
 
@@ -352,15 +403,19 @@ public class ExhaustClientRenderer {
         public final float throttle;
         public final float ignitionTicks;
         public final boolean isRCS;
+        public final float r, g, b;
         public final int count;
         public final double distanceSq;
 
-        public RenderableCluster(Vec3 worldPos, Vec3 worldExhaustDir, float throttle, float ignitionTicks, boolean isRCS, int count, double distanceSq) {
+        public RenderableCluster(Vec3 worldPos, Vec3 worldExhaustDir, float throttle, float ignitionTicks, boolean isRCS, float r, float g, float b, int count, double distanceSq) {
             this.worldPos = worldPos;
             this.worldExhaustDir = worldExhaustDir;
             this.throttle = throttle;
             this.ignitionTicks = ignitionTicks;
             this.isRCS = isRCS;
+            this.r = r;
+            this.g = g;
+            this.b = b;
             this.count = count;
             this.distanceSq = distanceSq;
         }

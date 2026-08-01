@@ -100,6 +100,82 @@ public class RocketNodes {
             return node;
         });
 
+        // --- Synthesizer Node (Audio Generation) ---
+        NodeRegistry.register(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "synth_node"), "Audio", (x, y) -> {
+            WNode node = new WNode(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "synth_node"), "Synthesizer", x, y);
+            node.addInput("Freq", 0xFF00FF88, WPin.ValueType.NUMBER);
+            node.addInput("EndFreq", 0xFF00FF88, WPin.ValueType.NUMBER);
+            node.addInput("Vol", 0xFF00FF88, WPin.ValueType.NUMBER);
+            node.addInput("Dur", 0xFF00FF88, WPin.ValueType.NUMBER);
+            node.addInput("Waveform", 0xFFFFCC33, WPin.ValueType.STRING);
+            node.addInput("Attack", 0xFF00FF88, WPin.ValueType.NUMBER);
+            node.addInput("Decay", 0xFF00FF88, WPin.ValueType.NUMBER);
+            node.addInput("Sustain", 0xFF00FF88, WPin.ValueType.NUMBER);
+            node.addInput("Release", 0xFF00FF88, WPin.ValueType.NUMBER);
+            node.addInput("Trigger", 0xFF00FF88, WPin.ValueType.NUMBER);
+
+            // Defaults
+            node.getInputs().get(0).setValue(440.0);       // Freq
+            node.getInputs().get(1).setValue(0.0);         // EndFreq
+            node.getInputs().get(2).setValue(0.5);         // Vol
+            node.getInputs().get(3).setValue(0.5);         // Dur
+            node.getInputs().get(4).setStringValue("sine"); // Waveform
+            node.getInputs().get(5).setValue(0.05);        // Attack
+            node.getInputs().get(6).setValue(0.05);        // Decay
+            node.getInputs().get(7).setValue(0.8);         // Sustain
+            node.getInputs().get(8).setValue(0.1);         // Release
+            node.getInputs().get(9).setValue(0.0);         // Trigger
+
+            node.getCustomData().putDouble("last_trigger", 0.0);
+
+            node.setEvaluator(n -> {
+                double trig = n.getInputs().get(9).getValue();
+                double lastTrig = n.getCustomData().getDouble("last_trigger");
+                n.getCustomData().putDouble("last_trigger", trig);
+
+                if (trig > 0.0 && lastTrig <= 0.0) {
+                    SputnikBlockEntity sputnik = null;
+                    if (n.getParentGraph().getContext() instanceof SputnikBlockEntity sbe) {
+                        sputnik = sbe;
+                    }
+                    if (sputnik != null && sputnik.getLevel() != null && !sputnik.getLevel().isClientSide()) {
+                        double freq = n.getInputs().get(0).getValue();
+                        double endFreq = n.getInputs().get(1).getValue();
+                        double vol = n.getInputs().get(2).getValue();
+                        double dur = n.getInputs().get(3).getValue();
+                        String wf = n.getInputs().get(4).getStringValue();
+                        double attack = n.getInputs().get(5).getValue();
+                        double decay = n.getInputs().get(6).getValue();
+                        double sustain = n.getInputs().get(7).getValue();
+                        double release = n.getInputs().get(8).getValue();
+
+                        dev.devce.rocketnautics.network.NetworkHandler.sendPlayAudio(
+                                sputnik.getLevel(),
+                                sputnik.getBlockPos(),
+                                freq,
+                                endFreq,
+                                vol,
+                                dur,
+                                wf,
+                                attack,
+                                decay,
+                                sustain,
+                                release,
+                                0.5, // duty cycle
+                                0.0, // fm freq
+                                0.0, // fm depth
+                                0.0, // lfo freq
+                                0.0, // lfo depth
+                                "",  // harmonics
+                                ""   // formula
+                        );
+                    }
+                }
+            });
+            return node;
+        });
+
+
 
         NodeRegistry.register(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "display"), "Display", (x, y) -> {
             WNode node = new WNode(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "display"), "Display", x, y);
@@ -221,6 +297,55 @@ public class RocketNodes {
                 globals[0].set("require", LuaValue.NIL);
                 // Inject the UI bridge so scripts can build custom node UIs
                 LuaUIBridge.inject(globals[0], n, uiRegistry[0]);
+
+                // Inject Audio Synthesis API
+                LuaTable audioLib = new LuaTable();
+                audioLib.set("playSynth", new OneArgFunction() {
+                    @Override public LuaValue call(LuaValue arg) {
+                        if (finalSputnik != null && finalSputnik.getLevel() != null && !finalSputnik.getLevel().isClientSide()) {
+                            LuaTable params = arg.checktable();
+                            double frequency = params.get("frequency").optdouble(440.0);
+                            double endFrequency = params.get("end_frequency").optdouble(0.0);
+                            double volume = params.get("volume").optdouble(0.5);
+                            double duration = params.get("duration").optdouble(1.0);
+                            String waveform = params.get("waveform").optjstring("sine");
+                            double attack = params.get("attack").optdouble(0.05);
+                            double decay = params.get("decay").optdouble(0.05);
+                            double sustain = params.get("sustain").optdouble(0.8);
+                            double release = params.get("release").optdouble(0.1);
+                            double dutyCycle = params.get("duty_cycle").optdouble(0.5);
+                            double fmFreq = params.get("fm_freq").optdouble(0.0);
+                            double fmDepth = params.get("fm_depth").optdouble(0.0);
+                            double lfoFreq = params.get("lfo_freq").optdouble(0.0);
+                            double lfoDepth = params.get("lfo_depth").optdouble(0.0);
+                            String harmonics = params.get("harmonics").optjstring("");
+                            String formula = params.get("formula").optjstring("");
+
+                            dev.devce.rocketnautics.network.NetworkHandler.sendPlayAudio(
+                                    finalSputnik.getLevel(),
+                                    finalSputnik.getBlockPos(),
+                                    frequency,
+                                    endFrequency,
+                                    volume,
+                                    duration,
+                                    waveform,
+                                    attack,
+                                    decay,
+                                    sustain,
+                                    release,
+                                    dutyCycle,
+                                    fmFreq,
+                                    fmDepth,
+                                    lfoFreq,
+                                    lfoDepth,
+                                    harmonics,
+                                    formula
+                            );
+                        }
+                        return LuaValue.NIL;
+                    }
+                });
+                globals[0].set("audio", audioLib);
                 try {
                     chunk[0]    = globals[0].load(code);
                     lastCode[0] = code;
@@ -319,22 +444,27 @@ public class RocketNodes {
             // receiveWirelessRedstone(freq1, freq2) -> strength
             globals[0].set("receiveWirelessRedstone", new VarArgFunction() {
                 @Override public Varargs invoke(Varargs args) {
-                    if (finalSputnik != null && finalSputnik.getLevel() != null && !finalSputnik.getLevel().isClientSide()) {
+                    if (finalSputnik != null && finalSputnik.getLevel() != null) {
                         String f1 = args.arg(1).tojstring();
                         String f2 = args.arg(2).tojstring();
-                        net.minecraft.resources.ResourceLocation loc1 = net.minecraft.resources.ResourceLocation.tryParse(f1);
-                        net.minecraft.resources.ResourceLocation loc2 = net.minecraft.resources.ResourceLocation.tryParse(f2);
-                        if (loc1 != null && loc2 != null) {
-                            net.minecraft.world.item.Item item1 = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(loc1);
-                            net.minecraft.world.item.Item item2 = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(loc2);
-                            if (item1 != net.minecraft.world.item.Items.AIR && item2 != net.minecraft.world.item.Items.AIR) {
-                                net.minecraft.world.item.ItemStack s1 = new net.minecraft.world.item.ItemStack(item1);
-                                net.minecraft.world.item.ItemStack s2 = new net.minecraft.world.item.ItemStack(item2);
-                                double strength = dev.devce.rocketnautics.content.blocks.LinkedSignalHandler.getSignal(
-                                    finalSputnik.getLevel(), s1, s2, finalSputnik.getBlockPos()
-                                );
-                                return LuaValue.valueOf(strength);
+                        if (!finalSputnik.getLevel().isClientSide()) {
+                            net.minecraft.resources.ResourceLocation loc1 = net.minecraft.resources.ResourceLocation.tryParse(f1);
+                            net.minecraft.resources.ResourceLocation loc2 = net.minecraft.resources.ResourceLocation.tryParse(f2);
+                            if (loc1 != null && loc2 != null) {
+                                net.minecraft.world.item.Item item1 = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(loc1);
+                                net.minecraft.world.item.Item item2 = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(loc2);
+                                if (item1 != net.minecraft.world.item.Items.AIR && item2 != net.minecraft.world.item.Items.AIR) {
+                                    net.minecraft.world.item.ItemStack s1 = new net.minecraft.world.item.ItemStack(item1);
+                                    net.minecraft.world.item.ItemStack s2 = new net.minecraft.world.item.ItemStack(item2);
+                                    double strength = dev.devce.rocketnautics.content.blocks.LinkedSignalHandler.getSignal(
+                                        finalSputnik.getLevel(), s1, s2, finalSputnik.getBlockPos()
+                                    );
+                                    finalSputnik.getLastWirelessRedstone().put(f1 + "/" + f2, strength);
+                                    return LuaValue.valueOf(strength);
+                                }
                             }
+                        } else {
+                            return LuaValue.valueOf(finalSputnik.getLastWirelessRedstone().getOrDefault(f1 + "/" + f2, 0.0));
                         }
                     }
                     return LuaValue.ZERO;
@@ -494,6 +624,28 @@ public class RocketNodes {
                 }
             });
 
+            // getShipMass()
+            globals[0].set("getShipMass", new ZeroArgFunction() {
+                @Override public LuaValue call() {
+                    return finalSputnik != null ? LuaValue.valueOf(finalSputnik.getShipMass()) : LuaValue.ZERO;
+                }
+            });
+
+            // getInertiaTensor() -> Ixx, Iyy, Izz
+            globals[0].set("getInertiaTensor", new VarArgFunction() {
+                @Override public Varargs invoke(Varargs args) {
+                    if (finalSputnik != null) {
+                        org.joml.Vector3d inertia = finalSputnik.getInertiaTensorDiagonal();
+                        return varargsOf(new LuaValue[] {
+                            LuaValue.valueOf(inertia.x),
+                            LuaValue.valueOf(inertia.y),
+                            LuaValue.valueOf(inertia.z)
+                        });
+                    }
+                    return varargsOf(new LuaValue[] { LuaValue.ZERO, LuaValue.ZERO, LuaValue.ZERO });
+                }
+            });
+
             // getPeripheralIds()
             globals[0].set("getPeripheralIds", new VarArgFunction() {
                 @Override public Varargs invoke(Varargs args) {
@@ -501,7 +653,7 @@ public class RocketNodes {
                     if (finalSputnik != null && finalSputnik.getLevel() != null) {
                         int index = 1;
                         for (IPeripheral p : PeripheralRegistry.getPeripherals(finalSputnik.getLevel())) {
-                            table.set(index++, LuaValue.valueOf(p.getUniqueId().toString()));
+                            table.set(index++, LuaValue.valueOf(String.valueOf(p.getPeripheralId())));
                         }
                     }
                     return table;
@@ -513,8 +665,8 @@ public class RocketNodes {
                 @Override public LuaValue call(LuaValue arg) {
                     if (finalSputnik != null && finalSputnik.getLevel() != null) {
                         try {
-                            UUID id = UUID.fromString(arg.tojstring());
-                            IPeripheral p = PeripheralRegistry.getPeripheral(finalSputnik.getLevel(), id);
+                            int id = Integer.parseInt(arg.tojstring());
+                            IPeripheral p = PeripheralRegistry.getPeripheralById(finalSputnik.getLevel(), id);
                             if (p != null) {
                                 return LuaValue.valueOf(p.getPeripheralType());
                             }
@@ -529,9 +681,9 @@ public class RocketNodes {
                 @Override public LuaValue call(LuaValue arg1, LuaValue arg2) {
                     if (finalSputnik != null && finalSputnik.getLevel() != null) {
                         try {
-                            UUID id = UUID.fromString(arg1.tojstring());
+                            int id = Integer.parseInt(arg1.tojstring());
                             String key = arg2.tojstring();
-                            IPeripheral p = PeripheralRegistry.getPeripheral(finalSputnik.getLevel(), id);
+                            IPeripheral p = PeripheralRegistry.getPeripheralById(finalSputnik.getLevel(), id);
                             if (p != null) {
                                 return LuaValue.valueOf(p.readValue(key));
                             }
@@ -546,10 +698,10 @@ public class RocketNodes {
                 @Override public LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
                     if (finalSputnik != null && finalSputnik.getLevel() != null) {
                         try {
-                            UUID id = UUID.fromString(arg1.tojstring());
+                            int id = Integer.parseInt(arg1.tojstring());
                             String key = arg2.tojstring();
                             double value = arg3.todouble();
-                            IPeripheral p = PeripheralRegistry.getPeripheral(finalSputnik.getLevel(), id);
+                            IPeripheral p = PeripheralRegistry.getPeripheralById(finalSputnik.getLevel(), id);
                             if (p != null) {
                                 p.writeValue(key, value);
                             }
@@ -564,14 +716,14 @@ public class RocketNodes {
                 @Override public Varargs invoke(Varargs args) {
                     if (finalSputnik != null && finalSputnik.getLevel() != null && args.narg() >= 2) {
                         try {
-                            UUID id = UUID.fromString(args.arg(1).tojstring());
+                            int id = Integer.parseInt(args.arg(1).tojstring());
                             String key = args.arg(2).tojstring();
                             int valCount = args.narg() - 2;
                             double[] values = new double[valCount];
                             for (int i = 0; i < valCount; i++) {
                                 values[i] = args.arg(i + 3).todouble();
                             }
-                            IPeripheral p = PeripheralRegistry.getPeripheral(finalSputnik.getLevel(), id);
+                            IPeripheral p = PeripheralRegistry.getPeripheralById(finalSputnik.getLevel(), id);
                             if (p != null) {
                                 p.writeValues(key, values);
                             }
@@ -638,12 +790,18 @@ public class RocketNodes {
             // receivePacket(channel, code) -> value (last received)
             globals[0].set("receivePacket", new TwoArgFunction() {
                 @Override public LuaValue call(LuaValue arg1, LuaValue arg2) {
-                    if (finalSputnik != null && finalSputnik.getLevel() != null &&
-                        !finalSputnik.getLevel().isClientSide() && finalSputnik.getLevel().getServer() != null) {
+                    if (finalSputnik != null && finalSputnik.getLevel() != null) {
                         double channel = arg1.todouble();
                         double code    = arg2.todouble();
-                        var radioMgr = dev.devce.rocketnautics.api.radio.RadioNetworkManager.getInstance(finalSputnik.getLevel().getServer());
-                        return LuaValue.valueOf(radioMgr.getLastValue(channel, code));
+                        String cacheKey = channel + "/" + code;
+                        if (!finalSputnik.getLevel().isClientSide() && finalSputnik.getLevel().getServer() != null) {
+                            var radioMgr = dev.devce.rocketnautics.api.radio.RadioNetworkManager.getInstance(finalSputnik.getLevel().getServer());
+                            double value = radioMgr.getLastValue(channel, code);
+                            finalSputnik.getLastRadioPackets().put(cacheKey, value);
+                            return LuaValue.valueOf(value);
+                        } else {
+                            return LuaValue.valueOf(finalSputnik.getLastRadioPackets().getOrDefault(cacheKey, 0.0));
+                        }
                     }
                     return LuaValue.ZERO;
                 }

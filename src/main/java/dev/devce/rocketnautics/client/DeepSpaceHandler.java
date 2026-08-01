@@ -368,13 +368,30 @@ public final class DeepSpaceHandler {
         // 1. Render custom cosmic nebula and HD space stars first
         // TODO level time is fixed in deep space, figure out a better solution. Position in absolute frame, then have sol moving in the absolute frame?
         float celestialAngle = mc.level.getTimeOfDay(deltaTick);
-        SkyHandler.renderCosmicNebula(poseStack, camera, celestialAngle);
-        SkyHandler.renderSpaceStars(poseStack, 1.0f, camera, celestialAngle);
+        boolean isOverworld = mc.level.dimension() == net.minecraft.world.level.Level.OVERWORLD;
+        float spaceVis = isOverworld ? mc.level.getStarBrightness(deltaTick) : 1.0f;
+        SkyHandler.renderCosmicNebula(poseStack, camera, celestialAngle, spaceVis);
+        SkyHandler.renderSpaceStars(poseStack, spaceVis, camera, celestialAngle);
 
         // 2.  celestial bodies / planets rendering
         IntList needRenderData = new IntArrayList();
+        poseStack.pushPose();
+        if (isOverworld) {
+            poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(celestialAngle * 360.0f));
+        }
+
         Iterator<Pair<Vector3D, CubePlanet>> iter = UNIVERSE.getPlanets().stream()
-                .map(planet -> Pair.of(planet.posInMyFrame(renderDate, pos, posFrame), planet))
+                .map(planet -> {
+                    Vector3D planetPos;
+                    if (isOverworld && planet.frame().getName().equals("sol")) {
+                        planetPos = new Vector3D(0, -4000000000.0, 0);
+                    } else if (isOverworld && planet.frame().getName().equals("moon")) {
+                        planetPos = new Vector3D(0, 12000000.0, 0);
+                    } else {
+                        planetPos = planet.posInMyFrame(renderDate, pos, posFrame);
+                    }
+                    return Pair.of(planetPos, planet);
+                })
                 .sorted(Comparator.comparingDouble(p -> -p.left().getNormSq())).iterator(); // sort descending, we want to render furthest away first.
         while (iter.hasNext()) {
             Pair<Vector3D, CubePlanet> planet = iter.next();
@@ -388,6 +405,7 @@ public final class DeepSpaceHandler {
             poseStack.popPose();
         }
         if (!needRenderData.isEmpty()) PacketDistributor.sendToServer(new PlanetRenderRequestPayload(needRenderData.toIntArray(), SkyHandler.getMaximumScale()));
+        poseStack.popPose();
         poseStack.popPose();
     }
 
@@ -885,13 +903,19 @@ public final class DeepSpaceHandler {
     }
     
     public static void renderUniverseForLevel(Level level, Vec3 position, PoseStack poseStack, float partialDelta, float partialTick, Camera camera) {
-        if (UNIVERSE == null || receivedUniverseDateTick == -1) return;
+        if (UNIVERSE == null) return;
         CubePlanet planet = UNIVERSE.getPlanetByDimension(level.dimension());
         if (planet == null || planet.linkedDimension() == null || !planet.linkedDimension().renderUniverseInDimension()) return;
         poseStack.pushPose();
         AbsoluteDate date = getPredictedUniverseDate(partialTick);
+        if (date == null || !DeepSpaceHelper.shouldOverrideLevelTime(level)) {
+            double elapsedSeconds = (level.getDayTime() + partialTick) * 0.05;
+            date = new AbsoluteDate(DeepSpaceHelper.EPOCH, elapsedSeconds);
+        }
         var globalCoords = DeepSpaceHelper.localPositionToGlobalPositionAndRotation(position.toVector3f().get(new Vector3d()),  null, level, planet, date);
-        poseStack.mulPose(DeepSpaceHelper.adapt(globalCoords.second()).get(new Quaternionf()).conjugate());
+        if (level.dimension() != net.minecraft.world.level.Level.OVERWORLD) {
+            poseStack.mulPose(DeepSpaceHelper.adapt(globalCoords.second()).get(new Quaternionf()).conjugate());
+        }
         renderUniverse(planet, poseStack, null, partialDelta, partialTick, date, globalCoords.first().getPosition(), planet.orekitFrame(), camera);
         poseStack.popPose();
     }

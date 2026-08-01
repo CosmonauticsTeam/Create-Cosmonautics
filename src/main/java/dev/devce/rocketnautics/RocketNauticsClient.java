@@ -42,6 +42,7 @@ import java.util.List;
  * Handles debug overlays, rendering layers, particle registration, and 3D debug visualizations for ships.
  */
 public class RocketNauticsClient {
+    public static final ResourceLocation EMPTY_TEXTURE = RocketNautics.path("textures/environment/empty.png");
 
     private static final int MAX_DEBUG_LOGS = 15;
     private static final int LINE_HEIGHT = 12;
@@ -310,6 +311,7 @@ public class RocketNauticsClient {
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(RocketBlockEntities.VECTOR_THRUSTER.get(), VectorThrusterRenderer::new);
         event.registerBlockEntityRenderer(RocketBlockEntities.ROCKET_THRUSTER.get(), RocketThrusterRenderer::new);
+        event.registerBlockEntityRenderer(RocketBlockEntities.CREATIVE_THRUSTER.get(), dev.devce.rocketnautics.content.blocks.CreativeThrusterRenderer::new);
         event.registerBlockEntityRenderer(RocketBlockEntities.BOOSTER_THRUSTER.get(), BoosterThrusterRenderer::new);
         event.registerBlockEntityRenderer(RocketBlockEntities.THRUSTER_MOUNT.get(), dev.devce.rocketnautics.client.render.ThrusterMountRenderer::new);
         event.registerBlockEntityRenderer(RocketBlockEntities.ENGINE_PIPES.get(), dev.devce.rocketnautics.client.render.EnginePipesRenderer::new);

@@ -79,6 +79,8 @@ public class RCSThrusterBlockEntity extends AbstractThrusterBlockEntity {
         return level.hasNeighborSignal(worldPosition) || computerActive;
     }
 
+    private float computerThrottle = 0.0f;
+
     @Override
     public void setActive(boolean active) {
         this.computerActive = active;
@@ -87,7 +89,8 @@ public class RCSThrusterBlockEntity extends AbstractThrusterBlockEntity {
 
     @Override
     public void setThrottle(float throttle) {
-        // RCS doesn't use throttle settings
+        this.computerThrottle = throttle;
+        notifyUpdate();
     }
 
     @Override
@@ -102,11 +105,24 @@ public class RCSThrusterBlockEntity extends AbstractThrusterBlockEntity {
 
     private double calculateRcsThrust() {
         if (level == null) return 0;
-        dev.ryanhcode.sable.sublevel.SubLevel ship = (dev.ryanhcode.sable.sublevel.SubLevel) dev.ryanhcode.sable.Sable.HELPER.getContaining(level, worldPosition);
-        if (ship == null) return 0;
 
         double maxThrust = 105.0;
-        double y = ship.logicalPose().position().y;
+        double y = 0;
+        if (level.isClientSide) {
+            dev.ryanhcode.sable.sublevel.ClientSubLevel clientSubLevel = dev.ryanhcode.sable.Sable.HELPER.getContainingClient(this);
+            if (clientSubLevel != null) {
+                y = clientSubLevel.logicalPose().position().y;
+            } else {
+                y = worldPosition.getY();
+            }
+        } else {
+            dev.ryanhcode.sable.sublevel.SubLevel ship = (dev.ryanhcode.sable.sublevel.SubLevel) dev.ryanhcode.sable.Sable.HELPER.getContaining(level, worldPosition);
+            if (ship != null) {
+                y = ship.logicalPose().position().y;
+            } else {
+                y = worldPosition.getY();
+            }
+        }
 
         if (y < 5000) {
             if (y <= 2000) {
@@ -116,6 +132,11 @@ public class RCSThrusterBlockEntity extends AbstractThrusterBlockEntity {
                 maxThrust = 12.0 + (93.0 * factor);
             }
         }
+        
+        if (computerActive) {
+            return computerThrottle * maxThrust;
+        }
+        
         return Math.min(7 * level.getBestNeighborSignal(worldPosition), maxThrust);
     }
 
@@ -128,6 +149,7 @@ public class RCSThrusterBlockEntity extends AbstractThrusterBlockEntity {
         super.write(tag, registries, clientPacket);
         tag.putBoolean("Burning", currentlyBurning);
         tag.putBoolean("ComputerActive", computerActive);
+        tag.putFloat("ComputerThrottle", computerThrottle);
     }
 
     @Override
@@ -135,11 +157,15 @@ public class RCSThrusterBlockEntity extends AbstractThrusterBlockEntity {
         super.read(tag, registries, clientPacket);
         currentlyBurning = tag.getBoolean("Burning");
         computerActive = tag.getBoolean("ComputerActive");
+        computerThrottle = tag.getFloat("ComputerThrottle");
     }
 
     @Override
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
         tooltip.add(Component.literal("    ").append(Component.translatable(getBlockState().getBlock().getDescriptionId()).withStyle(net.minecraft.ChatFormatting.GOLD)));
+
+        tooltip.add(Component.literal("  Engine ID: ")
+                .append(Component.literal(String.valueOf(getPeripheralId())).withStyle(net.minecraft.ChatFormatting.GOLD)));
 
         tooltip.add(Component.literal("  ").append(Component.translatable("rocketnautics.goggles.status")).append(": ")
                 .append(isActive() ? Component.translatable("rocketnautics.goggles.active").withStyle(net.minecraft.ChatFormatting.GREEN) :

@@ -33,6 +33,7 @@ public class BoosterThrusterBlockEntity extends AbstractThrusterBlockEntity {
     private static final long FUEL_SCAN_CACHE_TICKS = 5L;
 
     public ScrollValueBehaviour thrustPower;
+    public ThrustBehaviour thrust;
 
     @Override
     public int getWarmupTime() {
@@ -50,6 +51,11 @@ public class BoosterThrusterBlockEntity extends AbstractThrusterBlockEntity {
 
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
+        thrust = new ThrustBehaviour(this)
+                .withType(ThrustBehaviour.EngineType.ROCKET)
+                .withOffset(new Vec3(0.5, 0.5, 0.5));
+        behaviours.add(thrust);
+
         thrustPower = new ScrollValueBehaviour(
                 Component.translatable("gui.rocketnautics.thrust_power"),
                 this,
@@ -67,6 +73,15 @@ public class BoosterThrusterBlockEntity extends AbstractThrusterBlockEntity {
     public void tick() {
         super.tick();
         if (level == null) return;
+
+        Direction facing = getThrustDirection();
+        thrust.withOffset(new Vec3(0.5, 0.5, 0.5).add(facing.getStepX() * 0.5, facing.getStepY() * 0.5, facing.getStepZ() * 0.5));
+        thrust.update(
+                (float) (thrustPower.getValue() * 50.0f),
+                currentlyBurning ? 1.0f : 0.0f,
+                new Vec3(facing.getStepX(), facing.getStepY(), facing.getStepZ()),
+                isActive()
+        );
 
         // Runtime limit update for "Break Barrier" command
         int targetMax = RocketConfig.SERVER.brokenBarrier.get() ? 100 : 20;
@@ -440,6 +455,9 @@ public class BoosterThrusterBlockEntity extends AbstractThrusterBlockEntity {
     @Override
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
         tooltip.add(Component.literal("    ").append(Component.translatable(getBlockState().getBlock().getDescriptionId()).withStyle(net.minecraft.ChatFormatting.GOLD)));
+
+        tooltip.add(Component.literal("  Engine ID: ")
+                .append(Component.literal(String.valueOf(getPeripheralId())).withStyle(net.minecraft.ChatFormatting.GOLD)));
 
         tooltip.add(Component.literal("  ").append(Component.translatable("rocketnautics.goggles.status")).append(": ")
                 .append(isActive() ? Component.translatable("rocketnautics.goggles.active").withStyle(net.minecraft.ChatFormatting.GREEN) :

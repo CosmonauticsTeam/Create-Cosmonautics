@@ -45,29 +45,33 @@ void main() {
     float outerBoundary = 0.95 * u_Throttle + noiseVal * 1.5;
 
     vec4 finalColor = vec4(0.0);
+    
+    // The base engine color comes from the vertexColor (which java sets dynamically!)
+    vec3 baseColor = vertexColor.rgb;
 
     // 1. Calculate White-Hot Core
     if (steppedV < coreBoundary) {
         // High intensity core fading slightly towards the boundary
         float coreIntensity = smoothstep(coreBoundary, 0.0, steppedV);
         
-        // Pure blinding white center, fading into a yellowish edge
-        vec3 coreColor = mix(vec3(1.0, 0.85, 0.5), vec3(1.0, 1.0, 1.0), coreIntensity);
+        // Pure blinding white center, fading into a baseColor-blended edge
+        vec3 coreColor = mix(mix(baseColor, vec3(1.0), 0.75), vec3(1.0), coreIntensity);
         finalColor = vec4(coreColor, 0.95);
     } 
-    // 2. Calculate Outer Plume Shell (Gradients from Hot Orange to Cosmic Violet)
+    // 2. Calculate Outer Plume Shell (Gradients from Base Color to shifted Tail)
     else if (steppedV < outerBoundary) {
         // Relative position inside the outer shell region
         float shellFactor = (steppedV - coreBoundary) / (outerBoundary - coreBoundary);
         
-        // Colors mapping: base (0.0) is fiery orange/yellow, middle is red, tail (1.0) is violet/magenta
-        vec3 fieryBase = vec3(1.0, 0.5, 0.1);    // Bright orange
-        vec3 violetTip = vec3(0.5, 0.1, 0.9);    // Deep violet
+        vec3 fieryBase = baseColor;
+        
+        // Purple shift at the tail
+        vec3 violetTip = mix(baseColor * 0.5, vec3(0.4, 0.1, 0.8), 0.4);
         
         vec3 outerColor = mix(fieryBase, violetTip, shellFactor);
         
         // Soft edge fadeout at the tail of the plume (with stepped gradient)
-        float alpha = (1.0 - floor(shellFactor * 8.0) / 8.0) * 0.75 * vertexColor.a;
+        float alpha = (1.0 - floor(shellFactor * 8.0) / 8.0) * 0.75;
         
         finalColor = vec4(outerColor, alpha);
     } 
@@ -78,8 +82,9 @@ void main() {
 
     // Additive glow flare near the engine nozzle exit (stepped V)
     float exitGlow = (1.0 - smoothstep(0.0, 0.25, steppedV)) * 0.35 * u_Throttle;
-    finalColor.rgb += vec3(1.0, 0.75, 1.0) * exitGlow;
+    finalColor.rgb += mix(baseColor, vec3(1.0), 0.5) * exitGlow;
     finalColor.a = clamp(finalColor.a + exitGlow, 0.0, 1.0);
 
-    fragColor = finalColor * vertexColor;
+    // Multiply by vertexColor.a to preserve layer opacity passed from Java
+    fragColor = finalColor * vec4(1.0, 1.0, 1.0, vertexColor.a);
 }

@@ -42,11 +42,24 @@ public abstract class LevelRendererMixin implements StarBufferExposer {
         if (mc.player == null) return original.call(instance, partial);
 
         double y = mc.player.getY() + SkyDataHandler.getHeightOffsetForLevel(mc.level.dimension());
-        if (y > 1000.0) {
-            // Disable vanilla stars above 1000m to let our beautiful custom HD stars render
+        if (y > 1000.0 || instance.dimension() == net.minecraft.world.level.Level.OVERWORLD) {
+            // Disable vanilla stars above 1000m or in Overworld to let our beautiful custom HD stars render
             return 0.0f;
         }
         return original.call(instance, partial);
+    }
+
+    @WrapOperation(method = "renderSky", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/RenderSystem;setShaderTexture(ILnet/minecraft/resources/ResourceLocation;)V"))
+    private void rocketnautics$disableVanillaSunMoon(int textureUnit, net.minecraft.resources.ResourceLocation textureLocation, Operation<Void> original) {
+        if (textureLocation != null) {
+            String path = textureLocation.getPath();
+            if (path.equals("textures/environment/sun.png") || path.equals("textures/environment/moon_phases.png")) {
+                // Bind a transparent empty texture instead of sun/moon!
+                original.call(textureUnit, dev.devce.rocketnautics.RocketNauticsClient.EMPTY_TEXTURE);
+                return;
+            }
+        }
+        original.call(textureUnit, textureLocation);
     }
 
     @WrapOperation(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientLevel;getSkyColor(Lnet/minecraft/world/phys/Vec3;F)Lnet/minecraft/world/phys/Vec3;"))

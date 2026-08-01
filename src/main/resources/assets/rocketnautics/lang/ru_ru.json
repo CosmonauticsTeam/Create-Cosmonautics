@@ -2,6 +2,9 @@
   "block.rocketnautics.rocket_thruster": "Ракетный двигатель",
   "block.rocketnautics.rocket_thruster.funny": "Превращает _топливо_ в шум и _надежду_. Высокая мощность, _низкая выживаемость_.",
   "block.rocketnautics.rocket_thruster.summary": "_Сердце_ любой жидкостной _ракеты_. Требует постоянной подачи _жидкого топлива_ для создания _тяги_. Мощность регулируется _оборотами_ насоса. _Осторожно_: выхлоп _очень горячий_!",
+  "block.rocketnautics.creative_thruster": "Творческий ракетный двигатель",
+  "block.rocketnautics.creative_thruster.funny": "Бесконечная мощность, ноль топлива и абсолютное презрение к первому началу термодинамики. Юротдел до сих пор в истерике.",
+  "block.rocketnautics.creative_thruster.summary": "Ракетный двигатель только для Творческого режима. Создает до _10 000 Н_ чистой тяги без топлива. Мощность масштабируется линейно в зависимости от силы входящего _Редстоун-сигнала_.",
   "block.rocketnautics.vector_thruster": "Векторный двигатель",
   "block.rocketnautics.vector_thruster.funny": "_Инженеры_ обнаружили, что если двигатель _покачать_, ракета летит в _другую_ сторону. _Революционно!_",
   "block.rocketnautics.vector_thruster.summary": "_Поворотный_ _жидкостный_ двигатель. _Угол наклона_ управляется редстоуном с _боковых сторон_. Идеален для управления _курсом_ без отдельных маневровых _двигателей_.",
@@ -49,7 +52,7 @@
   "item.rocketnautics.jetpack.tooltip.behaviour1": "Носимая полетная система. Нажмите [G] для переключения режимов. Использует топливо для создания тяги. Удерживайте [Пробел] для (краткого) преодоления законов физики.",
 
   "item.rocketnautics.space_helmet": "Космический шлем",
-  "item.rocketnautics.space_helmet.tooltip.summary": "Защищает вас от вакуума и утопления при наличии запаса воздуха.",
+  "item.rocketnautics.space_helmet.tooltip.summary": "Наши инженеры долго ломали голову над тем, как защитить голову пилота от радиации, вакуума, а главное — от паники. В результате долгих экспериментов с изолентой и перевернутыми аквариумами родился этот шедевр инженерной мысли. Заверяем вас, что использование его как шлема не получило ни одного плохого отзыва.",
   "item.rocketnautics.space_helmet.tooltip.condition1": "Когда надет",
   "item.rocketnautics.space_helmet.tooltip.behaviour1": "Позволяет дышать в космосе или под водой при наличии источника сжатого воздуха.",
   "block.rocketnautics.titanium_ore": "Титановая руда",
@@ -142,5 +145,12 @@
   "gui.rocketnautics.hud.altitude": "ВЫС",
   "gui.rocketnautics.hud.speed": "СКОР",
   "gui.rocketnautics.hud.eccentricity": "ЭКС",
-  "gui.rocketnautics.hud.escape": "Уход"
+  "gui.rocketnautics.hud.escape": "Уход",
+  "chat.rocketnautics.world_border_warning.text1": "Мы настоятельно рекомендуем ограничить размер мира для игры с Cosmonautics. К сожалению, Sable нестабилен на больших координатах.",
+  "chat.rocketnautics.world_border_warning.text2": "Ограничить до рекомендуемых значений?",
+  "chat.rocketnautics.world_border_warning.yes": "[ Да ]",
+  "chat.rocketnautics.world_border_warning.no": "[ Нет ]",
+  "chat.rocketnautics.world_border_warning.success": "Размер мира успешно ограничен до 40 000 блоков.",
+  "chat.rocketnautics.world_border_warning.no_permission": "У вас нет прав для изменения границы мира.",
+  "rocketnautics.tooltip.creative_thruster.extra": "Требует редстоун-сигнала. Сила тяги зависит от силы сигнала."
 }

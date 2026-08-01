@@ -2276,9 +2276,9 @@ public class SkyHandler {
         image.close();
     }
 
-    public static void renderCosmicNebula(PoseStack poseStack, Camera camera, float celestialAngle) {
+    public static void renderCosmicNebula(PoseStack poseStack, Camera camera, float celestialAngle, float visibility) {
         ensureNebulaTexture();
-        if (NEBULA_TEXTURE_ID == null) return;
+        if (NEBULA_TEXTURE_ID == null || visibility <= 0) return;
         
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
@@ -2300,7 +2300,7 @@ public class SkyHandler {
         BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
         
         float size = SKYBOX_DISTANCE + 0.5f; // slightly larger than stars so stars sit in/in front of the nebula, but inside far clip plane!
-        float alpha = 0.45f; // soft overall visibility
+        float alpha = 0.45f * visibility; // soft overall visibility
         
         // Render large textured quads on 4 vertical sides and top/bottom to form a beautiful cosmic envelope
         // Front

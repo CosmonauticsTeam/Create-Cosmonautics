@@ -76,8 +76,46 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
         Level level = getWorld();
         if (level == null) return;
 
+        float visualThrottle = this.throttle;
+        float maxThrust = 0f;
+        if (blockEntity instanceof dev.devce.rocketnautics.content.blocks.RocketThrusterBlockEntity rt) {
+            maxThrust = rt.maxThrust.getValue() * 50.0f;
+        } else if (blockEntity instanceof dev.devce.rocketnautics.content.blocks.RCSThrusterBlockEntity rcs) {
+            double rcsMax = 105.0;
+            if (level.isClientSide) {
+                dev.ryanhcode.sable.sublevel.ClientSubLevel subLevel = dev.ryanhcode.sable.Sable.HELPER.getContainingClient(rcs);
+                double y = subLevel != null ? subLevel.logicalPose().position().y : rcs.getBlockPos().getY();
+                if (y < 5000) {
+                    if (y <= 2000) {
+                        rcsMax = 12.0;
+                    } else {
+                        double factor = (y - 2000.0) / 3000.0;
+                        rcsMax = 12.0 + (93.0 * factor);
+                    }
+                }
+            } else {
+                dev.ryanhcode.sable.sublevel.SubLevel ship = (dev.ryanhcode.sable.sublevel.SubLevel) dev.ryanhcode.sable.Sable.HELPER.getContaining(level, rcs.getBlockPos());
+                double y = ship != null ? ship.logicalPose().position().y : rcs.getBlockPos().getY();
+                if (y < 5000) {
+                    if (y <= 2000) {
+                        rcsMax = 12.0;
+                    } else {
+                        double factor = (y - 2000.0) / 3000.0;
+                        rcsMax = 12.0 + (93.0 * factor);
+                    }
+                }
+            }
+            maxThrust = (float) rcsMax;
+        } else if (blockEntity instanceof dev.devce.rocketnautics.content.blocks.ThrusterMountBlockEntity tm) {
+            maxThrust = (200 * tm.getThrustModifier()) * 50.0f;
+        }
+        
+        if (maxThrust > 0.01f) {
+            visualThrottle = Math.max(0f, Math.min(1f, this.currentThrustN / maxThrust));
+        }
+
         // Parity: Ignition ticks logic from RocketThrusterBlockEntity
-        if (active && throttle > 0.01f) {
+        if (active && visualThrottle > 0.01f) {
             if (ignitionTicks < 100) ignitionTicks++;
         } else {
             if (ignitionTicks > 0) ignitionTicks--;
@@ -85,14 +123,20 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
 
         if (level.isClientSide) {
             updateSound();
-            if (active && throttle > 0.01f) {
+            
+            boolean isSteamWarmup = false;
+            if (blockEntity instanceof dev.devce.rocketnautics.content.blocks.RocketThrusterBlockEntity rt) {
+                isSteamWarmup = rt.isSteamMode();
+            }
+
+            if (active && visualThrottle > 0.01f) {
                 // Register/update plume renderer with dynamic offset and exhaust direction
                 dev.devce.rocketnautics.client.render.ExhaustClientRenderer.registerPlume(
                     level,
                     blockEntity.getBlockPos(),
                     this.offset,
                     this.exhaustDir,
-                    this.throttle,
+                    visualThrottle,
                     (float) this.ignitionTicks,
                     this.engineType == EngineType.RCS
                 );
@@ -100,13 +144,35 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
                 handleCameraShake(level);
             } else {
                 dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(level, blockEntity.getBlockPos());
+                if (isSteamWarmup) {
+                    spawnSteamParticles(level);
+                }
             }
         } else {
-            if (active && throttle > 0.01f) {
+            if (active && visualThrottle > 0.01f) {
                 if (level.getGameTime() % 10 == 0) {
                     applyWorldEffects(level);
                 }
             }
+        }
+    }
+
+    private void spawnSteamParticles(Level level) {
+        RandomSource random = level.getRandom();
+        BlockPos pos = getPos();
+        Vec3 start = new Vec3(pos.getX() + offset.x, pos.getY() + offset.y, pos.getZ() + offset.z)
+                .add(exhaustDir.scale(0.2)); // Slight offset to exit nozzle
+
+        for (int i = 0; i < 2; i++) {
+            double rx = start.x + (random.nextDouble() - 0.5) * 0.15;
+            double ry = start.y + (random.nextDouble() - 0.5) * 0.15;
+            double rz = start.z + (random.nextDouble() - 0.5) * 0.15;
+
+            double speedX = exhaustDir.x * (0.1 + random.nextDouble() * 0.2) + (random.nextDouble() - 0.5) * 0.05;
+            double speedY = exhaustDir.y * (0.1 + random.nextDouble() * 0.2) + (random.nextDouble() - 0.5) * 0.05;
+            double speedZ = exhaustDir.z * (0.1 + random.nextDouble() * 0.2) + (random.nextDouble() - 0.5) * 0.05;
+
+            level.addParticle(net.minecraft.core.particles.ParticleTypes.CLOUD, rx, ry, rz, speedX, speedY, speedZ);
         }
     }
 

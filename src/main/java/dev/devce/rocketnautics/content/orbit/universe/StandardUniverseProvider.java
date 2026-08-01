@@ -97,6 +97,7 @@ public final class StandardUniverseProvider {
                         .buildEntryToColor(135, 135, 135)
                         .build(30, 120, 40))
                 .setLinkedDimension(Level.OVERWORLD)
+                .setRenderUniverseInDimension(true)
                 .setDimensionTransferHeight(20_000)
                 .addEntityDragPoint(4_000, 1, 0)
                 .addEntityDragPoint(7_000, 0, -0.0006)

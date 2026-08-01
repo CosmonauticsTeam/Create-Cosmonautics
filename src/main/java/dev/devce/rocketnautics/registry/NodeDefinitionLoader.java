@@ -184,6 +184,9 @@ public class NodeDefinitionLoader {
             "communication/radio",
             "communication/radio_send",
             "communication/radio_receive",
+            "audio/synth_basic",
+            "audio/synth_custom",
+            "audio/melody_player",
         };
         int count = 0;
         for (String relPath : builtins) {

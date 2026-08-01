@@ -161,9 +161,39 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
         return "modular_thruster";
     }
 
+    private int peripheralId = -1;
+
+    @Override
+    public int getPeripheralId() {
+        return peripheralId;
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        if (level != null && !level.isClientSide) {
+            if (peripheralId == -1) {
+                peripheralId = dev.devce.rocketnautics.api.peripherals.EngineIdManager.getNextPeripheralId(level);
+                notifyUpdate();
+            }
+            dev.devce.rocketnautics.api.peripherals.PeripheralRegistry.register(level, this);
+        }
+    }
+
     @Override
     public void remove() {
         super.remove();
+        if (level != null && !level.isClientSide) {
+            dev.devce.rocketnautics.api.peripherals.PeripheralRegistry.unregister(level, this);
+        }
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        super.onChunkUnloaded();
+        if (level != null && !level.isClientSide) {
+            dev.devce.rocketnautics.api.peripherals.PeripheralRegistry.unregister(level, this);
+        }
     }
 
     private java.util.UUID uniqueId = java.util.UUID.randomUUID();
@@ -364,6 +394,7 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
         tag.putBoolean("IsThrusting", isThrusting);
         tag.put("Tank1", tank1.writeToNBT(registries, new CompoundTag()));
         tag.put("Tank2", tank2.writeToNBT(registries, new CompoundTag()));
+        tag.putInt("PeripheralId", peripheralId);
     }
 
     @Override
@@ -380,6 +411,11 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
             tank1.readFromNBT(registries, tag.getCompound("Tank1"));
         if (tag.contains("Tank2"))
             tank2.readFromNBT(registries, tag.getCompound("Tank2"));
+        if (tag.contains("PeripheralId")) {
+            peripheralId = tag.getInt("PeripheralId");
+        } else {
+            peripheralId = -1;
+        }
     }
 
     @Override
@@ -387,6 +423,9 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
         tooltip.add(
                 Component.literal("    ").append(Component.translatable(getBlockState().getBlock().getDescriptionId())
                         .withStyle(net.minecraft.ChatFormatting.GOLD)));
+
+        tooltip.add(Component.literal("  Engine ID: ")
+                .append(Component.literal(String.valueOf(getPeripheralId())).withStyle(net.minecraft.ChatFormatting.GOLD)));
 
         if (nozzleType > 0) {
             Component nozzleName = nozzleType == 1 ? Component.translatable("item.rocketnautics.copper_nozzle")
