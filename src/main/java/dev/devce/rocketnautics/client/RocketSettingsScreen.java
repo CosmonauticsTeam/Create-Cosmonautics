@@ -68,7 +68,7 @@ public class RocketSettingsScreen extends Screen {
         }
 
         // Back Button positioned under the panel
-        int ph = 125;
+        int ph = 155;
         this.addRenderableWidget(new NodeButton(this.width / 2 - 100, y + ph + 15, 200, 20, 
             Component.translatable("gui.done"), b -> this.minecraft.setScreen(this.lastScreen), 0xFF00FF88));
     }
@@ -88,6 +88,14 @@ public class RocketSettingsScreen extends Screen {
             builder.addToggle("Dynamic Render Distance", RocketConfig.CLIENT.enableDynamicRenderDistance.get(), val -> {
                 RocketConfig.CLIENT.enableDynamicRenderDistance.set(val);
                 RocketConfig.CLIENT.enableDynamicRenderDistance.save();
+            });
+            builder.addToggle("Custom Sky", RocketConfig.CLIENT.enableCustomSky.get(), val -> {
+                RocketConfig.CLIENT.enableCustomSky.set(val);
+                RocketConfig.CLIENT.enableCustomSky.save();
+            });
+            builder.addToggle("Flame Merging", RocketConfig.CLIENT.enablePlumeMerging.get(), val -> {
+                RocketConfig.CLIENT.enablePlumeMerging.set(val);
+                RocketConfig.CLIENT.enablePlumeMerging.save();
             });
             builder.addSlider("Camera Shake Intensity", RocketConfig.CLIENT.shakeIntensity.get(), 0.0, 2.0, val -> {
                 RocketConfig.CLIENT.shakeIntensity.set(val);
@@ -280,7 +288,7 @@ public class RocketSettingsScreen extends Screen {
 
         // Node Panel Background
         int pw = 430;
-        int ph = 125;
+        int ph = 155;
         int px = width / 2 - pw / 2;
         int py = 50;
         

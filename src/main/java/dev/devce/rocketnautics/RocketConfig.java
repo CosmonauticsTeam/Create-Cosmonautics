@@ -120,6 +120,7 @@ public class RocketConfig {
         public final ModConfigSpec.IntValue planetRenderMaximumScale;
         public final ModConfigSpec.DoubleValue orbitPredictionAngularThreshold;
         public final ModConfigSpec.IntValue orbitPredictionSteps;
+        public final ModConfigSpec.BooleanValue enableCustomSky;
         public final ModConfigSpec.BooleanValue enablePlumeMerging;
         public final ModConfigSpec.DoubleValue plumeMergeRadius;
 
@@ -138,6 +139,9 @@ public class RocketConfig {
             enableDynamicRenderDistance = builder
                     .comment("Enable automatic render distance adjustment based on altitude")
                     .define("enableDynamicRenderDistance", true);
+            enableCustomSky = builder
+                    .comment("Enable custom sky rendering (nebula, stars, planet beneath, custom sun/moon etc). Disable to return to standard Minecraft sky.")
+                    .define("enableCustomSky", true);
             enablePlumeMerging = builder
                     .comment("Enable merging of adjacent thruster plumes into a single larger plume cluster")
                     .define("enablePlumeMerging", true);

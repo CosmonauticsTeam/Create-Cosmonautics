@@ -1,5 +1,6 @@
 package dev.devce.rocketnautics.mixin;
 
+import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.client.DeepSpaceHandler;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -36,6 +37,7 @@ public abstract class ClientLevelMixin extends Level {
 
     @Inject(method = "getSkyColor", at = @At("RETURN"), cancellable = true)
     private void rocketnautics$darkenSkyAtAltitude(Vec3 pos, float partialTick, CallbackInfoReturnable<Vec3> cir) {
+        if (!RocketConfig.CLIENT.enableCustomSky.get()) return;
         if (DeepSpaceHelper.isDeepSpace(this)) {
             cir.setReturnValue(new Vec3(0, 0, 0));
             return;
@@ -62,6 +64,7 @@ public abstract class ClientLevelMixin extends Level {
     // prevent flickering behavior due to server -> client sync packets
     @Inject(method = "setDayTime", at = @At("HEAD"), cancellable = true)
     private void cancelSetDayTime(long p_104747_, CallbackInfo ci) {
+        if (!RocketConfig.CLIENT.enableCustomSky.get()) return;
         if (DeepSpaceHandler.getUniverse() == null) return;
         if (DeepSpaceHelper.shouldOverrideLevelTime(this)) {
             ci.cancel();
@@ -70,6 +73,7 @@ public abstract class ClientLevelMixin extends Level {
 
     @Inject(method = "tickTime", at = @At("RETURN"))
     private void controlDayTime(CallbackInfo ci) {
+        if (!RocketConfig.CLIENT.enableCustomSky.get()) return;
         if (DeepSpaceHandler.getUniverse() == null) return;
         AbsoluteDate predictedDate = DeepSpaceHandler.getPredictedUniverseDate(0);
         if (predictedDate == null) return;

@@ -79,6 +79,7 @@ public class SkyHandler {
         }
 
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) return;
+        if (!RocketConfig.CLIENT.enableCustomSky.get()) return;
         
         Minecraft mc = Minecraft.getInstance();
         Level level = event.getCamera().getEntity().level();

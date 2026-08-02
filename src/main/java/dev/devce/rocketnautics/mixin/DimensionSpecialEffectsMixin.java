@@ -1,5 +1,6 @@
 package dev.devce.rocketnautics.mixin;
 
+import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.SkyDataHandler;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import net.minecraft.client.Minecraft;
@@ -14,10 +15,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(DimensionSpecialEffects.class)
 public class DimensionSpecialEffectsMixin {
 
+    @Inject(method = "skyType", at = @At("HEAD"), cancellable = true)
+    private void rocketnautics$overrideSkyType(CallbackInfoReturnable<DimensionSpecialEffects.SkyType> cir) {
+        if (!RocketConfig.CLIENT.enableCustomSky.get()) {
+            cir.setReturnValue(DimensionSpecialEffects.SkyType.NORMAL);
+        }
+    }
+
     @Inject(method = "getBrightnessDependentFogColor", at = @At("RETURN"), cancellable = true)
     private void rocketnautics$forceSpaceFogColor(Vec3 fogColor, float brightness, CallbackInfoReturnable<Vec3> cir) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
+        if (!RocketConfig.CLIENT.enableCustomSky.get()) return;
 
         double y = mc.player.getY() + SkyDataHandler.getHeightOffsetForLevel(mc.level.dimension());
         if (y > 1000.0) {
