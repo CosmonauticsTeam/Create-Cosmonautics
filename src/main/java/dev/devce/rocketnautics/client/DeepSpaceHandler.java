@@ -548,52 +548,12 @@ public final class DeepSpaceHandler {
             
             BufferBuilder shadowCubeBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
             
-            FaceDefinition[] shadowFaces = {
-                // TOP
-                new FaceDefinition(new Vector3D(0, shadowSize, 0), new Vector3D(shadowSize, 0, 0), new Vector3D(0, 0, shadowSize)),
-                // BOTTOM
-                new FaceDefinition(new Vector3D(0, -shadowSize, 0), new Vector3D(shadowSize, 0, 0), new Vector3D(0, 0, shadowSize)),
-                // NORTH
-                new FaceDefinition(new Vector3D(0, 0, -shadowSize), new Vector3D(-shadowSize, 0, 0), new Vector3D(0, -shadowSize, 0)),
-                // SOUTH
-                new FaceDefinition(new Vector3D(0, 0, shadowSize), new Vector3D(shadowSize, 0, 0), new Vector3D(0, -shadowSize, 0)),
-                // WEST
-                new FaceDefinition(new Vector3D(-shadowSize, 0, 0), new Vector3D(0, 0, shadowSize), new Vector3D(0, -shadowSize, 0)),
-                // EAST
-                new FaceDefinition(new Vector3D(shadowSize, 0, 0), new Vector3D(0, 0, -shadowSize), new Vector3D(0, -shadowSize, 0))
-            };
-            
-            int G = 16;
-            for (FaceDefinition face : shadowFaces) {
-                for (int gv = 0; gv < G; gv++) {
-                    for (int gu = 0; gu < G; gu++) {
-                        Vector3D p1 = getPoint(face, gu, gv, G, shadowSize);
-                        Vector3D p2 = getPoint(face, gu, gv + 1, G, shadowSize);
-                        Vector3D p3 = getPoint(face, gu + 1, gv + 1, G, shadowSize);
-                        Vector3D p4 = getPoint(face, gu + 1, gv, G, shadowSize);
-
-                        // for some reason the bottom face and only the bottom face has an incorrect normal
-                        if (face == shadowFaces[1]) {
-                            Vector3D temp = p2;
-                            p2 = p4;
-                            p4 = temp;
-                        }
-                        
-                        long c1 = computeColor(p1, L, gu, gv);
-                        long c2 = computeColor(p2, L, gu, gv + 1);
-                        long c3 = computeColor(p3, L, gu + 1, gv + 1);
-                        long c4 = computeColor(p4, L, gu + 1, gv);
-                        
-                        shadowCubeBuilder.addVertex(matrix, (float)p1.getX(), (float)p1.getY(), (float)p1.getZ())
-                                         .setColor((int)((c1 >> 24) & 255), (int)((c1 >> 16) & 255), (int)((c1 >> 8) & 255), (int)(c1 & 255));
-                        shadowCubeBuilder.addVertex(matrix, (float)p2.getX(), (float)p2.getY(), (float)p2.getZ())
-                                         .setColor((int)((c2 >> 24) & 255), (int)((c2 >> 16) & 255), (int)((c2 >> 8) & 255), (int)(c2 & 255));
-                        shadowCubeBuilder.addVertex(matrix, (float)p3.getX(), (float)p3.getY(), (float)p3.getZ())
-                                         .setColor((int)((c3 >> 24) & 255), (int)((c3 >> 16) & 255), (int)((c3 >> 8) & 255), (int)(c3 & 255));
-                        shadowCubeBuilder.addVertex(matrix, (float)p4.getX(), (float)p4.getY(), (float)p4.getZ())
-                                         .setColor((int)((c4 >> 24) & 255), (int)((c4 >> 16) & 255), (int)((c4 >> 8) & 255), (int)(c4 & 255));
-                    }
-                }
+            CachedShadowVertex[] shadowVerts = isSphere ? SPHERE_SHADOW_VERTICES : CUBE_SHADOW_VERTICES;
+            for (int i = 0; i < shadowVerts.length; i++) {
+                CachedShadowVertex sv = shadowVerts[i];
+                long c = computeColor(sv.nx, sv.ny, sv.nz, L, sv.gx, sv.gy);
+                shadowCubeBuilder.addVertex(matrix, sv.ux * shadowSize, sv.uy * shadowSize, sv.uz * shadowSize)
+                                 .setColor((int)((c >> 24) & 255), (int)((c >> 16) & 255), (int)((c >> 8) & 255), (int)(c & 255));
             }
             
             BufferUploader.drawWithShader(shadowCubeBuilder.buildOrThrow());
@@ -778,17 +738,56 @@ public final class DeepSpaceHandler {
         { new Vector3d(1, 1, 1), new Vector3d(1, -1, 1), new Vector3d(1, -1, -1), new Vector3d(1, 1, -1) }
     };
 
-    private static void renderCubeOrSphere(VertexConsumer bufferbuilder, Matrix4f matrix, float size, float uOffset, float vOffset, float r, float g, float b, float a, boolean isSphere) {
+    private static class CachedVertex {
+        final float x, y, z;
+        final float u, v;
+        CachedVertex(float x, float y, float z, float u, float v) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.u = u;
+            this.v = v;
+        }
+    }
+
+    private static class CachedShadowVertex {
+        final float ux, uy, uz;
+        final float nx, ny, nz;
+        final int gx, gy;
+        CachedShadowVertex(Vector3D p, int gx, int gy, boolean isSphere) {
+            this.ux = (float) p.getX();
+            this.uy = (float) p.getY();
+            this.uz = (float) p.getZ();
+            Vector3D norm = p.normalize();
+            this.nx = (float) norm.getX();
+            this.ny = (float) norm.getY();
+            this.nz = (float) norm.getZ();
+            this.gx = gx;
+            this.gy = gy;
+        }
+    }
+
+    private static final CachedVertex[] SPHERE_VERTICES;
+    private static final CachedVertex[] CUBE_VERTICES;
+    private static final CachedShadowVertex[] SPHERE_SHADOW_VERTICES;
+    private static final CachedShadowVertex[] CUBE_SHADOW_VERTICES;
+
+    static {
+        SPHERE_VERTICES = precomputeVertices(true);
+        CUBE_VERTICES = precomputeVertices(false);
+        SPHERE_SHADOW_VERTICES = precomputeShadowVertices(true);
+        CUBE_SHADOW_VERTICES = precomputeShadowVertices(false);
+    }
+
+    private static CachedVertex[] precomputeVertices(boolean isSphere) {
         int G = isSphere ? 16 : 1;
-        
+        List<CachedVertex> list = new ArrayList<>();
         for (int face = 0; face < 6; face++) {
             float u0 = 0.0f, u1 = 1.0f, v0 = 0.0f, v1 = 1.0f;
-
             Vector3d c00 = FACE_CORNERS[face][0];
             Vector3d c01 = FACE_CORNERS[face][1];
             Vector3d c11 = FACE_CORNERS[face][2];
             Vector3d c10 = FACE_CORNERS[face][3];
-
             for (int gv = 0; gv < G; gv++) {
                 for (int gu = 0; gu < G; gu++) {
                     double uA = (double) gu / G;
@@ -802,28 +801,106 @@ public final class DeepSpaceHandler {
                     Vector3d p3 = getBilinearPoint(c00, c01, c11, c10, uB, vA);
 
                     if (isSphere) {
-                        p0.normalize().mul(size);
-                        p1.normalize().mul(size);
-                        p2.normalize().mul(size);
-                        p3.normalize().mul(size);
-                    } else {
-                        p0.mul(size);
-                        p1.mul(size);
-                        p2.mul(size);
-                        p3.mul(size);
+                        p0.normalize();
+                        p1.normalize();
+                        p2.normalize();
+                        p3.normalize();
                     }
 
-                    float texUA = Mth.lerp((float) uA, u0, u1) + uOffset;
-                    float texUB = Mth.lerp((float) uB, u0, u1) + uOffset;
-                    float texVA = Mth.lerp((float) vA, v0, v1) + vOffset;
-                    float texVB = Mth.lerp((float) vB, v0, v1) + vOffset;
+                    float texUA = Mth.lerp((float) uA, u0, u1);
+                    float texUB = Mth.lerp((float) uB, u0, u1);
+                    float texVA = Mth.lerp((float) vA, v0, v1);
+                    float texVB = Mth.lerp((float) vB, v0, v1);
 
-                    bufferbuilder.addVertex(matrix, (float)p0.x, (float)p0.y, (float)p0.z).setColor(r, g, b, a).setUv(texUA, texVA);
-                    bufferbuilder.addVertex(matrix, (float)p1.x, (float)p1.y, (float)p1.z).setColor(r, g, b, a).setUv(texUA, texVB);
-                    bufferbuilder.addVertex(matrix, (float)p2.x, (float)p2.y, (float)p2.z).setColor(r, g, b, a).setUv(texUB, texVB);
-                    bufferbuilder.addVertex(matrix, (float)p3.x, (float)p3.y, (float)p3.z).setColor(r, g, b, a).setUv(texUB, texVA);
+                    list.add(new CachedVertex((float)p0.x, (float)p0.y, (float)p0.z, texUA, texVA));
+                    list.add(new CachedVertex((float)p1.x, (float)p1.y, (float)p1.z, texUA, texVB));
+                    list.add(new CachedVertex((float)p2.x, (float)p2.y, (float)p2.z, texUB, texVB));
+                    list.add(new CachedVertex((float)p3.x, (float)p3.y, (float)p3.z, texUB, texVA));
                 }
             }
+        }
+        return list.toArray(new CachedVertex[0]);
+    }
+
+    private static CachedShadowVertex[] precomputeShadowVertices(boolean isSphere) {
+        int G = 16;
+        Vector3D[] unitFacesCenter = {
+            new Vector3D(0, 1, 0),
+            new Vector3D(0, -1, 0),
+            new Vector3D(0, 0, -1),
+            new Vector3D(0, 0, 1),
+            new Vector3D(-1, 0, 0),
+            new Vector3D(1, 0, 0)
+        };
+        Vector3D[] unitFacesU = {
+            new Vector3D(1, 0, 0),
+            new Vector3D(1, 0, 0),
+            new Vector3D(-1, 0, 0),
+            new Vector3D(1, 0, 0),
+            new Vector3D(0, 0, 1),
+            new Vector3D(0, 0, -1)
+        };
+        Vector3D[] unitFacesV = {
+            new Vector3D(0, 0, 1),
+            new Vector3D(0, 0, 1),
+            new Vector3D(0, -1, 0),
+            new Vector3D(0, -1, 0),
+            new Vector3D(0, -1, 0),
+            new Vector3D(0, -1, 0)
+        };
+
+        List<CachedShadowVertex> list = new ArrayList<>();
+        for (int faceIndex = 0; faceIndex < 6; faceIndex++) {
+            FaceDefinition face = new FaceDefinition(unitFacesCenter[faceIndex], unitFacesU[faceIndex], unitFacesV[faceIndex]);
+            for (int gv = 0; gv < G; gv++) {
+                for (int gu = 0; gu < G; gu++) {
+                    Vector3D p1 = getPointPrecompute(face, gu, gv, G, 1.0, isSphere);
+                    Vector3D p2 = getPointPrecompute(face, gu, gv + 1, G, 1.0, isSphere);
+                    Vector3D p3 = getPointPrecompute(face, gu + 1, gv + 1, G, 1.0, isSphere);
+                    Vector3D p4 = getPointPrecompute(face, gu + 1, gv, G, 1.0, isSphere);
+
+                    int g1x = gu, g1y = gv;
+                    int g2x = gu, g2y = gv + 1;
+                    int g3x = gu + 1, g3y = gv + 1;
+                    int g4x = gu + 1, g4y = gv;
+                    
+                    // Bottom face normal swap:
+                    if (faceIndex == 1) {
+                        Vector3D temp = p2;
+                        p2 = p4;
+                        p4 = temp;
+                        
+                        g2x = gu + 1; g2y = gv;
+                        g4x = gu;     g4y = gv + 1;
+                    }
+                    
+                    list.add(new CachedShadowVertex(p1, g1x, g1y, isSphere));
+                    list.add(new CachedShadowVertex(p2, g2x, g2y, isSphere));
+                    list.add(new CachedShadowVertex(p3, g3x, g3y, isSphere));
+                    list.add(new CachedShadowVertex(p4, g4x, g4y, isSphere));
+                }
+            }
+        }
+        return list.toArray(new CachedShadowVertex[0]);
+    }
+
+    private static Vector3D getPointPrecompute(FaceDefinition face, int gu, int gv, int G, double shadowSize, boolean isSphere) {
+        double u = -1.0 + 2.0 * gu / G;
+        double v = -1.0 + 2.0 * gv / G;
+        Vector3D p = face.center.add(face.U.scalarMultiply(u)).add(face.V.scalarMultiply(v));
+        if (isSphere) {
+            return p.normalize().scalarMultiply(shadowSize);
+        }
+        return p;
+    }
+
+    private static void renderCubeOrSphere(VertexConsumer bufferbuilder, Matrix4f matrix, float size, float uOffset, float vOffset, float r, float g, float b, float a, boolean isSphere) {
+        CachedVertex[] vertices = isSphere ? SPHERE_VERTICES : CUBE_VERTICES;
+        for (int i = 0; i < vertices.length; i++) {
+            CachedVertex v = vertices[i];
+            bufferbuilder.addVertex(matrix, v.x * size, v.y * size, v.z * size)
+                         .setColor(r, g, b, a)
+                         .setUv(v.u + uOffset, v.v + vOffset);
         }
     }
 
@@ -855,8 +932,8 @@ public final class DeepSpaceHandler {
         return p;
     }
 
-    private static long computeColor(Vector3D P, Vector3D L, int gx, int gy) {
-        double d = P.normalize().dotProduct(L);
+    private static long computeColor(float nx, float ny, float nz, Vector3D L, int gx, int gy) {
+        double d = nx * L.getX() + ny * L.getY() + nz * L.getZ();
         
         int r = 4, g = 5, b = 18, a = 220;
         

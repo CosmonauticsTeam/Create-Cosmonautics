@@ -1039,6 +1039,8 @@ public class SkyHandler {
         float twinkleSpeed;
         float twinkleOffset;
         int type;
+        float ux, uy, uz;
+        float vx, vy, vz;
     }
 
     private static class Constellation {
@@ -1274,6 +1276,22 @@ public class SkyHandler {
             star.twinkleOffset = rand.nextFloat() * 100.0f;
             
             SPACE_STARS[i] = star;
+        }
+
+        for (SpaceStar star : SPACE_STARS) {
+            if (star == null) continue;
+            float ux, uy, uz;
+            if (Math.abs(star.x) < 0.99f) {
+                float len = (float) Math.sqrt(star.y * star.y + star.z * star.z);
+                ux = 0; uy = -star.z / len; uz = star.y / len;
+            } else {
+                float len = (float) Math.sqrt(star.x * star.x + star.y * star.y);
+                ux = -star.y / len; uy = star.x / len; uz = 0;
+            }
+            star.ux = ux; star.uy = uy; star.uz = uz;
+            star.vx = star.y * uz - star.z * uy;
+            star.vy = star.z * ux - star.x * uz;
+            star.vz = star.x * uy - star.y * ux;
         }
     }
 
@@ -1710,18 +1728,12 @@ public class SkyHandler {
             
             if (alpha <= 0) continue;
             
-            float ux, uy, uz;
-            if (Math.abs(star.x) < 0.99f) {
-                float len = (float) Math.sqrt(star.y * star.y + star.z * star.z);
-                ux = 0; uy = -star.z / len; uz = star.y / len;
-            } else {
-                float len = (float) Math.sqrt(star.x * star.x + star.y * star.y);
-                ux = -star.y / len; uy = star.x / len; uz = 0;
-            }
-            
-            float vx = star.y * uz - star.z * uy;
-            float vy = star.z * ux - star.x * uz;
-            float vz = star.x * uy - star.y * ux;
+            float ux = star.ux;
+            float uy = star.uy;
+            float uz = star.uz;
+            float vx = star.vx;
+            float vy = star.vy;
+            float vz = star.vz;
             
             float s = star.size * 0.1f;
             
