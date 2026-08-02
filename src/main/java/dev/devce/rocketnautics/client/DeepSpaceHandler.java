@@ -207,7 +207,18 @@ public final class DeepSpaceHandler {
         };
     }
 
+    private static final int MAX_CACHED_PLANET_TEXTURES = 32;
+
     public static void receiveRenderData(int id, Either<ColorPalette, ResourceLocation> data, int powerScale) {
+        // Evict oldest texture if cache capacity exceeded to prevent VRAM accumulation
+        if (KNOWN_RENDER_DATA.size() >= MAX_CACHED_PLANET_TEXTURES && !KNOWN_RENDER_DATA.containsKey(id)) {
+            int firstKey = KNOWN_RENDER_DATA.firstIntKey();
+            IntObjectPair<PreparedTexture> evicted = KNOWN_RENDER_DATA.remove(firstKey);
+            if (evicted != null && evicted.right() != null) {
+                evicted.right().retire();
+            }
+        }
+
         KNOWN_RENDER_DATA.put(id, IntObjectPair.of(powerScale, data.<PreparedTexture>map(arr -> DeepSpaceTexture.construct(id, arr), res -> {
             Minecraft.getInstance().getTextureManager().register(res, new SimpleTexture(res));
             return new PreparedTexture() {
@@ -365,15 +376,20 @@ public final class DeepSpaceHandler {
 
         poseStack.pushPose();
 
-        // 1. Render custom cosmic nebula and HD space stars first
+        // 1. Render custom cosmic nebula and HD space stars first (only when custom sky is enabled)
         // TODO level time is fixed in deep space, figure out a better solution. Position in absolute frame, then have sol moving in the absolute frame?
         float celestialAngle = mc.level.getTimeOfDay(deltaTick);
         boolean isOverworld = mc.level.dimension() == net.minecraft.world.level.Level.OVERWORLD;
         float spaceVis = isOverworld ? mc.level.getStarBrightness(deltaTick) : 1.0f;
-        SkyHandler.renderCosmicNebula(poseStack, camera, celestialAngle, spaceVis);
-        SkyHandler.renderSpaceStars(poseStack, spaceVis, camera, celestialAngle);
+        if (RocketConfig.CLIENT.enableCustomSky.get()) {
+            SkyHandler.renderCosmicNebula(poseStack, camera, celestialAngle, spaceVis);
+            SkyHandler.renderSpaceStars(poseStack, spaceVis, camera, celestialAngle);
+        }
 
-        // 2.  celestial bodies / planets rendering
+        // 2. Ensure star plasma texture is ready ONCE before iterating planets (avoid per-planet overhead)
+        SkyHandler.ensureStarPlasmaTexture();
+
+        // 3. Celestial bodies / planets rendering
         IntList needRenderData = new IntArrayList();
         poseStack.pushPose();
         if (isOverworld) {
@@ -428,8 +444,8 @@ public final class DeepSpaceHandler {
         RenderSystem.enableDepthTest();
         RenderSystem.enableCull();
         RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        // Note: ensureStarPlasmaTexture() is called once before the planet loop in renderUniverse.
         if (planet.extras().star()) {
-            SkyHandler.ensureStarPlasmaTexture();
             if (SkyHandler.STAR_PLASMA_TEXTURE_ID != null) {
                 RenderSystem.setShaderTexture(0, SkyHandler.STAR_PLASMA_TEXTURE_ID);
             } else {
@@ -450,80 +466,68 @@ public final class DeepSpaceHandler {
 
         if (planet.extras().star() && isSphere) {
             // Render 3 extra rotating, pulsating plasma layers for a highly turbulent, volumetric 3D solar storm!
-            // This prevents the "flat cube" look and creates amazing swirling interference patterns.
+            // All 3 layers share the same texture and shader — batch them into a single BufferBuilder.
             long tick = mc.level.getGameTime();
             float baseTime = tick + partialTicks;
-            
+
             RenderSystem.enableBlend();
             RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
             RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
             if (SkyHandler.STAR_PLASMA_TEXTURE_ID != null) {
                 RenderSystem.setShaderTexture(0, SkyHandler.STAR_PLASMA_TEXTURE_ID);
             }
-            
+
+            // Batch all 3 plasma layers into one BufferBuilder (same shader + texture)
+            BufferBuilder plasmaBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
             for (int layer = 1; layer <= 3; layer++) {
-                poseStack.pushPose();
-                
-                // Pulsate slightly differently for each layer
-                float pulseFreq = 0.05f + layer * 0.02f;
-                float pulseAmp = 0.005f + layer * 0.004f;
-                float scale = 1.0f;
-                float layerSize = size * (1.0f + layer * 0.006f) * scale;
-                
+                float layerSize = size * (1.0f + layer * 0.006f);
+
                 // Rotate layers in different directions and speeds
                 float rotX = baseTime * (0.012f * (layer == 2 ? -1.5f : 1.0f));
                 float rotY = baseTime * (0.018f * (layer == 1 ? -1.2f : 1.5f));
                 float rotZ = baseTime * (0.015f * (layer == 3 ? -1.0f : 1.3f));
-                
-                poseStack.mulPose(new Quaternionf().rotateXYZ(rotX, rotY, rotZ));
-                
-                // Draw the textured cube faces with additive opacity
-                float alpha = 0.25f - (layer * 0.05f); // inner layer is more opaque, outer layer is softer
-                BufferBuilder layerBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-                
-                // Render textured cube with color using our existing renderCubeFaces helper
-                renderCubeOrSphere(layerBuilder, poseStack.last().pose(), layerSize, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, alpha, isSphere);
-                BufferUploader.drawWithShader(layerBuilder.buildOrThrow());
-                
-                poseStack.popPose();
+
+                // Build rotated matrix inline (avoids poseStack push/pop × 3)
+                Matrix4f layerMatrix = new Matrix4f(matrix).rotate(new Quaternionf().rotateXYZ(rotX, rotY, rotZ));
+
+                // inner layer more opaque, outer layer softer
+                float alpha = 0.25f - (layer * 0.05f);
+                renderCubeOrSphere(plasmaBuilder, layerMatrix, layerSize, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, alpha, isSphere);
             }
+            BufferUploader.drawWithShader(plasmaBuilder.buildOrThrow());
         }
 
         if (planet.extras().clouds()) {
             SkyHandler.ensureCloudTexture();
             if (SkyHandler.CLOUD_TEXTURE_ID != null) {
-                RenderSystem.setShaderTexture(0, SkyHandler.CLOUD_TEXTURE_ID);
                 long factor = 1000L; // MUCH slower
                 float timeOffset = (float) ((date.durationFrom(DeepSpaceHelper.EPOCH) % (20L * factor)) / (float) factor);
-                
-                // Cloud Shadows
+
+                // Cloud Shadows — shifted matrix, same texture but different color → separate draw call required
                 double theta = 2.0 * Math.PI * celestialAngle;
                 float lx = (float) -Math.sin(theta);
                 float shadowShift = lx * size * 0.08f;
-                BufferBuilder shadowBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-                float sr = 0.01f, sg = 0.02f, sb = 0.08f, sa = 0.48f;
-                // Draw slightly larger cube for clouds
                 float shadowSize = size * 1.01f;
+                float sr = 0.01f, sg = 0.02f, sb = 0.08f, sa = 0.48f;
+
+                RenderSystem.setShaderTexture(0, SkyHandler.CLOUD_TEXTURE_ID);
                 matrix.translate(shadowShift, 0, 0); // shift matrix for shadow
+                BufferBuilder shadowBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
                 renderCubeOrSphere(shadowBuilder, matrix, shadowSize, timeOffset, 0.0f, sr, sg, sb, sa, isSphere);
                 BufferUploader.drawWithShader(shadowBuilder.buildOrThrow());
                 matrix.translate(-shadowShift, 0, 0); // un-shift matrix
 
-                // Scrolling Clouds
-                BufferBuilder cloudBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-                float cloudSize = size * 1.02f;
-                renderCubeOrSphere(cloudBuilder, matrix, cloudSize, timeOffset, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, isSphere);
-                BufferUploader.drawWithShader(cloudBuilder.buildOrThrow());
-
-                // Scrolling Clouds Layer 2 (Upper, faster, different scroll offsets for parallax volumetric effect)
-                BufferBuilder cloudBuilder2 = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+                // Scrolling Cloud layers 1 & 2 — same texture, batch into one BufferBuilder
+                float cloudSize  = size * 1.02f;
                 float cloudSize2 = size * 1.032f;
-                float uOffset2 = -timeOffset * 1.4f;
-                float vOffset2 = timeOffset * 0.5f;
-                renderCubeOrSphere(cloudBuilder2, matrix, cloudSize2, uOffset2, vOffset2, 1.0f, 1.0f, 1.0f, 0.55f, isSphere); // Soft, beautiful overlay
-                BufferUploader.drawWithShader(cloudBuilder2.buildOrThrow());
-            }
+                float uOffset2   = -timeOffset * 1.4f;
+                float vOffset2   =  timeOffset * 0.5f;
 
+                BufferBuilder cloudBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+                renderCubeOrSphere(cloudBuilder, matrix, cloudSize,  timeOffset, 0.0f,    1.0f, 1.0f, 1.0f, 1.0f,  isSphere);
+                renderCubeOrSphere(cloudBuilder, matrix, cloudSize2, uOffset2,   vOffset2, 1.0f, 1.0f, 1.0f, 0.55f, isSphere);
+                BufferUploader.drawWithShader(cloudBuilder.buildOrThrow());
+            }
         }
 
         // Render gorgeous 3D dynamic, subdivided, cell-shaded and dithered shadow overlay for all non-star planets!
@@ -539,15 +543,15 @@ public final class DeepSpaceHandler {
             Vector3D L = lightSourcePosInOurFrame.getNormSq() > 1e-6 ? lightSourcePosInOurFrame.normalize() : new Vector3D(1, 0, 0);
 
             L = planet.getRotationAtTime(date).applyInverseTo(L);
-            
+
             float shadowSize = planet.extras().clouds() ? size * 1.035f : size * 1.002f;
-            
+
             RenderSystem.enableBlend();
             RenderSystem.defaultBlendFunc();
             RenderSystem.setShader(GameRenderer::getPositionColorShader);
-            
+
             BufferBuilder shadowCubeBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-            
+
             CachedShadowVertex[] shadowVerts = isSphere ? SPHERE_SHADOW_VERTICES : CUBE_SHADOW_VERTICES;
             for (int i = 0; i < shadowVerts.length; i++) {
                 CachedShadowVertex sv = shadowVerts[i];
@@ -555,7 +559,7 @@ public final class DeepSpaceHandler {
                 shadowCubeBuilder.addVertex(matrix, sv.ux * shadowSize, sv.uy * shadowSize, sv.uz * shadowSize)
                                  .setColor((int)((c >> 24) & 255), (int)((c >> 16) & 255), (int)((c >> 8) & 255), (int)(c & 255));
             }
-            
+
             BufferUploader.drawWithShader(shadowCubeBuilder.buildOrThrow());
         }
 
@@ -566,7 +570,7 @@ public final class DeepSpaceHandler {
             RenderSystem.disableCull();
 
             int layers = planet.extras().diffuseLayerCount();
-            
+
             float ar = 1.0f, ag = 1.0f, ab = 1.0f;
             if (!planet.extras().star()) {
                 double tAngle = celestialAngle * 2.0 * Math.PI;
@@ -592,6 +596,9 @@ public final class DeepSpaceHandler {
                 ab = net.minecraft.util.Mth.lerp(terminatorFactor, ab, 0.12f);
             }
 
+            // Batch ALL diffuse/atmosphere layers into a single BufferBuilder — same shader, no texture.
+            // Previously this created N separate builders, one per layer. Now it's just 1 draw call total.
+            BufferBuilder atmBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
             for (int i = 0; i < layers; i++) {
                 float progress = i / (float) (layers - 1);
                 float s;
@@ -602,10 +609,10 @@ public final class DeepSpaceHandler {
                     // Solar corona: much wider glow, extremely beautiful color gradient:
                     // From white-hot yellow (inner) to golden-orange to fiery-red to violet/magenta (outer "veil" flare!)
                     s = size * (1.005f + (float)Math.pow(progress, 1.5f) * 0.7f); // wider glow
-                    
+
                     // Opacity curve: fade out smoothly
                     aa = (0.28f * (float)Math.pow(1.0f - progress, 2.5f));
-                    
+
                     // Color gradient from progress 0 (inner) to 1 (outer)
                     if (progress < 0.2f) {
                         // White-hot yellow-gold
@@ -637,10 +644,9 @@ public final class DeepSpaceHandler {
                     aa = (0.05f * (float)Math.pow(1.0f - progress, 2.0f)) * 1.0f;
                 }
 
-                BufferBuilder atmBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
                 renderCubeOrSphere(atmBuilder, matrix, s, 0.0f, 0.0f, lr, lg, lb, aa, isSphere);
-                BufferUploader.drawWithShader(atmBuilder.buildOrThrow());
             }
+            BufferUploader.drawWithShader(atmBuilder.buildOrThrow());
         }
 
         RenderSystem.defaultBlendFunc();

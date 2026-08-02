@@ -45,6 +45,25 @@ public class RocketNauticsClientCommands {
                     net.neoforged.neoforge.network.PacketDistributor.sendToServer(new dev.devce.rocketnautics.network.LimitWorldBorderPayload());
                     return 1;
                 })
+            )
+            .then(Commands.literal("fpsmon")
+                .executes(context -> {
+                    FpsMonitorOverlay.enabled = !FpsMonitorOverlay.enabled;
+                    String status = FpsMonitorOverlay.enabled ? "ENABLED" : "DISABLED";
+                    ChatFormatting color = FpsMonitorOverlay.enabled ? ChatFormatting.GREEN : ChatFormatting.RED;
+                    Minecraft.getInstance().player.displayClientMessage(
+                        Component.literal("Cosmonautics FPS & Telemetry Monitor: ").append(Component.literal(status).withStyle(color)), true);
+                    return 1;
+                })
+            )
+            .then(Commands.literal("reload_sky")
+                .executes(context -> {
+                    DeepSpaceHandler.clearRenderCache();
+                    SkyHandler.triggerPlanetTextureRebuild();
+                    Minecraft.getInstance().player.displayClientMessage(
+                        Component.literal("Cosmonautics: Sky & Planet textures cache reloaded!").withStyle(ChatFormatting.GREEN), true);
+                    return 1;
+                })
             );
             
         dispatcher.register(builder);

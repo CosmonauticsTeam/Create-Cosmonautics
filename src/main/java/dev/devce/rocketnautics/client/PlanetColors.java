@@ -64,9 +64,9 @@ public final class PlanetColors {
         // sun
         SUN_1 = addColor(250, 230, 90);
         // moon
-        setBiomeColor(RocketTags.BiomeTags.LUNAR_CHASM.tag, 220, 150, 70);
-        setBiomeColor(RocketTags.BiomeTags.LUNAR_HIGHLANDS.tag, 190, 190, 190);
-        setBiomeColor(RocketTags.BiomeTags.LUNAR_MARIA.tag, 90, 90, 90);
+        setBiomeColor(RocketTags.BiomeTags.LUNAR_CHASM.tag, 60, 62, 65); // Deep Crater Craters / Slate Grey
+        setBiomeColor(RocketTags.BiomeTags.LUNAR_HIGHLANDS.tag, 165, 168, 172); // Bright Lunar Highlands Regolith
+        setBiomeColor(RocketTags.BiomeTags.LUNAR_MARIA.tag, 95, 98, 102); // Dark Basalt Lunar Maria
 
         // mars
         MARS_RED = addColor(185, 80, 45);

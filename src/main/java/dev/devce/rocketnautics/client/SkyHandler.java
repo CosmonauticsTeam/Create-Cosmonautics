@@ -79,8 +79,7 @@ public class SkyHandler {
         }
 
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) return;
-        if (!RocketConfig.CLIENT.enableCustomSky.get()) return;
-        
+
         Minecraft mc = Minecraft.getInstance();
         Level level = event.getCamera().getEntity().level();
         if (mc.level == null || mc.player == null || !DeepSpaceHandler.shouldRenderPlanetBeneath(level)) return;
@@ -90,41 +89,46 @@ public class SkyHandler {
         poseStack.mulPose(event.getModelViewMatrix());
         Camera camera = event.getCamera();
 
+        // Always render the universe (planets/stars from DeepSpaceHandler) regardless of the
+        // enableCustomSky toggle — that flag only controls our extra overlays (HD stars + planet quad).
         DeepSpaceHandler.renderUniverseForLevel(level, camera.getPosition(), event.getPoseStack(), event.getPartialTick().getGameTimeDeltaTicks(), event.getPartialTick().getGameTimeDeltaPartialTick(true), camera);
 
-        double camY = camera.getPosition().y + SkyDataHandler.getHeightOffsetForLevel(level.dimension());
-        if (camY < 1000.0) return;
+        // The rest (custom HD stars + planet overlay) is gated by the enableCustomSky toggle.
+        if (RocketConfig.CLIENT.enableCustomSky.get()) {
+            double camY = camera.getPosition().y + SkyDataHandler.getHeightOffsetForLevel(level.dimension());
+            if (camY >= 1000.0) {
+                // Determine visibility based on altitude
+                float visibility = (float) Mth.clamp((camY - 1000.0) / 500.0, 0.0, 1.0);
+                if (visibility > 0) {
+                    float celestialAngle = level.getTimeOfDay(event.getPartialTick().getGameTimeDeltaTicks());
 
-        // Determine visibility based on altitude
-        float visibility = (float) Mth.clamp((camY - 1000.0) / 500.0, 0.0, 1.0);
-        if (visibility <= 0) return;
+                    // Render custom high-fidelity space stars rotating naturally with the camera!
+                    renderSpaceStars(poseStack, visibility, camera, celestialAngle);
 
-        float celestialAngle = level.getTimeOfDay(event.getPartialTick().getGameTimeDeltaTicks());
-        
-        // Render custom high-fidelity space stars rotating naturally with the camera!
-        renderSpaceStars(poseStack, visibility, camera, celestialAngle);
+                    Matrix4f matrix = poseStack.last().pose();
 
-        Matrix4f matrix = poseStack.last().pose();
+                    double camX = camera.getPosition().x;
+                    double camZ = camera.getPosition().z;
 
-        double camX = camera.getPosition().x;
-        double camZ = camera.getPosition().z;
+                    // Ensure all procedural textures are initialized
+                    ensurePlanetTexObj();
+                    ensureCloudTexture();
+                    ensureHaloTexture();
 
-        // Ensure all procedural textures are initialized
-        ensurePlanetTexObj();
-        ensureCloudTexture();
-        ensureHaloTexture();
+                    // Request map updates from server if player moved too far
+                    updatePlanetTex(camX, camY, camZ);
 
-        // Request map updates from server if player moved too far
-        updatePlanetTex(camX, camY, camZ);
-        
-        // Cross-fade between old and new planet map textures
-        if (texFade > 0) {
-            texFade = Math.max(0, texFade - event.getPartialTick().getRealtimeDeltaTicks() / 20);
+                    // Cross-fade between old and new planet map textures
+                    if (texFade > 0) {
+                        texFade = Math.max(0, texFade - event.getPartialTick().getRealtimeDeltaTicks() / 20);
+                    }
+
+                    // Render planet with layered effects (Map + Clouds + Halo)
+                    renderPlanet(PLANET_TEXTURE_OBJ_LAST, camX, camY, camZ, matrix, texFade * visibility, celestialAngle);
+                    renderPlanet(PLANET_TEXTURE_OBJ, camX, camY, camZ, matrix, (1 - texFade) * visibility, celestialAngle);
+                }
+            }
         }
-
-        // Render planet with layered effects (Map + Clouds + Halo)
-        renderPlanet(PLANET_TEXTURE_OBJ_LAST, camX, camY, camZ, matrix, texFade * visibility, celestialAngle);
-        renderPlanet(PLANET_TEXTURE_OBJ, camX, camY, camZ, matrix, (1 - texFade) * visibility, celestialAngle);
         poseStack.popPose();
     }
 
@@ -497,23 +501,6 @@ public class SkyHandler {
                 int r = unpacked[1];
                 int g = unpacked[2];
                 int b = unpacked[3];
-
-                if (!flags.contains(ColorFlags.OCEAN)) {
-                    // Landmass variations (Desert, Savanna, Pine Forest/Taiga)
-                    float temp = noiseGen.sample(vx * 0.08f, vy * 0.08f);
-                    float moisture = noiseGen.sample(vx * 0.08f + 50f, vy * 0.08f + 50f);
-                    
-                    if (temp > 0.62f && moisture < 0.38f) {
-                        // Desert: sandy golden-yellow
-                        r = 230; g = 198; b = 115;
-                    } else if (temp > 0.55f && moisture >= 0.38f && moisture < 0.58f) {
-                        // Savanna: dry yellow-green
-                        r = 168; g = 175; b = 90;
-                    } else if (temp < 0.38f) {
-                        // Taiga/Tundra: dark pine green
-                        r = 45; g = 90; b = 75;
-                    }
-                }
 
                 // Dynamic 3D pixel-art coastline shading
                 if (flags.contains(ColorFlags.OCEAN)) {
