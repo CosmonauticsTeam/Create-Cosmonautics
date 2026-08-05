@@ -34,6 +34,7 @@ public class Commands {
     public static class DimensionCommand {
         public static void register(CommandDispatcher<CommandSourceStack> dispatcher){
             dispatcher.register(net.minecraft.commands.Commands.literal("sable")
+                .requires(source -> source.hasPermission(2))
                 .then(net.minecraft.commands.Commands.literal("dimension_set")
                 .then(net.minecraft.commands.Commands.argument("sub_level", SubLevelArgumentType.subLevels())
                 .then(net.minecraft.commands.Commands.argument("dimension", DimensionArgument.dimension())
