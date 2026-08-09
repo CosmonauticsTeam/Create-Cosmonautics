@@ -380,11 +380,14 @@ public final class DeepSpaceHandler {
         // TODO level time is fixed in deep space, figure out a better solution. Position in absolute frame, then have sol moving in the absolute frame?
         float celestialAngle = mc.level.getTimeOfDay(deltaTick);
         boolean isOverworld = mc.level.dimension() == net.minecraft.world.level.Level.OVERWORLD;
-        float spaceVis = isOverworld ? mc.level.getStarBrightness(deltaTick) : 1.0f;
-        if (RocketConfig.CLIENT.enableCustomSky.get()) {
-            SkyHandler.renderCosmicNebula(poseStack, camera, celestialAngle, spaceVis);
-            SkyHandler.renderSpaceStars(poseStack, spaceVis, camera, celestialAngle);
+        float spaceVis = 1.0f;
+        if (isOverworld) {
+            double camY = camera.getPosition().y + dev.devce.rocketnautics.SkyDataHandler.getHeightOffsetForLevel(mc.level.dimension());
+            float altitudeVis = (float) Mth.clamp((camY - 1000.0) / 500.0, 0.0, 1.0);
+            spaceVis = Math.max(mc.level.getStarBrightness(deltaTick), altitudeVis);
         }
+        SkyHandler.renderCosmicNebula(poseStack, camera, celestialAngle, spaceVis);
+        SkyHandler.renderSpaceStars(poseStack, spaceVis, camera, celestialAngle);
 
         // 2. Ensure star plasma texture is ready ONCE before iterating planets (avoid per-planet overhead)
         SkyHandler.ensureStarPlasmaTexture();
@@ -409,9 +412,11 @@ public final class DeepSpaceHandler {
                     return Pair.of(planetPos, planet);
                 })
                 .sorted(Comparator.comparingDouble(p -> -p.left().getNormSq())).iterator(); // sort descending, we want to render furthest away first.
+        boolean isDeepSpace = DeepSpaceHelper.isDeepSpace(mc.level);
         while (iter.hasNext()) {
             Pair<Vector3D, CubePlanet> planet = iter.next();
             if (planet.right() == exclude) continue;
+            if (!isDeepSpace && !RocketConfig.CLIENT.enableCustomSky.get()) continue;
             poseStack.pushPose();
             if (renderPlanet(planet.right(), planet.left(), poseStack, renderDate, celestialAngle, partialTick)) {
                 if (!AWAITING_SERVER.put(planet.right().id(), true)) {

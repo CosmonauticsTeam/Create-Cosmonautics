@@ -93,40 +93,34 @@ public class SkyHandler {
         // enableCustomSky toggle — that flag only controls our extra overlays (HD stars + planet quad).
         DeepSpaceHandler.renderUniverseForLevel(level, camera.getPosition(), event.getPoseStack(), event.getPartialTick().getGameTimeDeltaTicks(), event.getPartialTick().getGameTimeDeltaPartialTick(true), camera);
 
-        // The rest (custom HD stars + planet overlay) is gated by the enableCustomSky toggle.
-        if (RocketConfig.CLIENT.enableCustomSky.get()) {
-            double camY = camera.getPosition().y + SkyDataHandler.getHeightOffsetForLevel(level.dimension());
-            if (camY >= 1000.0) {
-                // Determine visibility based on altitude
-                float visibility = (float) Mth.clamp((camY - 1000.0) / 500.0, 0.0, 1.0);
-                if (visibility > 0) {
-                    float celestialAngle = level.getTimeOfDay(event.getPartialTick().getGameTimeDeltaTicks());
+        double camY = camera.getPosition().y + SkyDataHandler.getHeightOffsetForLevel(level.dimension());
+        if (camY >= 1000.0) {
+            // Determine visibility based on altitude
+            float visibility = (float) Mth.clamp((camY - 1000.0) / 500.0, 0.0, 1.0);
+            if (visibility > 0) {
+                float celestialAngle = level.getTimeOfDay(event.getPartialTick().getGameTimeDeltaTicks());
 
-                    // Render custom high-fidelity space stars rotating naturally with the camera!
-                    renderSpaceStars(poseStack, visibility, camera, celestialAngle);
+                Matrix4f matrix = poseStack.last().pose();
 
-                    Matrix4f matrix = poseStack.last().pose();
+                double camX = camera.getPosition().x;
+                double camZ = camera.getPosition().z;
 
-                    double camX = camera.getPosition().x;
-                    double camZ = camera.getPosition().z;
+                // Ensure all procedural textures are initialized
+                ensurePlanetTexObj();
+                ensureCloudTexture();
+                ensureHaloTexture();
 
-                    // Ensure all procedural textures are initialized
-                    ensurePlanetTexObj();
-                    ensureCloudTexture();
-                    ensureHaloTexture();
+                // Request map updates from server if player moved too far
+                updatePlanetTex(camX, camY, camZ);
 
-                    // Request map updates from server if player moved too far
-                    updatePlanetTex(camX, camY, camZ);
-
-                    // Cross-fade between old and new planet map textures
-                    if (texFade > 0) {
-                        texFade = Math.max(0, texFade - event.getPartialTick().getRealtimeDeltaTicks() / 20);
-                    }
-
-                    // Render planet with layered effects (Map + Clouds + Halo)
-                    renderPlanet(PLANET_TEXTURE_OBJ_LAST, camX, camY, camZ, matrix, texFade * visibility, celestialAngle);
-                    renderPlanet(PLANET_TEXTURE_OBJ, camX, camY, camZ, matrix, (1 - texFade) * visibility, celestialAngle);
+                // Cross-fade between old and new planet map textures
+                if (texFade > 0) {
+                    texFade = Math.max(0, texFade - event.getPartialTick().getRealtimeDeltaTicks() / 20);
                 }
+
+                // Render planet with layered effects (Map + Clouds + Halo)
+                renderPlanet(PLANET_TEXTURE_OBJ_LAST, camX, camY, camZ, matrix, texFade * visibility, celestialAngle);
+                renderPlanet(PLANET_TEXTURE_OBJ, camX, camY, camZ, matrix, (1 - texFade) * visibility, celestialAngle);
             }
         }
         poseStack.popPose();
@@ -1691,12 +1685,25 @@ public class SkyHandler {
         
         Matrix4f matrix = poseStack.last().pose();
         float radius = SKYBOX_DISTANCE;
-                // --- Draw Stars (Constellation lines are completely removed so players can discover them organically!) ---
+
+        // Rotate lookVec into the rotated starfield space (inverse rotation of celestialAngle around X-axis)
+        float invAngle = -(celestialAngle * 360.0f) * ((float)Math.PI / 180.0f);
+        float cosA = (float)Math.cos(invAngle);
+        float sinA = (float)Math.sin(invAngle);
+        float lx = lookVec.x();
+        float ly = lookVec.y() * cosA - lookVec.z() * sinA;
+        float lz = lookVec.y() * sinA + lookVec.z() * cosA;
+
+        // --- Draw Stars (Constellation lines are completely removed so players can discover them organically!) ---
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
         boolean mainBufferHasVertices = false;
         
         for (SpaceStar star : SPACE_STARS) {
+            // Frustum culling: check if the star is within the camera's field of view (approx 140-degree cone)
+            float starDot = lx * star.x + ly * star.y + lz * star.z;
+            if (starDot < 0.35f) continue;
+
             // Camera-relative coordinates — no precision loss!
             float px = star.x * radius;
             float py = star.y * radius;

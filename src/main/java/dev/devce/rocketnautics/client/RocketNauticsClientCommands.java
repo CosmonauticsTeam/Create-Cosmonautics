@@ -41,6 +41,7 @@ public class RocketNauticsClientCommands {
                 )
             )
             .then(Commands.literal("limit_world_border")
+                .requires(source -> source.hasPermission(2))
                 .executes(context -> {
                     net.neoforged.neoforge.network.PacketDistributor.sendToServer(new dev.devce.rocketnautics.network.LimitWorldBorderPayload());
                     return 1;

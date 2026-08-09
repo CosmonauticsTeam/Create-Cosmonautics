@@ -141,7 +141,7 @@ public class RocketConfig {
                     .define("enableDynamicRenderDistance", true);
             enableCustomSky = builder
                     .comment("Enable custom sky rendering (nebula, stars, planet beneath, custom sun/moon etc). Disable to return to standard Minecraft sky.")
-                    .define("enableCustomSky", true);
+                    .define("enableCustomSky", false);
             enablePlumeMerging = builder
                     .comment("Enable merging of adjacent thruster plumes into a single larger plume cluster")
                     .define("enablePlumeMerging", true);

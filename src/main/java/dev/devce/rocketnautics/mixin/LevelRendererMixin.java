@@ -41,11 +41,10 @@ public abstract class LevelRendererMixin implements StarBufferExposer {
     private float rocketnautics$boostStarBrightness(ClientLevel instance, float partial, Operation<Float> original) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return original.call(instance, partial);
-        if (!RocketConfig.CLIENT.enableCustomSky.get()) return original.call(instance, partial);
 
         double y = mc.player.getY() + SkyDataHandler.getHeightOffsetForLevel(mc.level.dimension());
-        if (y > 1000.0 || instance.dimension() == net.minecraft.world.level.Level.OVERWORLD) {
-            // Disable vanilla stars above 1000m or in Overworld to let our beautiful custom HD stars render
+        if (y > 1000.0) {
+            // Disable vanilla stars above 1000m to let our beautiful custom HD stars render
             return 0.0f;
         }
         return original.call(instance, partial);
@@ -57,12 +56,16 @@ public abstract class LevelRendererMixin implements StarBufferExposer {
             original.call(textureUnit, textureLocation);
             return;
         }
-        if (textureLocation != null) {
-            String path = textureLocation.getPath();
-            if (path.equals("textures/environment/sun.png") || path.equals("textures/environment/moon_phases.png")) {
-                // Bind a transparent empty texture instead of sun/moon!
-                original.call(textureUnit, dev.devce.rocketnautics.RocketNauticsClient.EMPTY_TEXTURE);
-                return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            double y = mc.player.getY() + SkyDataHandler.getHeightOffsetForLevel(mc.level.dimension());
+            if (y > 1000.0 && textureLocation != null) {
+                String path = textureLocation.getPath();
+                if (path.equals("textures/environment/sun.png") || path.equals("textures/environment/moon_phases.png")) {
+                    // Bind a transparent empty texture instead of sun/moon!
+                    original.call(textureUnit, dev.devce.rocketnautics.RocketNauticsClient.EMPTY_TEXTURE);
+                    return;
+                }
             }
         }
         original.call(textureUnit, textureLocation);
@@ -71,7 +74,6 @@ public abstract class LevelRendererMixin implements StarBufferExposer {
     @WrapOperation(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientLevel;getSkyColor(Lnet/minecraft/world/phys/Vec3;F)Lnet/minecraft/world/phys/Vec3;"))
     private Vec3 rocketnautics$forceBlackSky(ClientLevel instance, Vec3 pos, float partialTick, Operation<Vec3> original) {
         Vec3 color = original.call(instance, pos, partialTick);
-        if (!RocketConfig.CLIENT.enableCustomSky.get()) return color;
 
         double y = pos.y + SkyDataHandler.getHeightOffsetForLevel(Minecraft.getInstance().level.dimension());
         if (y > 1000.0) {
