@@ -2,7 +2,7 @@
   "block.rocketnautics.rocket_thruster": "火箭发动机",
   "block.rocketnautics.rocket_thruster.funny": "把燃料化作轰鸣与希望。性能拉满，生存堪忧。",
   "block.rocketnautics.rocket_thruster.summary": "液体燃料火箭的核心装置。需持续供给推进剂（熔岩）以产生推力，推力大小由泵的转速调控。警告：喷射尾焰温度极高！",
-  "block.rocketnautics.creative_thruster": "创造模式火箭发动机",
+  "block.rocketnautics.creative_thruster": "创造火箭发动机",
   "block.rocketnautics.creative_thruster.funny": "无限能量，零燃料消耗，对热力学定律的绝对蔑视。法务部门至今还在尖叫。",
   "block.rocketnautics.creative_thruster.summary": "创造模式专属火箭发动机。无需燃料即可产生高达 _10,000 N_ 的纯净推力。输出与输入的 _红石信号强度_ 成正比。",
   "block.rocketnautics.vector_thruster": "矢量火箭发动机",
