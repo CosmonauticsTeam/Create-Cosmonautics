@@ -106,6 +106,44 @@ public class RocketTabs {
             };
         }
 
+        private static final List<String> RESOURCE_TAB_ORDER = List.of(
+            "credits_book",
+            "music_disc_space",
+            "space_helmet",
+            "jetpack",
+            "copper_leg_thrusters",
+            "copper_anchor_boots",
+            "sputnik",
+            "combustion_engine_controller",
+            "launch_pad_core",
+            "combustion_engine",
+            "combustion_engine_valve",
+            "combustion_engine_shaft",
+            "rocket_thruster",
+            "vector_thruster",
+            "booster_thruster",
+            "creative_thruster",
+            "thruster_valve",
+            "copper_nozzle",
+            "titanium_nozzle",
+            "separator_block",
+            "separator_charge_block",
+            "separator_shaft_block",
+            "engine_pipes_expander",
+            "expandable_pipe",
+            "hose_anchor",
+            "titanium_casing",
+            "raw_titanium",
+            "crushed_raw_titanium",
+            "titanium_ingot",
+            "titanium_nugget",
+            "titanium_sheet",
+            "titanium_alloy",
+            "titanium_alloy_nugget",
+            "titanium_alloy_sheet",
+            "titanium_block"
+        );
+
         @Override
         public void accept(@NotNull CreativeModeTab.ItemDisplayParameters parameters, @NotNull CreativeModeTab.Output output) {
             Predicate<Item> exclusionPredicate = makeExclusionPredicate();
@@ -115,6 +153,12 @@ public class RocketTabs {
             List<Item> items = new LinkedList<>();
             items.addAll(collectBlocks(exclusionPredicate));
             items.addAll(collectItems(exclusionPredicate));
+
+            items.sort(java.util.Comparator.comparingInt(item -> {
+                String path = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).getPath();
+                int idx = RESOURCE_TAB_ORDER.indexOf(path);
+                return idx != -1 ? idx : Integer.MAX_VALUE;
+            }));
 
             outputAll(output, items, stackFunc, visibilityFunc);
         }
