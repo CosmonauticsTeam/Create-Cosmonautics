@@ -136,7 +136,7 @@
   "block.rocketnautics.engine_pipes.summary": "发动机结构与功能管路组件，决定热力循环类型（闭式、开式、全流量、膨胀）。使用扳手即可切换循环模式。",
   "block.rocketnautics.hose_anchor": "管路固定接头",
   "block.rocketnautics.hose_anchor.funny": "可通过柔性软管连接两处相隔较远的设备。适合嫌弃硬质金属管道过于死板、走线受限的工况。",
-  "block.rocketnautics.hose_anchor.summary": "用于借助柔性软管连接两处远距离流体管路。放置两个接头后，使用流体软管道具将二者相连。连接完成后流体液位自动平衡，压力双向互通。",
+  "block.rocketnautics.hose_anchor.summary": "用于借助柔性软管连接两处远距离流体管路。放置两个接头后，使用流体软管将二者相连。连接完成后流体液位自动平衡，压力双向互通。",
   "item.rocketnautics.fluid_hose": "流体软管",
   "item.rocketnautics.fluid_hose.funny": "一根巨型超耐用吸管，只不过里面灌满火箭燃料或是熔岩。切勿食用，哪怕闻着有草莓味也不行。",
   "item.rocketnautics.fluid_hose.summary": "用于连接两个管路固定接头。先点击第一个接头，再点击第二个，即可生成实体柔性流体通路。按住 Shift 键点击空中区域可拆除软管。",
