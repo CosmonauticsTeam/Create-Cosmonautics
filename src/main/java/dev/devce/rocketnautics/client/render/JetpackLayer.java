@@ -24,7 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import java.util.IdentityHashMap;
+import java.util.HashMap;
 import java.util.Map;
 
 public class JetpackLayer<T extends AbstractClientPlayer, M extends PlayerModel<T>> extends RenderLayer<T, M> {
@@ -70,7 +70,7 @@ public class JetpackLayer<T extends AbstractClientPlayer, M extends PlayerModel<
 
         return vec;
     }
-    private static final Map<Integer, Map<JetpackModelPart, Matrix4f>> MODEL_PART_TRANSFORMS = new IdentityHashMap<>();
+    private static final Map<Integer, Map<JetpackModelPart, Matrix4f>> MODEL_PART_TRANSFORMS = new HashMap<>();
 
     @Override
     public void render(PoseStack poseStack, MultiBufferSource buffer, int packedLight, T player, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch) {
@@ -88,7 +88,7 @@ public class JetpackLayer<T extends AbstractClientPlayer, M extends PlayerModel<
         playerModel.body.translateAndRotate(poseStack);
 
         MODEL_PART_TRANSFORMS
-                .computeIfAbsent(player.getId(), p -> new IdentityHashMap<>())
+                .computeIfAbsent(player.getId(), p -> new HashMap<>())
                 .put(JetpackModelPart.BODY, new Matrix4f(poseStack.last().pose()));
 
         if (chestStack.getItem() instanceof JetpackItem)
@@ -109,7 +109,7 @@ public class JetpackLayer<T extends AbstractClientPlayer, M extends PlayerModel<
         playerModel.leftArm.translateAndRotate(poseStack);
 
         MODEL_PART_TRANSFORMS
-                .computeIfAbsent(player.getId(), p -> new IdentityHashMap<>())
+                .computeIfAbsent(player.getId(), p -> new HashMap<>())
                 .put(JetpackModelPart.LEFT_ARM, new Matrix4f(poseStack.last().pose()));
 
         if (chestStack.getItem() instanceof JetpackItem)
@@ -130,7 +130,7 @@ public class JetpackLayer<T extends AbstractClientPlayer, M extends PlayerModel<
         playerModel.rightArm.translateAndRotate(poseStack);
 
         MODEL_PART_TRANSFORMS
-                .computeIfAbsent(player.getId(), p -> new IdentityHashMap<>())
+                .computeIfAbsent(player.getId(), p -> new HashMap<>())
                 .put(JetpackModelPart.RIGHT_ARM, new Matrix4f(poseStack.last().pose()));
 
         if (chestStack.getItem() instanceof JetpackItem)
@@ -151,7 +151,7 @@ public class JetpackLayer<T extends AbstractClientPlayer, M extends PlayerModel<
         playerModel.leftLeg.translateAndRotate(poseStack);
 
         MODEL_PART_TRANSFORMS
-                .computeIfAbsent(player.getId(), p -> new IdentityHashMap<>())
+                .computeIfAbsent(player.getId(), p -> new HashMap<>())
                 .put(JetpackModelPart.LEFT_LEG, new Matrix4f(poseStack.last().pose()));
 
         if (legStack.getItem() instanceof LegThrustersItem)
@@ -172,7 +172,7 @@ public class JetpackLayer<T extends AbstractClientPlayer, M extends PlayerModel<
         playerModel.rightLeg.translateAndRotate(poseStack);
 
         MODEL_PART_TRANSFORMS
-                .computeIfAbsent(player.getId(), p -> new IdentityHashMap<>())
+                .computeIfAbsent(player.getId(), p -> new HashMap<>())
                 .put(JetpackModelPart.RIGHT_LEG, new Matrix4f(poseStack.last().pose()));
 
         if (legStack.getItem() instanceof LegThrustersItem)

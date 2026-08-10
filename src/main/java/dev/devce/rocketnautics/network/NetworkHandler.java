@@ -167,6 +167,7 @@ public class NetworkHandler {
                     new FreeMotionSyncPayload(
                             player.getId(),
                             fme.is6DOFEnabled(),
+                            fme.isAmbulant(),
                             payload.orientation(),
                             FreeMotionHandler.getThrustStrength(player.getId())
                     )
@@ -180,6 +181,7 @@ public class NetworkHandler {
         if (entity instanceof FreeMotionEntity fme) {
             fme.setOrientation(payload.orientation());
             fme.set6DOFEnabled(payload.freeMotionEnabled());
+            fme.setAmbulant(payload.ambulant());
             FreeMotionHandler.putThrustStrength(payload.entityId(), payload.thrustStrength());
         }
     }
