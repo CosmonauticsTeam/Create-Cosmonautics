@@ -141,6 +141,8 @@
   "item.rocketnautics.fluid_hose.funny": "一根巨型超耐用吸管，只不过里面灌满火箭燃料或是熔岩。切勿食用，哪怕闻着有草莓味也不行。",
   "item.rocketnautics.fluid_hose.summary": "用于连接两个管路固定接头。先点击第一个接头，再点击第二个，即可生成实体柔性流体通路。按住 Shift 键点击空中区域可拆除软管。",
   "key.rocketnautics.toggle_jetpack": "切换喷气背包模式",
+  "key.rocketnautics.jetpack_roll_left": "喷气背包 向左滚转",
+  "key.rocketnautics.toggle_roll_right": "喷气背包 向右滚转",
   "rocketnautics.jetpack.enabled": "[喷气系统上线]",
   "rocketnautics.jetpack.disabled": "[喷气系统离线]",
   "key.rocketnautics.toggle_dampeners": "开关惯性阻尼器",

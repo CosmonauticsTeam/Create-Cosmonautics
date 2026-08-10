@@ -1,7 +1,6 @@
 package dev.devce.rocketnautics.content.items;
 
 import com.simibubi.create.content.equipment.armor.DivingBootsItem;
-import dev.devce.rocketnautics.RocketNautics;
 import dev.ryanhcode.sable.Sable;
 import net.createmod.catnip.nbt.NBTHelper;
 import net.minecraft.core.BlockPos;
@@ -9,13 +8,10 @@ import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 public class AnchorBootsItem extends DivingBootsItem {
@@ -64,8 +60,7 @@ public class AnchorBootsItem extends DivingBootsItem {
         if (entity.getY() - y > 0.2)
             return false;
         if (entity instanceof Player playerEntity) {
-            if (playerEntity.getAbilities().flying)
-                return false;
+            return !playerEntity.getAbilities().flying;
         }
         return true;
     }

@@ -22,7 +22,6 @@ import java.util.List;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin {
-
     @Shadow
     public abstract Level level();
 
@@ -46,7 +45,7 @@ public abstract class EntityMixin {
     }
 
     @Inject(method = "collectColliders", at = @At(value = "RETURN", shift = At.Shift.BEFORE))
-    private static void addDeepSpaceCollider(Entity p_344804_, Level p_345583_, List<VoxelShape> p_345198_, AABB p_345837_,
+    private static void rocketnautics$addDeepSpaceCollider(Entity p_344804_, Level p_345583_, List<VoxelShape> p_345198_, AABB p_345837_,
                                              CallbackInfoReturnable<List<VoxelShape>> cir, @Local ImmutableList.Builder<VoxelShape> builder) {
         if (p_344804_ == null || !DeepSpaceHelper.isDeepSpace(p_345583_)) return;
         builder.add(DeepSpaceData.getColliderForPosition(p_344804_.position()));

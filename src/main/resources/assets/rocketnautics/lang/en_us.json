@@ -147,6 +147,8 @@
   "item.rocketnautics.fluid_hose.funny": "A giant, highly durable licorice whip, except filled with rocket fuel or lava. _Do not eat_, even if it smells like strawberry.",
   "item.rocketnautics.fluid_hose.summary": "Used to connect two _Hose Anchors_. Click the first anchor, then the second to create a flexible, physical fluid connection. Can be cleared by _Shift-clicking_ in the air.",
   "key.rocketnautics.toggle_jetpack": "Toggle Jetpack Mode",
+  "key.rocketnautics.jetpack_roll_left": "Jetpack roll left",
+  "key.rocketnautics.toggle_roll_right": "Jetpack roll right",
   "rocketnautics.jetpack.enabled": "Jetpack Enabled",
   "rocketnautics.jetpack.disabled": "Jetpack Disabled",
   "key.rocketnautics.toggle_dampeners": "Toggle Inertial Dampeners",

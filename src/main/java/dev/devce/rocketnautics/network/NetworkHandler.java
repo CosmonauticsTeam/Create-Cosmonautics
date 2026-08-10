@@ -3,8 +3,10 @@ package dev.devce.rocketnautics.network;
 import com.mojang.datafixers.util.Either;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.SkyDataHandler;
+import dev.devce.rocketnautics.api.FreeMotionEntity;
 import dev.devce.rocketnautics.api.orbit.ColorPalette;
 import dev.devce.rocketnautics.client.DeepSpaceHandler;
+import dev.devce.rocketnautics.client.FreeMotionHandler;
 import dev.devce.rocketnautics.client.SkyHandler;
 import dev.devce.rocketnautics.content.items.JetpackItem;
 import dev.devce.rocketnautics.content.items.LegThrustersItem;
@@ -12,25 +14,42 @@ import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.DeepSpaceTextureDefinition;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
+import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
-
-import net.minecraft.core.Direction;
-import net.minecraft.world.item.ItemStack;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class NetworkHandler {
-
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(RocketNautics.MODID).versioned("1.0");
-        
+
+        registrar.playToClient(
+            FreeMotionSetupPayload.TYPE,
+            FreeMotionSetupPayload.CODEC,
+            (payload, context) -> context.enqueueWork(() -> handleFreeMotionSetup(context, payload))
+        );
+
+        registrar.playToServer(
+            FreeMotionPayload.TYPE,
+            FreeMotionPayload.CODEC,
+            (payload, context) -> context.enqueueWork(() -> handleFreeMotionMovement(context, payload))
+        );
+
+        registrar.playToClient(
+            FreeMotionSyncPayload.TYPE,
+            FreeMotionSyncPayload.CODEC,
+            (payload, context) -> context.enqueueWork(() -> handleFreeMotionClientSync(payload))
+        );
+
         registrar.playToServer(
             JetpackTogglePayload.TYPE,
             JetpackTogglePayload.CODEC,
@@ -121,6 +140,48 @@ public class NetworkHandler {
                 (payload, context) -> context.enqueueWork(() -> handleLimitWorldBorder(context.player()))
         );
 
+    }
+
+    private static void handleFreeMotionSetup(IPayloadContext context, FreeMotionSetupPayload payload) {
+        if (context.player() instanceof FreeMotionEntity fme) {
+            fme.set6DOFEnabled(payload.is6DOFEnabled());
+            fme.setAmbulant(payload.isAmbulant());
+            fme.setMovementAcceleration(payload.movementAcceleration());
+            fme.setDampenerForce(payload.dampenerForce());
+        }
+    }
+
+    private static void handleFreeMotionMovement(IPayloadContext context, FreeMotionPayload payload) {
+        ServerPlayer player = (ServerPlayer) context.player();
+
+        if (!(player instanceof FreeMotionEntity fme)) return;
+
+        fme.setOrientation(payload.orientation());
+        player.setDeltaMovement(new Vec3(payload.deltaMovement()));
+
+        for (ServerPlayer target : player.serverLevel().players()) {
+            if (target == player) continue;
+
+            PacketDistributor.sendToPlayer(
+                    target,
+                    new FreeMotionSyncPayload(
+                            player.getId(),
+                            fme.is6DOFEnabled(),
+                            payload.orientation(),
+                            FreeMotionHandler.getThrustStrength(player.getId())
+                    )
+            );
+        }
+    }
+
+    private static void handleFreeMotionClientSync(FreeMotionSyncPayload payload) {
+        Entity entity = Minecraft.getInstance().level.getEntity(payload.entityId());
+
+        if (entity instanceof FreeMotionEntity fme) {
+            fme.setOrientation(payload.orientation());
+            fme.set6DOFEnabled(payload.freeMotionEnabled());
+            FreeMotionHandler.putThrustStrength(payload.entityId(), payload.thrustStrength());
+        }
     }
 
     private static void handleLimitWorldBorder(net.minecraft.world.entity.player.Player player) {
@@ -215,8 +276,10 @@ public class NetworkHandler {
                 Either<ColorPalette, ResourceLocation> send;
                 if (planet == null) {
                     send = Either.right(ResourceLocation.withDefaultNamespace("missingno"));
-                } else if (planet.textureDefinition() instanceof DeepSpaceTextureDefinition.ResourceLocationDriven resloc) {
-                    send = Either.right(resloc.texture());
+                } else if (planet.textureDefinition() instanceof DeepSpaceTextureDefinition.ResourceLocationDriven(
+                        ResourceLocation texture
+                )) {
+                    send = Either.right(texture);
                 } else {
                     send = Either.left(planet.getRenderData(level.getServer(), powerSize));
                 }

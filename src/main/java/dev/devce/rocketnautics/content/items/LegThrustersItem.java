@@ -1,12 +1,9 @@
 package dev.devce.rocketnautics.content.items;
 
-import com.google.common.base.Suppliers;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Multimap;
 import com.simibubi.create.content.equipment.armor.BacktankUtil;
 import com.simibubi.create.content.equipment.armor.BaseArmorItem;
 import dev.devce.rocketnautics.RocketConfig;
-import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.api.FreeMotionEntity;
 import dev.devce.rocketnautics.api.orbit.AtmosphereFlags;
 import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.devce.rocketnautics.registry.RocketDataComponents;
@@ -15,7 +12,6 @@ import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.EntityMovementExtension;
 import dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.LivingEntityMovementExtension;
 import dev.ryanhcode.sable.sublevel.SubLevel;
-import net.createmod.catnip.nbt.NBTHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
@@ -25,33 +21,30 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.Attribute;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.NeoForgeMod;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
-import org.joml.Vector3f;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
-import java.util.function.Supplier;
 
 @EventBusSubscriber
 public class LegThrustersItem extends BaseArmorItem {
 
-    public static final AttributeModifier flightAttributeModifier =
-            new AttributeModifier(RocketNautics.path("flight_attribute_modifier"), 1,
-                    AttributeModifier.Operation.ADD_VALUE);
+    //TODO: give custom inv icon
 
-    private static final Supplier<Multimap<Holder<Attribute>, AttributeModifier>> flightModifier = Suppliers.memoize(() ->
-            ImmutableMultimap.of(NeoForgeMod.CREATIVE_FLIGHT, flightAttributeModifier));
+    @Override
+    public @Nullable ResourceLocation getArmorTexture(ItemStack stack, Entity entity, EquipmentSlot slot, ArmorMaterial.Layer layer, boolean innerModel) {
+        return ResourceLocation.parse(String.format(Locale.ROOT, "%s:textures/models/armor/empty.png", textureLoc.getNamespace(), textureLoc.getPath(), slot == EquipmentSlot.LEGS ? 2 : 1));
+    }
 
     public LegThrustersItem(Holder<ArmorMaterial> armorMaterial, Properties properties, ResourceLocation textureLoc) {
         super(armorMaterial, Type.LEGGINGS, properties, textureLoc);
@@ -75,7 +68,7 @@ public class LegThrustersItem extends BaseArmorItem {
                 } else {
                     player.connection.send(new ClientboundSetEntityMotionPacket(player));
                     worn.set(RocketDataComponents.DAMPENER_RELATIVE_SUBLEVEL, containing.getUniqueId());
-                    player.displayClientMessage(Component.translatable("rocketnautics.dampeners.relative").withStyle(ChatFormatting.GREEN), true);
+                    player.displayClientMessage(Component.translatable("rocketnautics.dampeners.relative").withStyle(ChatFormatting.BLUE), true);
                 }
             }
         }
@@ -98,21 +91,16 @@ public class LegThrustersItem extends BaseArmorItem {
 
     @SubscribeEvent
     public static void entityTickPre(EntityTickEvent.Pre event) {
-        if (!(event.getEntity() instanceof Player entity))
-            return;
+        if (!(event.getEntity() instanceof Player entity)) return;
+
         Level level = entity.level();
         if (level.isClientSide && !GlobalSpacePhysicsHandler.shouldDisplayTimer(entity))
             entity.getPersistentData().remove("VisualBacktankAir");
 
         List<ItemStack> backtanks = BacktankUtil.getAllWithAir(entity);
-        if (backtanks.isEmpty() && !entity.hasInfiniteMaterials()) {
-            removeAttribute(entity);
-            return;
-        }
+        if (backtanks.isEmpty() && !entity.hasInfiniteMaterials()) return;
 
-        boolean active = allowCreativeFlight(entity);
-        active |= handleInertialDamping(entity);
-
+        boolean active = handleInertialDamping(entity);
         if (!active || entity.hasInfiniteMaterials()) return;
 
         if (level.isClientSide) {
@@ -134,12 +122,16 @@ public class LegThrustersItem extends BaseArmorItem {
     }
 
     private static boolean handleInertialDamping(Player entity) {
+        if (!(entity instanceof FreeMotionEntity fme)) return false;
+
         ItemStack wornItem = getWornItem(entity);
         if (wornItem.isEmpty()) {
+            fme.setDampenerForce(0);
             return false;
         }
 
         if (!((LegThrustersItem) wornItem.getItem()).isActive(wornItem)) {
+            fme.setDampenerForce(0);
             return false;
         }
 
@@ -149,23 +141,8 @@ public class LegThrustersItem extends BaseArmorItem {
         if (relative != null && ((EntityMovementExtension) entity).sable$getTrackingSubLevel() != relative) {
             ((LivingEntityMovementExtension) entity).sable$getInheritedVelocity().set(relative.logicalPose().position().sub(relative.lastPose().position(), new Vector3d()));
         }
-        entity.setDeltaMovement(entity.getDeltaMovement().scale(0.9));
-        return true;
-    }
 
-    private static boolean allowCreativeFlight(Player entity) {
-        if (!isWornBy(entity)) {
-            removeAttribute(entity);
-            return false;
-        }
-
-        addAttribute(entity);
-
-        if (!entity.getAbilities().flying)
-            return false;
-        // TODO advancements
-//        if (entity instanceof ServerPlayer sp)
-//            CRAdvancements.COPPER_THRUSTER.awardTo(sp);
+        fme.setDampenerForce(0.8f);
         return true;
     }
 
@@ -191,27 +168,6 @@ public class LegThrustersItem extends BaseArmorItem {
         if (((LegThrustersItem) worn.getItem()).isActive(worn)) {
             return true;
         }
-
-        if (!entity.getAbilities().flying)
-            return false;
         return true;
-    }
-
-    private static void addAttribute(Player entity) {
-        if (entity.getPersistentData().contains("FlightLeggings")) {
-            NBTHelper.putMarker(entity.getPersistentData(), "FlightLeggings");
-        }
-        if (!entity.getAttributes().hasModifier(NeoForgeMod.CREATIVE_FLIGHT, flightAttributeModifier.id())) {
-            entity.getAttributes().addTransientAttributeModifiers(flightModifier.get());
-        }
-    }
-
-    private static void removeAttribute(Player entity) {
-        if (!entity.getPersistentData().contains("FlightLeggings")) {
-            entity.getPersistentData().remove("FlightLeggings");
-        }
-        if (entity.getAttributes().hasModifier(NeoForgeMod.CREATIVE_FLIGHT, flightAttributeModifier.id())) {
-            entity.getAttributes().removeAttributeModifiers(flightModifier.get());
-        }
     }
 }

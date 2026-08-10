@@ -56,6 +56,8 @@ repositories {
     }
 }
 
+def devUsername = "Dev${new Random().nextInt(10000)}"
+
 def getCalVer() {
     try {
         def process = new ProcessBuilder('git', 'rev-list', '--count', 'HEAD')
@@ -87,6 +89,7 @@ neoForge {
     runs {
         client {
             client()
+            programArguments.addAll '--username', devUsername
             systemProperty 'neoforge.enabledGameTestNamespaces', 'rocketnautics'
             additionalRuntimeClasspathConfiguration.extendsFrom(configurations.shade)
         }

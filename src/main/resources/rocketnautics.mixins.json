@@ -13,7 +13,6 @@
     "EntityMixin",
     "HoldingSubLevelMixin",
     "LevelTimeAccessMixin",
-    "LivingEntityAccessor",
     "LivingEntityMixin",
     "PhysicsPipelineMixin",
     "RapierFixedConstraintHandleMixin",
@@ -33,7 +32,11 @@
     "ClientPacketListenerMixin",
     "GameRendererAccessor",
     "LevelRendererMixin",
-    "MinecraftMixin"
+    "MinecraftMixin",
+    "CameraMixin",
+    "PlayerRendererMixin",
+    "MouseHandlerMixin",
+    "PlayerModelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -1,14 +1,11 @@
 package dev.devce.rocketnautics.client;
 
 import dev.devce.rocketnautics.RocketConfig;
-import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.SkyDataHandler;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.ChatFormatting;
 
 public class RocketSettingsScreen extends Screen {
     private final Screen lastScreen;
@@ -125,10 +122,6 @@ public class RocketSettingsScreen extends Screen {
             builder.addSlider("Jetpack Power", RocketConfig.SERVER.jetpackThrust.get(), 0.05, 0.5, val -> {
                 RocketConfig.SERVER.jetpackThrust.set(val);
                 RocketConfig.SERVER.jetpackThrust.save();
-            });
-            builder.addSlider("Sprint Power", RocketConfig.SERVER.jetpackSprintThrust.get(), 0.1, 1.0, val -> {
-                RocketConfig.SERVER.jetpackSprintThrust.set(val);
-                RocketConfig.SERVER.jetpackSprintThrust.save();
             });
             builder.addSlider("Ignition Flow", RocketConfig.SERVER.ignitionFlow.get().doubleValue(), 1, 20, val -> {
                 RocketConfig.SERVER.ignitionFlow.set(val.intValue());

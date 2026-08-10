@@ -2,14 +2,12 @@ package dev.devce.rocketnautics.registry;
 
 import com.simibubi.create.AllTags;
 import com.simibubi.create.content.equipment.armor.AllArmorMaterials;
-import com.simibubi.create.content.equipment.armor.DivingBootsItem;
 import com.tterrag.registrate.builders.ItemBuilder;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import com.tterrag.registrate.util.nullness.NonNullFunction;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.content.items.*;
 import dev.simulated_team.simulated.registrate.SimulatedRegistrate;
-import dev.simulated_team.simulated.service.SimTabService;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -37,9 +35,8 @@ public class RocketItems {
             .model((ctx, prov) -> {})
             .register();
 
-    public static final ItemEntry<JetpackItem> JETPACK = REGISTRATE.item("jetpack", JetpackItem::new)
+    public static final ItemEntry<JetpackItem> JETPACK = REGISTRATE.item("jetpack", p -> new JetpackItem(p, RocketNautics.path("copper_diving")))
             .properties(p -> p.stacksTo(1).fireResistant())
-            .transform(noGeneratedModel())
             .tag(ItemTags.CHEST_ARMOR)
             .tag(AllTags.AllItemTags.PRESSURIZED_AIR_SOURCES.tag)
             .register();

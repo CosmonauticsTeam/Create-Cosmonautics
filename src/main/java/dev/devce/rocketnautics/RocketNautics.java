@@ -7,11 +7,7 @@ import com.simibubi.create.foundation.item.TooltipHelper;
 import com.simibubi.create.foundation.item.TooltipModifier;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
 import dev.devce.rocketnautics.compat.computercraft.ComputerCraftCompat;
-import dev.devce.rocketnautics.content.commands.GravityCommand;
-import dev.devce.rocketnautics.content.commands.JetpackCommand;
-import dev.devce.rocketnautics.content.commands.OrbitCommand;
-import dev.devce.rocketnautics.content.commands.ShipCopyPasteCommand;
-import dev.devce.rocketnautics.content.commands.TimescaleCommand;
+import dev.devce.rocketnautics.content.commands.*;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseLoader;
 import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.devce.rocketnautics.data.RocketDatagen;
@@ -64,8 +60,8 @@ public class RocketNautics {
         LOGGER.info("Initializing Cosmonautics!");
 
         // Register mod configurations
-        modContainer.registerConfig(ModConfig.Type.SERVER, (net.neoforged.fml.config.IConfigSpec) RocketConfig.SERVER_SPEC);
-        modContainer.registerConfig(ModConfig.Type.CLIENT, (net.neoforged.fml.config.IConfigSpec) RocketConfig.CLIENT_SPEC);
+        modContainer.registerConfig(ModConfig.Type.SERVER, RocketConfig.SERVER_SPEC);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, RocketConfig.CLIENT_SPEC);
 
         RocketDensityFunctions.register(modEventBus);
         RocketSurfaceRules.register(modEventBus);

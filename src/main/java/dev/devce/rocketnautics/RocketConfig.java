@@ -32,8 +32,6 @@ public class RocketConfig {
         public final ModConfigSpec.IntValue maxFuelConsumption;
         public final ModConfigSpec.DoubleValue jetpackThrust;
         public final ModConfigSpec.IntValue jetpackThrustConsumption;
-        public final ModConfigSpec.DoubleValue jetpackSprintThrust;
-        public final ModConfigSpec.IntValue jetpackSprintThrustConsumption;
         public final ModConfigSpec.IntValue legThrusterBaseConsumption;
         public final ModConfigSpec.IntValue ignitionFlow;
         public final ModConfigSpec.IntValue steamMinFlow;
@@ -71,17 +69,11 @@ public class RocketConfig {
 
             builder.push("Jetpack");
             jetpackThrust = builder
-                    .comment("Standard thrust power of the jetpack")
-                    .defineInRange("jetpackThrust", 0.15, 0.01, 1.0);
+                    .comment("Thrust power of the jetpack")
+                    .defineInRange("jetpackThrust", 0.1, 0.05, 0.5);
             jetpackThrustConsumption = builder
-                    .comment("Standard consumption per tick of jetpack fuel")
-                    .defineInRange("jetpackThrustConsumption", 5, 1, 100);
-            jetpackSprintThrust = builder
-                    .comment("Thrust power of the jetpack while sprinting")
-                    .defineInRange("jetpackSprintThrust", 0.35, 0.01, 2.0);
-            jetpackSprintThrustConsumption = builder
-                    .comment("Consumption per tick of jetpack fuel while sprinting")
-                    .defineInRange("jetpackSprintThrustConsumption", 15, 1, 100);
+                    .comment("Maximum consumption per tick of jetpack fuel")
+                    .defineInRange("jetpackThrustConsumption", 10, 1, 100);
             legThrusterBaseConsumption = builder
                     .comment("Base consumption per tick of pressurized air while leg thrusters are active")
                     .defineInRange("legThrusterBaseConsumption", 2, 1, 100);

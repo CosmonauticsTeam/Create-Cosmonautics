@@ -132,6 +132,8 @@
   "rocketnautics.goggles.hose.role.input": "Вход",
   "rocketnautics.goggles.hose.contents": "Содержимое",
   "key.rocketnautics.toggle_jetpack": "Переключить режим джетпака",
+  "key.rocketnautics.jetpack_roll_left": "джетпак кати́ться нале́во",
+  "key.rocketnautics.toggle_roll_right": "джетпак кати́ться направо",
   "key.categories.rocketnautics": "Cosmonautics",
   "key.rocketnautics.toggle_dampeners": "Переключить инерционные гасители",
   "key.rocketnautics.toggle_alignment": "Переключить помощник выравнивания по орбите шлема",

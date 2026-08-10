@@ -1,16 +1,15 @@
 package dev.devce.rocketnautics;
 
 import com.mojang.blaze3d.platform.InputConstants.Type;
-import com.mojang.blaze3d.platform.InputConstants.Type;
-import dev.devce.rocketnautics.data.worldgen.DimensionTypes;
-import net.minecraft.client.DeltaTracker;
-import dev.devce.rocketnautics.client.render.VectorThrusterRenderer;
-import dev.devce.rocketnautics.content.blocks.RocketThrusterRenderer;
-import dev.devce.rocketnautics.content.blocks.BoosterThrusterRenderer;
-import dev.devce.rocketnautics.content.particles.RocketExhaustParticle;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import dev.devce.rocketnautics.client.RocketSettingsScreen;
+import dev.devce.rocketnautics.client.render.VectorThrusterRenderer;
+import dev.devce.rocketnautics.content.blocks.BoosterThrusterRenderer;
+import dev.devce.rocketnautics.content.blocks.RocketThrusterRenderer;
+import dev.devce.rocketnautics.content.particles.JetpackFlameParticle;
+import dev.devce.rocketnautics.content.particles.RocketExhaustParticle;
+import dev.devce.rocketnautics.data.worldgen.DimensionTypes;
 import dev.devce.rocketnautics.registry.RocketBlockEntities;
 import dev.devce.rocketnautics.registry.RocketPartials;
 import dev.devce.rocketnautics.registry.RocketParticles;
@@ -18,6 +17,7 @@ import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.Pose3d;
 import dev.ryanhcode.sable.sublevel.SubLevel;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -59,7 +59,7 @@ public class RocketNauticsClient {
     public static final KeyMapping JETPACK_TOGGLE = new KeyMapping(
             "key.rocketnautics.toggle_jetpack",
             Type.KEYSYM,
-            GLFW.GLFW_KEY_G,
+            GLFW.GLFW_KEY_X,
             "key.categories.rocketnautics"
     );
 
@@ -67,7 +67,7 @@ public class RocketNauticsClient {
     public static final KeyMapping DAMPENERS_TOGGLE = new KeyMapping(
             "key.rocketnautics.toggle_dampeners",
             Type.KEYSYM,
-            GLFW.GLFW_KEY_Z,
+            GLFW.GLFW_KEY_V,
             "key.categories.rocketnautics"
     );
 
@@ -75,7 +75,21 @@ public class RocketNauticsClient {
     public static final KeyMapping ALIGNMENT_TOGGLE = new KeyMapping(
             "key.rocketnautics.toggle_alignment",
             Type.KEYSYM,
-            GLFW.GLFW_KEY_Y,
+            GLFW.GLFW_KEY_B,
+            "key.categories.rocketnautics"
+    );
+
+    public static final KeyMapping JETPACK_ROLL_LEFT = new KeyMapping(
+            "key.rocketnautics.jetpack_roll_left",
+            Type.KEYSYM,
+            GLFW.GLFW_KEY_Z,
+            "key.categories.rocketnautics"
+    );
+
+    public static final KeyMapping JETPACK_ROLL_RIGHT = new KeyMapping(
+            "key.rocketnautics.jetpack_roll_right",
+            Type.KEYSYM,
+            GLFW.GLFW_KEY_C,
             "key.categories.rocketnautics"
     );
 
@@ -167,7 +181,7 @@ public class RocketNauticsClient {
         drawPanel(guiGraphics, "§6§lCOSMONAUTICS DEBUG SYSTEM", x, y, 0xFFFFFF);
         y += LINE_HEIGHT + 4;
 
-        SubLevel ship = (SubLevel) Sable.HELPER.getContaining(mc.level, mc.player.blockPosition());
+        SubLevel ship = Sable.HELPER.getContaining(mc.level, mc.player.blockPosition());
         if (ship != null) {
             drawPanel(guiGraphics, "§bSHIP DETECTED: §f" + ship.getUniqueId().toString().substring(0, 8), x, y, 0x55FFFF);
             y += LINE_HEIGHT;
@@ -289,6 +303,7 @@ public class RocketNauticsClient {
         event.registerSpriteSet(RocketParticles.JET_SMOKE.get(), RocketExhaustParticle.SmokeProvider::new);
         event.registerSpriteSet(RocketParticles.BLUE_FLAME.get(), RocketExhaustParticle.FlameProvider::new);
         event.registerSpriteSet(RocketParticles.RCS_GAS.get(), RocketExhaustParticle.RCSGasProvider::new);
+        event.registerSpriteSet(RocketParticles.JETPACK_FLAME.get(), JetpackFlameParticle.JetpackFlameProvider::new);
     }
 
     @SubscribeEvent

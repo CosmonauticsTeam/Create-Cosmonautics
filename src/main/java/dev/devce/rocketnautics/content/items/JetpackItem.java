@@ -1,26 +1,25 @@
 package dev.devce.rocketnautics.content.items;
 
-import com.simibubi.create.AllDataComponents;
-import com.simibubi.create.AllEnchantments;
 import com.simibubi.create.content.equipment.armor.BacktankUtil;
-import com.simibubi.create.infrastructure.config.AllConfigs;
+import com.simibubi.create.content.equipment.armor.BaseArmorItem;
 import dev.devce.rocketnautics.RocketConfig;
+import dev.devce.rocketnautics.api.FreeMotionEntity;
 import dev.devce.rocketnautics.api.capability.IBacktank;
 import dev.devce.rocketnautics.api.capability.JetpackFluidHandlerItemStack;
+import dev.devce.rocketnautics.client.FreeMotionHandler;
+import dev.devce.rocketnautics.client.render.JetpackLayer;
+import dev.devce.rocketnautics.content.particles.JetpackFlameParticle;
 import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.devce.rocketnautics.mixin.BucketItemAccessor;
-import dev.devce.rocketnautics.mixin.LivingEntityAccessor;
+import dev.devce.rocketnautics.network.FreeMotionSetupPayload;
 import dev.devce.rocketnautics.registry.RocketDataComponents;
 import dev.devce.rocketnautics.registry.RocketItems;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.Holder;
-import net.minecraft.core.component.DataComponentType;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -32,48 +31,87 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluids;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.SimpleFluidContent;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 import java.util.List;
+import java.util.Locale;
 
 @EventBusSubscriber
-public class JetpackItem extends ArmorItem implements IBacktank {
-    public JetpackItem(Properties properties) {
-        super(ArmorMaterials.NETHERITE, ArmorItem.Type.CHESTPLATE, properties);
+public class JetpackItem extends BaseArmorItem implements IBacktank {
+
+    //TODO: give custom inv icon
+    //TODO: rewrite the spaghetti
+
+    @Override
+    public @Nullable ResourceLocation getArmorTexture(ItemStack stack, Entity entity, EquipmentSlot slot, ArmorMaterial.Layer layer, boolean innerModel) {
+        return ResourceLocation.parse(String.format(Locale.ROOT, "%s:textures/models/armor/empty.png", textureLoc.getNamespace(), textureLoc.getPath()));
+    }
+
+    public JetpackItem(Properties properties, ResourceLocation textureLoc) {
+        super(ArmorMaterials.NETHERITE, ArmorItem.Type.CHESTPLATE, properties, textureLoc);
     }
 
     @SubscribeEvent
     public static void onEntityTick(EntityTickEvent.Pre event) {
         if (!(event.getEntity() instanceof Player player)) return;
+        if (!(player instanceof FreeMotionEntity fme)) return;
         AnchorBootsItem.accelerateDescentNearBlock(event);
 
-        if (isActive(player)) {
-            boolean thrusting = applyJetpackPhysics(player);
-            if (thrusting && player.level().isClientSide && player.level().getGameTime() % 2 == 0) {
-                spawnJetpackParticles(player);
-            }
+        ItemStack worn = getWornItem(player);
+        if (!(worn.getItem() instanceof JetpackItem j)) {
+            fme.setAmbulant(false);
         }
+
+        List<ItemStack> backtanks = BacktankUtil.getAllWithAir(player);
+        if (backtanks.isEmpty()) {
+            fme.setAmbulant(false);
+            setActive(worn, false);
+        }
+
+        if (!fme.isAmbulant() && fme.is6DOFEnabled() && player.onGround()) {
+            fme.set6DOFEnabled(false);
+            setActive(worn, false);
+        }
+
+        if (isActive(player)) {
+            applyJetpackPhysics(player);
+            fme.set6DOFEnabled(true);
+            fme.setAmbulant(true);
+
+            if (!player.level().isClientSide) {
+                PacketDistributor.sendToPlayer((ServerPlayer)player,
+                        new FreeMotionSetupPayload(
+                                fme.is6DOFEnabled(),
+                                fme.isAmbulant(),
+                                fme.getMovementAcceleration(),
+                                fme.getDampenerForce()
+                        )
+                );
+            }
+        } else fme.setAmbulant(false);
     }
 
-    /**
-     * Calculates and applies jetpack flight physics to the player.
-     * Uses the player's look vector for thrust direction and applies drag to simulate flight.
-     */
     private static boolean applyJetpackPhysics(Player player) {
         Level level = player.level();
         if (level.isClientSide && !GlobalSpacePhysicsHandler.shouldDisplayTimer(player))
             player.getPersistentData().remove("VisualBacktankAir");
+
+        if (!(player instanceof FreeMotionEntity fme)) return false;
+        fme.setAmbulant(false);
+
+        if (!fme.is6DOFEnabled()) return false;
 
         ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
         if (!(chest.getItem() instanceof JetpackItem)) {
@@ -82,15 +120,14 @@ public class JetpackItem extends ArmorItem implements IBacktank {
         var cap = chest.getCapability(Capabilities.FluidHandler.ITEM);
         if (cap == null) return false;
 
-        Vec3 motion = player.getDeltaMovement();
-        // Check if player is holding the jump key using a Mixin accessor
-        boolean thrusting = ((LivingEntityAccessor) player).rocketnautics$isJumping();
-        boolean sprinting = player.isSprinting();
-        int thrustConsumption = sprinting ? RocketConfig.SERVER.jetpackSprintThrustConsumption.get() : RocketConfig.SERVER.jetpackThrustConsumption.get();
+        Vector3f thrustStrength = FreeMotionHandler.getThrustStrength(player.getId());
+
+        // TODO: with dynamic consumption its probably better to replace the default timer with percentage on the HUD
+
+        int thrustConsumption =  fme.isAmbulant() ? (int)(RocketConfig.SERVER.jetpackThrustConsumption.get() * (thrustStrength.lengthSquared() / 3)) : 0;
         int drain = cap.drain(thrustConsumption, IFluidHandler.FluidAction.SIMULATE).getAmount();
-        if (drain < thrustConsumption) {
-            return false;
-        }
+        if (drain < thrustConsumption) return false;
+
         if (!player.hasInfiniteMaterials()) {
             cap.drain(thrustConsumption, IFluidHandler.FluidAction.EXECUTE);
         }
@@ -106,58 +143,71 @@ public class JetpackItem extends ArmorItem implements IBacktank {
             }
         }
 
-        Vec3 thrust = Vec3.ZERO;
-        if (thrusting) {
-            Vec3 look = player.getLookAngle();
-
-            // Scaled thrust power from config
-            double thrustPower = sprinting ? RocketConfig.SERVER.jetpackSprintThrust.get() : RocketConfig.SERVER.jetpackThrust.get();
-            thrust = look.scale(thrustPower);
-
-            // Add a small constant upward lift to assist horizontal flight
-            if (look.y > -0.5) {
-                thrust = thrust.add(0, 0.08 * (1 - GlobalSpacePhysicsHandler.calculateGravityFactor(player.level(), player.getY())), 0);
-            }
-        }
-        // Final motion calculation: Motion = (OldMotion * Drag) + Thrust
-        Vec3 newMotion = motion.add(thrust);
-
-        // Speed capping for stability
-        double maxSpeed = 10 * ((sprinting ? RocketConfig.SERVER.jetpackSprintThrust.get() : 0) + RocketConfig.SERVER.jetpackThrust.get());
-        if (newMotion.length() > maxSpeed) {
-            newMotion = newMotion.normalize().scale(maxSpeed);
-        }
-
-        player.setDeltaMovement(newMotion);
-        player.fallDistance = 0; // Prevent fall damage while using jetpack
+        fme.setAmbulant(true);
         return true;
     }
 
-    /**
-     * Spawns exhaust cloud particles behind the player's shoulders.
-     */
-    private static void spawnJetpackParticles(Player player) {
-        // Calculate offset positions relative to player body rotation
-        float yaw = player.yBodyRot;
-        float rad = yaw * (float) (Math.PI / 180.0);
-        float cos = Mth.cos(rad);
-        float sin = Mth.sin(rad);
+    @SubscribeEvent
+    public static void onPlayerRender(RenderLivingEvent.Pre<?, ?> event) {
+        LivingEntity entity = event.getEntity();
 
-        // Position offsets for the two nozzles
-        double backDist = 0.35;
-        double sideDist = 0.22;
-        double height = 0.7;
+        if (!(entity instanceof Player player)) return;
+        if (!(player instanceof FreeMotionEntity fme)) return;
 
-        // Transform local nozzle coordinates to world coordinates
-        double lx = player.getX() + (cos * sideDist + sin * backDist);
-        double lz = player.getZ() + (sin * sideDist - cos * backDist);
+        if (!fme.is6DOFEnabled() || !fme.isAmbulant()) return;
 
-        double rx = player.getX() + (-cos * sideDist + sin * backDist);
-        double rz = player.getZ() + (-sin * sideDist - cos * backDist);
+        Vector3f thrustStrength = FreeMotionHandler.getThrustStrength(player.getId());
 
-        // Spawn particles
-        player.level().addParticle(ParticleTypes.CLOUD, lx, player.getY() + height, lz, 0, -0.15, 0);
-        player.level().addParticle(ParticleTypes.CLOUD, rx, player.getY() + height, rz, 0, -0.15, 0);
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.BODY, new Vector3f(0, 11, 8), new Vector3f(0.0f, 2.0f, 4.0f), 3.0f, thrustStrength, 2.0f, player);
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.BODY, new Vector3f(0, 6, -6), new Vector3f(0.0f, 0.0f, -2.0f), 3.0f, thrustStrength, 2.0f, player);
+
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.BODY, new Vector3f(6, 2.5f, 3.5f), new Vector3f(1.5f, 0.0f, 0.0f), 0.75f, thrustStrength, 0.75f, player);
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.BODY, new Vector3f(-6, 2.5f, 3.5f), new Vector3f(-1.5f, 0.0f, 0.0f), 0.75f, thrustStrength, 0.75f, player);
+
+        Vector3f arm_origin = new Vector3f(-0.5f, 8.0f, 5.0f);
+        Vector3f common_velocity = new Vector3f(0.0f, 2.0f, 1.0f);
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.RIGHT_ARM, new Vector3f(arm_origin), common_velocity, 1.0f, thrustStrength, 1.0f, player);
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.LEFT_ARM, new Vector3f(arm_origin).mul(-1, 1, 1), common_velocity, 1.0f, thrustStrength, 1.0f, player);
+
+        Vector3f leg_down_main_origin = new Vector3f(0, 12, 5);
+
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.RIGHT_LEG, new Vector3f(leg_down_main_origin), common_velocity, 2.0f, thrustStrength, 1.5f, player);
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.LEFT_LEG, new Vector3f(leg_down_main_origin).mul(-1, 1, 1), common_velocity, 2.0f, thrustStrength, 1.5f, player);
+
+        Vector3f leg_up_main_origin = new Vector3f(0, 3, 4);
+        Vector3f leg_up_main_velocity = new Vector3f(common_velocity).mul(1, -1, 1);
+
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.RIGHT_LEG, new Vector3f(leg_up_main_origin), leg_up_main_velocity, 1.0f, thrustStrength, 1.0f, player);
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.LEFT_LEG, new Vector3f(leg_up_main_origin).mul(-1, 1, 1), leg_up_main_velocity, 1.0f, thrustStrength, 1.0f, player);
+
+        Vector3f leg_sides_main_origin = new Vector3f(-4.75f, 8f, 0.0f);
+        Vector3f leg_sides_main_velocity = new Vector3f(-1.0f, 2.0f, 0.0f);
+
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.RIGHT_LEG, new Vector3f(leg_sides_main_origin), leg_sides_main_velocity, 1.0f, thrustStrength, 1.0f, player);
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.LEFT_LEG, new Vector3f(leg_sides_main_origin).mul(-1, 1, 1), new Vector3f(leg_sides_main_velocity).mul(-1, 1, 1), 1.0f, thrustStrength, 1.0f, player);
+
+
+        Vector3f leg_forward_aux_origin = new Vector3f(-3f, 3f, -3f);
+        Vector3f leg_forward_aux_velocity = new Vector3f(0.0f, 0.0f, -1.0f);
+
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.RIGHT_LEG, new Vector3f(leg_forward_aux_origin), leg_forward_aux_velocity, 0.75f, thrustStrength, 0.75f, player);
+        spawnJetpackFlame(JetpackLayer.JetpackModelPart.LEFT_LEG, new Vector3f(leg_forward_aux_origin).mul(-1, 1, 1), leg_forward_aux_velocity, 0.75f, thrustStrength, 0.75f, player);
+    }
+
+    private static void spawnJetpackFlame(JetpackLayer.JetpackModelPart anchor, Vector3f origin, Vector3f velocity, float maxThrust, Vector3f thrust, float scale, Player player) {
+        Vector3f tail = new Vector3f(origin).add(velocity);
+
+        JetpackLayer.modelPart2worldSpace(player, anchor, origin);
+        JetpackLayer.modelPart2worldSpace(player, anchor, tail);
+
+        Vector3f delta = new Vector3f(tail).sub(origin);
+        Vector3f direction = new Vector3f(delta).mul(-1).normalize();
+        float thrustStrength = (direction.dot(new Vector3f(thrust).normalize()) + 1.0f) * 0.5f;
+
+        delta.mul(maxThrust * thrustStrength * 0.5f);
+
+        if (thrustStrength > 0.1)
+            Minecraft.getInstance().player.level().addParticle(new JetpackFlameParticle.JetpackFlameParticleOptions(new Vector3f(0.1f, 1.0f, 1.0f), scale * thrustStrength, 3), origin.x, origin.y, origin.z, delta.x, delta.y, delta.z);
     }
 
     @SubscribeEvent
@@ -166,9 +216,28 @@ public class JetpackItem extends ArmorItem implements IBacktank {
     }
 
     public static void toggle(ServerPlayer player) {
+        if (!(player instanceof FreeMotionEntity fme)) return;
+
         ItemStack worn = getWornItem(player);
         if (worn.getItem() instanceof JetpackItem j) {
+            List<ItemStack> backtanks = BacktankUtil.getAllWithAir(player);
+            if (backtanks.isEmpty()) return;
+
             boolean wasActive = j.setActive(worn, !j.isActive(worn));
+
+            fme.setAmbulant(!wasActive);
+
+            if (!fme.is6DOFEnabled() && !wasActive) fme.set6DOFEnabled(true);
+
+            PacketDistributor.sendToPlayer(player,
+                new FreeMotionSetupPayload(
+                    fme.is6DOFEnabled(),
+                    !wasActive,
+                    fme.getMovementAcceleration(),
+                    fme.getDampenerForce()
+                )
+            );
+
             if (wasActive) {
                 player.displayClientMessage(Component.translatable("rocketnautics.jetpack.disabled").withStyle(ChatFormatting.RED), true);
             } else {
@@ -180,16 +249,16 @@ public class JetpackItem extends ArmorItem implements IBacktank {
     public static boolean isActive(Player player) {
         ItemStack worn = getWornItem(player);
         if (worn.getItem() instanceof JetpackItem j) {
-            return j.isActive(worn);
+            return isActive(worn);
         }
         return false;
     }
 
-    public boolean isActive(ItemStack stack) {
+    public static boolean isActive(ItemStack stack) {
         return stack.getOrDefault(RocketDataComponents.SYSTEMS_ACTIVE, false);
     }
 
-    public boolean setActive(ItemStack stack, boolean active) {
+    public static boolean setActive(ItemStack stack, boolean active) {
         return Boolean.TRUE.equals(stack.set(RocketDataComponents.SYSTEMS_ACTIVE, active));
     }
 

@@ -1,6 +1,7 @@
 package dev.devce.rocketnautics.registry;
 
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.content.particles.JetpackFlameParticle;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -26,6 +27,9 @@ public class RocketParticles {
 
     public static final Supplier<SimpleParticleType> RCS_GAS = PARTICLES.register("rcs_gas",
             () -> new SimpleParticleType(true));
+
+    public static final Supplier<JetpackFlameParticle.JetpackFlameParticleType> JETPACK_FLAME = PARTICLES.register("jetpack_flame",
+            JetpackFlameParticle.JetpackFlameParticleType::new);
 
     public static void register(IEventBus eventBus) {
         PARTICLES.register(eventBus);
