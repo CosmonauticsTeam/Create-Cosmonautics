@@ -142,7 +142,7 @@ public class LegThrustersItem extends BaseArmorItem {
             ((LivingEntityMovementExtension) entity).sable$getInheritedVelocity().set(relative.logicalPose().position().sub(relative.lastPose().position(), new Vector3d()));
         }
 
-        fme.setDampenerForce(0.8f);
+        fme.setDampenerForce((float)RocketConfig.SERVER.legThrusterThrustFactor.getAsDouble());
         return true;
     }
 

@@ -32,6 +32,7 @@ public class RocketConfig {
         public final ModConfigSpec.IntValue maxFuelConsumption;
         public final ModConfigSpec.DoubleValue jetpackThrust;
         public final ModConfigSpec.IntValue jetpackThrustConsumption;
+        public final ModConfigSpec.DoubleValue legThrusterThrustFactor;
         public final ModConfigSpec.IntValue legThrusterBaseConsumption;
         public final ModConfigSpec.IntValue ignitionFlow;
         public final ModConfigSpec.IntValue steamMinFlow;
@@ -40,6 +41,7 @@ public class RocketConfig {
         public final ModConfigSpec.BooleanValue brokenBarrier;
         public final ModConfigSpec.DoubleValue sonicBoomSpeedThreshold;
         public final ModConfigSpec.DoubleValue magneticStabilizerStrength;
+
         public final ModConfigSpec.EnumValue<PlanetShape> planetShape;
 
         public Server(ModConfigSpec.Builder builder) {
@@ -69,11 +71,14 @@ public class RocketConfig {
 
             builder.push("Jetpack");
             jetpackThrust = builder
-                    .comment("Thrust power of the jetpack")
+                    .comment("Acceleration of the jetpack")
                     .defineInRange("jetpackThrust", 0.1, 0.05, 0.5);
             jetpackThrustConsumption = builder
                     .comment("Maximum consumption per tick of jetpack fuel")
                     .defineInRange("jetpackThrustConsumption", 10, 1, 100);
+            legThrusterThrustFactor = builder
+                    .comment("Fraction of the jetpack's acceleration")
+                    .defineInRange("legThrusterThrustFactor", 0.8d, 0d, 1.0d);
             legThrusterBaseConsumption = builder
                     .comment("Base consumption per tick of pressurized air while leg thrusters are active")
                     .defineInRange("legThrusterBaseConsumption", 2, 1, 100);

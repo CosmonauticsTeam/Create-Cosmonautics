@@ -119,9 +119,13 @@ public class RocketSettingsScreen extends Screen {
                 RocketConfig.SERVER.maxFuelConsumption.set(val.intValue());
                 RocketConfig.SERVER.maxFuelConsumption.save();
             });
-            builder.addSlider("Jetpack Power", RocketConfig.SERVER.jetpackThrust.get(), 0.05, 0.5, val -> {
+            builder.addSlider("Jetpack acceleration", RocketConfig.SERVER.jetpackThrust.get(), 0.05, 0.5, val -> {
                 RocketConfig.SERVER.jetpackThrust.set(val);
                 RocketConfig.SERVER.jetpackThrust.save();
+            });
+            builder.addSlider("Jetpack dampener acceleration fraction", RocketConfig.SERVER.legThrusterThrustFactor.get(), 0, 1.0f, val -> {
+                RocketConfig.SERVER.legThrusterThrustFactor.set(val);
+                RocketConfig.SERVER.legThrusterThrustFactor.save();
             });
             builder.addSlider("Ignition Flow", RocketConfig.SERVER.ignitionFlow.get().doubleValue(), 1, 20, val -> {
                 RocketConfig.SERVER.ignitionFlow.set(val.intValue());
