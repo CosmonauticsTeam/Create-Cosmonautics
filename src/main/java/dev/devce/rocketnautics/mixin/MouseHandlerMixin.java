@@ -1,6 +1,9 @@
 package dev.devce.rocketnautics.mixin;
 
 import dev.devce.rocketnautics.api.FreeMotionEntity;
+import dev.simulated_team.simulated.events.SimulatedCommonClientEvents;
+import dev.simulated_team.simulated.util.SimDistUtil;
+import dev.simulated_team.simulated.util.click_interactions.InteractCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.world.entity.player.Player;
@@ -28,14 +31,24 @@ abstract class MouseHandlerMixin {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
 
+        int inv = 1;
+        if ((Boolean)mc.options.invertYMouse().get()) {
+            inv = -1;
+        }
+
         if (!(player instanceof FreeMotionEntity fme)) return;
         Quaternionf q = fme.getOrientation();
 
         double dx = this.accumulatedDX;
-        double dy = this.accumulatedDY;
+        double dy = this.accumulatedDY * inv;
 
         this.accumulatedDX = 0;
         this.accumulatedDY = 0;
+
+        if (SimDistUtil.getClientPlayer() != null && !SimDistUtil.getClientPlayer().isSpectator()) {
+            final InteractCallback.Result status = SimulatedCommonClientEvents.onMouseMove(dx, dy);
+            if (status.cancelled()) return;
+        }
 
         double sensitivity = mc.options.sensitivity().get();
 
