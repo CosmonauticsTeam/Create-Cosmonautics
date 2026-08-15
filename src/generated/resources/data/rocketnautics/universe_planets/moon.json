@@ -35,37 +35,37 @@
     "type": "biome_sampler",
     "colors": [
       {
-        "blue": 70,
-        "green": 150,
+        "blue": 65,
+        "green": 62,
         "matching_tags": [
           "rocketnautics:lunar_chasm"
         ],
         "priority": 10,
-        "red": 220
+        "red": 60
       },
       {
-        "blue": 190,
-        "green": 190,
+        "blue": 172,
+        "green": 168,
         "matching_tags": [
           "rocketnautics:lunar_highlands"
         ],
-        "red": 190
+        "red": 165
       },
       {
-        "blue": 90,
+        "blue": 102,
         "flags": [
           "ocean"
         ],
-        "green": 90,
+        "green": 98,
         "matching_tags": [
           "rocketnautics:lunar_maria"
         ],
-        "red": 90
+        "red": 95
       }
     ],
-    "fallback_blue": 160,
-    "fallback_green": 160,
-    "fallback_red": 160
+    "fallback_blue": 145,
+    "fallback_green": 142,
+    "fallback_red": 140
   },
   "position": {
     "type": "circular_orbit_period",

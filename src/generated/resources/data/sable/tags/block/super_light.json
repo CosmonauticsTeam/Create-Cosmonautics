@@ -1,6 +1,8 @@
 {
   "values": [
     "rocketnautics:separator",
+    "rocketnautics:separator_charge",
+    "rocketnautics:separator",
     "rocketnautics:separator_charge"
   ]
 }

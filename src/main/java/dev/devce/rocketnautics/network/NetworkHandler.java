@@ -68,6 +68,19 @@ public class NetworkHandler {
             (payload, context) -> context.enqueueWork(() -> handleMapRequest(context.player(), payload.powerSize()))
         );
 
+        registrar.playToServer(
+            SolarBurnPayload.TYPE,
+            SolarBurnPayload.CODEC,
+            (payload, context) -> context.enqueueWork(() -> {
+                if (context.player() instanceof ServerPlayer player) {
+                    if (player.isScoping() && dev.devce.rocketnautics.api.orbit.DeepSpaceHelper.isDeepSpace(player.level())) {
+                        player.igniteForSeconds(4);
+                        player.hurt(player.damageSources().inFire(), 3.0f);
+                    }
+                }
+            })
+        );
+
         registrar.playToClient(
             PlanetMapPayload.TYPE,
             PlanetMapPayload.CODEC,

@@ -19,6 +19,10 @@ public interface PreparedTexture {
 
     ResourceLocation getId();
 
+    default ResourceLocation getNormalId() {
+        return null;
+    }
+
     default void setShaderTexture() {
         RenderSystem.setShaderTexture(0, getId());
     }

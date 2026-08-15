@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "tag": "c:ingots/titanium_alloy"
+    },
+    "C": {
+      "tag": "c:ingots/copper"
+    },
+    "G": {
+      "item": "minecraft:tinted_glass"
+    },
+    "T": {
+      "tag": "c:plates/titanium"
+    }
+  },
+  "pattern": [
+    "TAT",
+    "TGT",
+    " C "
+  ],
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:space_helmet"
+  }
+}

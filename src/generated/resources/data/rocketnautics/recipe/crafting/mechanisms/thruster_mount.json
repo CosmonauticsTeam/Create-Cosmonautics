@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "rocketnautics:titanium_casing"
+    },
+    "P": {
+      "item": "create:fluid_pipe"
+    },
+    "S": {
+      "tag": "c:plates/titanium_alloy"
+    },
+    "T": {
+      "tag": "c:plates/titanium"
+    }
+  },
+  "pattern": [
+    "PSP",
+    "PCP",
+    "T T"
+  ],
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:thruster_mount"
+  }
+}

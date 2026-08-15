@@ -21,11 +21,19 @@ public final class DeepSpaceTexture implements PreparedTexture {
     public static DeepSpaceTexture construct(int renderID, ColorPalette renderData) {
         Minecraft mc = Minecraft.getInstance();
 
-        NativeImage image = SkyHandler.composePlanetTexture(renderData);
+        NativeImage singleImage = SkyHandler.composePlanetTexture(renderData);
+        int w = singleImage.getWidth();
+        int h = singleImage.getHeight();
+
+        NativeImage image = new NativeImage(w * 6, h, false);
+        for (int face = 0; face < 6; face++) {
+            singleImage.copyRect(image, 0, 0, face * w, 0, w, h, false, false);
+        }
+        singleImage.close();
 
         DynamicTexture constructed = new DynamicTexture(image);
         ResourceLocation claimed = mc.getTextureManager().register("rocketnautics_deep_space_planet_" + renderID, constructed);
-        constructed.setFilter(true, false);
+        constructed.setFilter(false, false);
         image.close();
         return new DeepSpaceTexture(constructed, claimed);
     }

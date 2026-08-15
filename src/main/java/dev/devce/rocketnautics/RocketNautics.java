@@ -94,6 +94,19 @@ public class RocketNautics {
             modEventBus.register(dev.devce.rocketnautics.client.ClientModEvents.class);
             modEventBus.register(RocketNauticsClient.class);
             NeoForge.EVENT_BUS.register(dev.devce.rocketnautics.client.RocketNauticsClientEvents.class);
+
+            // Enable Sable's shadow maps for sublevels
+            dev.ryanhcode.sable.render.sky_light_shadow.SableSkyLightShadows.setIsEnabled(true);
+
+            // Veil platform requires shader processors to be registered during mod construction
+            foundry.veil.platform.VeilEventPlatform.INSTANCE.onVeilAddShaderProcessors((provider, registry) ->
+                registry.addPreprocessor(new dev.devce.rocketnautics.client.render.shader.SunDirectionalShadingPreProcessor(), false)
+            );
+
+            // Register directional shadow map render stage
+            foundry.veil.platform.VeilEventPlatform.INSTANCE.onVeilRenderLevelStage(
+                dev.devce.rocketnautics.client.render.shadow.DirectionalShadowRenderer::renderShadowMap
+            );
         }
 
         modEventBus.addListener(this::setup);

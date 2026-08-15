@@ -12,7 +12,7 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 
 /**
  * Event subscriber for mod-bus client-side events.
- * Handles key mapping registration and entity rendering layers.
+ * Handles key mapping registration, entity rendering layers, and shader preprocessing.
  */
 public class ClientModEvents {
     @SubscribeEvent
@@ -50,6 +50,14 @@ public class ClientModEvents {
                 com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR
             ),
             shader -> dev.devce.rocketnautics.client.render.ReentryClientRenderer.reentryShader = shader
+        );
+        event.registerShader(
+            new net.minecraft.client.renderer.ShaderInstance(
+                event.getResourceProvider(),
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.devce.rocketnautics.RocketNautics.MODID, "planet_normal"),
+                com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR
+            ),
+            shader -> dev.devce.rocketnautics.client.DeepSpaceHandler.planetNormalShader = shader
         );
     }
 

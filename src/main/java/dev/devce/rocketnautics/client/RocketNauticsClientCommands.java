@@ -65,6 +65,81 @@ public class RocketNauticsClientCommands {
                         Component.literal("Cosmonautics: Sky & Planet textures cache reloaded!").withStyle(ChatFormatting.GREEN), true);
                     return 1;
                 })
+            )
+            .then(Commands.literal("mode")
+                .executes(context -> {
+                    dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem current = dev.devce.rocketnautics.RocketConfig.CLIENT.skyRenderingSystem.get();
+                    dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem next = (current == dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem.MODERN) 
+                        ? dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem.LEGACY 
+                        : dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem.MODERN;
+                    
+                    dev.devce.rocketnautics.RocketConfig.CLIENT.skyRenderingSystem.set(next);
+                    dev.devce.rocketnautics.RocketConfig.CLIENT.skyRenderingSystem.save();
+                    DeepSpaceHandler.clearRenderCache();
+                    SkyHandler.triggerPlanetTextureRebuild();
+
+                    String status = next.name();
+                    ChatFormatting color = (next == dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem.MODERN) ? ChatFormatting.AQUA : ChatFormatting.GOLD;
+                    
+                    Minecraft.getInstance().player.displayClientMessage(
+                        Component.literal("Sky Rendering System set to: ").append(Component.literal(status).withStyle(color)), false);
+                    return 1;
+                })
+                .then(Commands.literal("legacy")
+                    .executes(context -> {
+                        dev.devce.rocketnautics.RocketConfig.CLIENT.skyRenderingSystem.set(dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem.LEGACY);
+                        dev.devce.rocketnautics.RocketConfig.CLIENT.skyRenderingSystem.save();
+                        DeepSpaceHandler.clearRenderCache();
+                        SkyHandler.triggerPlanetTextureRebuild();
+                        Minecraft.getInstance().player.displayClientMessage(
+                            Component.literal("Sky Rendering System set to: ").append(Component.literal("LEGACY").withStyle(ChatFormatting.GOLD)), false);
+                        return 1;
+                    })
+                )
+                .then(Commands.literal("modern")
+                    .executes(context -> {
+                        dev.devce.rocketnautics.RocketConfig.CLIENT.skyRenderingSystem.set(dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem.MODERN);
+                        dev.devce.rocketnautics.RocketConfig.CLIENT.skyRenderingSystem.save();
+                        DeepSpaceHandler.clearRenderCache();
+                        SkyHandler.triggerPlanetTextureRebuild();
+                        Minecraft.getInstance().player.displayClientMessage(
+                            Component.literal("Sky Rendering System set to: ").append(Component.literal("MODERN").withStyle(ChatFormatting.AQUA)), false);
+                        return 1;
+                    })
+                )
+            )
+            .then(Commands.literal("moon_phase")
+                .then(Commands.literal("reset")
+                    .executes(context -> {
+                        DeepSpaceHandler.debugMoonPhaseOverride = -1;
+                        Minecraft.getInstance().player.displayClientMessage(
+                            Component.literal("Moon phase debug override: ").append(Component.literal("DISABLED (auto)").withStyle(ChatFormatting.GREEN)), false);
+                        return 1;
+                    })
+                )
+                .then(Commands.argument("phase", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 7))
+                    .executes(context -> {
+                        int phase = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "phase");
+                        DeepSpaceHandler.debugMoonPhaseOverride = phase;
+                        
+                        String phaseName = switch (phase) {
+                            case 0 -> "Full Moon";
+                            case 1 -> "Waning Gibbous";
+                            case 2 -> "Third Quarter";
+                            case 3 -> "Waning Crescent";
+                            case 4 -> "New Moon";
+                            case 5 -> "Waxing Crescent";
+                            case 6 -> "First Quarter";
+                            case 7 -> "Waxing Gibbous";
+                            default -> "Unknown";
+                        };
+
+                        Minecraft.getInstance().player.displayClientMessage(
+                            Component.literal("Moon phase debug override set to: ")
+                                .append(Component.literal(phase + " (" + phaseName + ")").withStyle(ChatFormatting.AQUA)), false);
+                        return 1;
+                    })
+                )
             );
             
         dispatcher.register(builder);

@@ -104,6 +104,16 @@ public class RocketConfig {
         SPHERE
     }
 
+    public enum SkyRenderingSystem {
+        LEGACY,
+        MODERN
+    }
+
+    public enum SkyboxExposure {
+        LOW,
+        HIGH
+    }
+
     /**
      * Client-side configuration settings.
      * These settings are local to each player's client.
@@ -120,6 +130,10 @@ public class RocketConfig {
         public final ModConfigSpec.BooleanValue enableCustomSky;
         public final ModConfigSpec.BooleanValue enablePlumeMerging;
         public final ModConfigSpec.DoubleValue plumeMergeRadius;
+        public final ModConfigSpec.EnumValue<SkyRenderingSystem> skyRenderingSystem;
+        public final ModConfigSpec.EnumValue<SkyboxExposure> skyboxExposure;
+        public final ModConfigSpec.BooleanValue enableSpaceLighting;
+        public final ModConfigSpec.BooleanValue enableSpaceShadowMaps;
 
         public Client(ModConfigSpec.Builder builder) {
             hasShownWorldBorderWarning = builder
@@ -160,6 +174,22 @@ public class RocketConfig {
                     .comment("The number of steps to compute in the hologram table's orbit prediction.")
                     .comment("Set to zero to disable the prediction entirely. Too many steps can cause lag!")
                     .defineInRange("orbitPredictionSteps", 1000, 0, 10000);
+            skyRenderingSystem = builder
+                    .comment("Sky Rendering System:")
+                    .comment(" - LEGACY: The legacy rendering system is provided as is, and will not receive future support.")
+                    .comment(" - MODERN: In the modern rendering system we work only with deep space.")
+                    .defineEnum("skyRenderingSystem", SkyRenderingSystem.MODERN);
+            skyboxExposure = builder
+                    .comment("Deep Space skybox exposure level:")
+                    .comment(" - LOW: Atmospheric dark space background (Default).")
+                    .comment(" - HIGH: Brighter, vivid space nebula.")
+                    .defineEnum("skyboxExposure", SkyboxExposure.LOW);
+            enableSpaceLighting = builder
+                    .comment("Enable realistic space directional lighting and PBR shading for ships and structures in Deep Space.")
+                    .define("enableSpaceLighting", true);
+            enableSpaceShadowMaps = builder
+                    .comment("Enable real-time directional shadow mapping in Deep Space.")
+                    .define("enableSpaceShadowMaps", true);
             builder.pop();
         }
     }

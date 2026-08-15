@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "tag": "c:plates/copper"
+    },
+    "P": {
+      "item": "create:fluid_pipe"
+    },
+    "T": {
+      "tag": "c:plates/titanium"
+    }
+  },
+  "pattern": [
+    " T ",
+    "CPC",
+    " T "
+  ],
+  "result": {
+    "count": 4,
+    "id": "rocketnautics:engine_pipes"
+  }
+}

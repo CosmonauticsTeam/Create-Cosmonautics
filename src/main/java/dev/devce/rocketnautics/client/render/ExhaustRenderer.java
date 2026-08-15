@@ -150,6 +150,34 @@ public class ExhaustRenderer {
         drawStandardPlumeLayer(consumer, matrix, l3Width, l3Length, (int)(redMult * 255), (int)(greenMult * 255), (int)(blueMult * 255), 220);
     }
 
+    public static void renderIonPlume(PoseStack ms, MultiBufferSource buffer, float throttle, Direction direction) {
+        if (throttle <= 0.01f) return;
+
+        long time = System.currentTimeMillis();
+        float animTime = (time % 100000L) / 1000.0f;
+        Matrix4f matrix = ms.last().pose();
+
+        if (rcsShader != null) {
+            var uTime = rcsShader.getUniform("u_Time");
+            if (uTime != null) uTime.set(animTime * 1.5f);
+            var uThrottle = rcsShader.getUniform("u_Throttle");
+            if (uThrottle != null) uThrottle.set(throttle);
+        }
+
+        VertexConsumer consumer = buffer.getBuffer(getRcsRenderType());
+
+        // Ion Plasma Beam: 2-pixel margin on all sides of 16px block face (start width = 12px -> half-width = 6/16 = 0.375f)
+        float startNeck = 0.375f;
+        float endWidth = 0.44f + (throttle * 0.12f);
+        float length = 1.3f * throttle + 0.35f;
+
+        // Layer 1: Outer glowing electric cyan / neon blue sheath
+        drawExpandingPlumeLayer(consumer, matrix, startNeck, endWidth, length, 60, 220, 255, 140);
+
+        // Layer 2: Concentrated intense white-cyan plasma core
+        drawExpandingPlumeLayer(consumer, matrix, 0.25f, endWidth * 0.70f, length * 0.85f, 220, 255, 255, 240);
+    }
+
     /**
      * Draws a single standard pyramid plume layer for main engine flames.
      * Starts wide at the nozzle (Y=0) and converges to a point at the tail (Y=-length).

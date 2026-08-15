@@ -48,6 +48,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SkyHandler {
     public static final float SKYBOX_DISTANCE = 100; // minecraft renders everything in the default skybox at 100 blocks out
     public static boolean debugSonicBoom = false;
+    private static ResourceLocation CACHED_PLANET_TEX = null;
+    private static ResourceLocation CACHED_PLANET_NORMAL_TEX = null;
     
     /**
      * Adjusts the fog color towards black as the player ascends into space.
@@ -89,16 +91,15 @@ public class SkyHandler {
         poseStack.mulPose(event.getModelViewMatrix());
         Camera camera = event.getCamera();
 
-        // Always render the universe (planets/stars from DeepSpaceHandler) regardless of the
-        // enableCustomSky toggle — that flag only controls our extra overlays (HD stars + planet quad).
-        DeepSpaceHandler.renderUniverseForLevel(level, camera.getPosition(), event.getPoseStack(), event.getPartialTick().getGameTimeDeltaTicks(), event.getPartialTick().getGameTimeDeltaPartialTick(true), camera);
-
         double camY = camera.getPosition().y + SkyDataHandler.getHeightOffsetForLevel(level.dimension());
         if (camY >= 1000.0) {
             // Determine visibility based on altitude
             float visibility = (float) Mth.clamp((camY - 1000.0) / 500.0, 0.0, 1.0);
             if (visibility > 0) {
                 float celestialAngle = level.getTimeOfDay(event.getPartialTick().getGameTimeDeltaTicks());
+
+                // Render custom HD skybox at high altitude!
+                renderSkybox(poseStack, visibility, camera, celestialAngle);
 
                 Matrix4f matrix = poseStack.last().pose();
 
@@ -158,18 +159,57 @@ public class SkyHandler {
         RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
 
         // --- Layer 1: Planet Surface Map ---
-        if (planet.getTexID() != null) {
-            RenderSystem.setShaderTexture(0, planet.getTexID());
+        boolean isModern = dev.devce.rocketnautics.RocketConfig.CLIENT.skyRenderingSystem.get() == dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem.MODERN;
+        ResourceLocation tex = null;
+        ResourceLocation normalTex = null;
+        if (isModern) {
+            if (CACHED_PLANET_TEX == null) {
+                Minecraft mcInstance = Minecraft.getInstance();
+                String name = mcInstance.level != null ? mcInstance.level.dimension().location().getPath() : "overworld";
+                CACHED_PLANET_TEX = loadBakedPlanetTexture(name, 9999);
+                CACHED_PLANET_NORMAL_TEX = loadBakedPlanetNormalTexture(name, 9999);
+            }
+            tex = CACHED_PLANET_TEX;
+            normalTex = CACHED_PLANET_NORMAL_TEX;
+        }
+
+        float r = 1.0f, g = 1.0f, b = 1.0f;
+        // Use side face (face 2: nz) for planet surface quad
+        int faceIndex = 2;
+        float u0 = faceIndex / 6.0f;
+        float u1 = (faceIndex + 1) / 6.0f;
+        float v0 = 0.0f;
+        float v1 = 1.0f;
+
+        if (isModern && DeepSpaceHandler.planetNormalShader != null && normalTex != null && tex != null) {
+            double theta = 2.0 * Math.PI * celestialAngle;
+            float lx = (float) -Math.sin(theta);
+            float ly = (float) Math.cos(theta);
+            if (DeepSpaceHandler.planetNormalShader.safeGetUniform("LightDir") != null) {
+                DeepSpaceHandler.planetNormalShader.safeGetUniform("LightDir").set(lx, ly, 0.6f);
+            }
+            RenderSystem.setShader(() -> DeepSpaceHandler.planetNormalShader);
+            RenderSystem.setShaderTexture(0, tex);
+            RenderSystem.setShaderTexture(1, normalTex);
         } else {
-            RenderSystem.setShaderTexture(0, ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/environment/planet_map.png"));
+            RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+            if (tex != null) {
+                RenderSystem.setShaderTexture(0, tex);
+            } else if (planet.getTexID() != null) {
+                RenderSystem.setShaderTexture(0, planet.getTexID());
+                u0 = 0.0f;
+                u1 = 1.0f / 6.0f;
+            } else {
+                RenderSystem.setShaderTexture(0, ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/environment/planet_map.png"));
+                u0 = 0.0f;
+                u1 = 1.0f;
+            }
         }
         RenderSystem.disableCull();
 
         Tesselator tesselator = Tesselator.getInstance();
         BufferBuilder bufferbuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
-        float r = 1.0f, g = 1.0f, b = 1.0f;
-        float u0 = 0.0f, u1 = 1.0f, v0 = 0.0f, v1 = 1.0f;
         bufferbuilder.addVertex(matrix, relX - size, relY, relZ - size).setColor(r, g, b, visibility).setUv(u0, v0);
         bufferbuilder.addVertex(matrix, relX - size, relY, relZ + size).setColor(r, g, b, visibility).setUv(u0, v1);
         bufferbuilder.addVertex(matrix, relX + size, relY, relZ + size).setColor(r, g, b, visibility).setUv(u1, v1);
@@ -177,51 +217,53 @@ public class SkyHandler {
         BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
 
         if (extras != null && extras.clouds()) {
+            ResourceLocation cloudTexture = getCloudTextureId();
             // --- Layer 1.8: Cloud Shadows (Floating offset shadow) ---
             double theta = 2.0 * Math.PI * celestialAngle;
             float lx = (float) -Math.sin(theta);
-            if (CLOUD_TEXTURE_ID != null) {
-                RenderSystem.setShaderTexture(0, CLOUD_TEXTURE_ID);
+            if (cloudTexture != null) {
+                RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+                RenderSystem.setShaderTexture(0, cloudTexture);
                 long factor = 1000L * SkyDataHandler.toTrueSize(planet.getPowerSize() / 2);
                 float timeOffset = (System.currentTimeMillis() % (20L * factor)) / (float) factor;
 
                 float shadowShift = lx * size * 0.08f; // Dynamic shadow offset based on solar angle
 
+                // Single face UV coordinates (1/6 width) to prevent horizontal cloud stretching!
+                float cu0 = (faceIndex / 6.0f) + (timeOffset * (1.0f / 6.0f));
+                float cu1 = ((faceIndex + 1) / 6.0f) + (timeOffset * (1.0f / 6.0f));
+
                 BufferBuilder shadowBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
                 // Deep transparent dark space shadow color
                 float sr = 0.01f, sg = 0.02f, sb = 0.08f, sa = visibility * 0.48f;
-                shadowBuilder.addVertex(matrix, relX - size + shadowShift, relY, relZ - size).setColor(sr, sg, sb, sa).setUv(0.0f + timeOffset, 0.0f);
-                shadowBuilder.addVertex(matrix, relX - size + shadowShift, relY, relZ + size).setColor(sr, sg, sb, sa).setUv(0.0f + timeOffset, 1.0f);
-                shadowBuilder.addVertex(matrix, relX + size + shadowShift, relY, relZ + size).setColor(sr, sg, sb, sa).setUv(1.0f + timeOffset, 1.0f);
-                shadowBuilder.addVertex(matrix, relX + size + shadowShift, relY, relZ - size).setColor(sr, sg, sb, sa).setUv(1.0f + timeOffset, 0.0f);
+                shadowBuilder.addVertex(matrix, relX - size + shadowShift, relY, relZ - size).setColor(sr, sg, sb, sa).setUv(cu0, 0.0f);
+                shadowBuilder.addVertex(matrix, relX - size + shadowShift, relY, relZ + size).setColor(sr, sg, sb, sa).setUv(cu0, 1.0f);
+                shadowBuilder.addVertex(matrix, relX + size + shadowShift, relY, relZ + size).setColor(sr, sg, sb, sa).setUv(cu1, 1.0f);
+                shadowBuilder.addVertex(matrix, relX + size + shadowShift, relY, relZ - size).setColor(sr, sg, sb, sa).setUv(cu1, 0.0f);
                 BufferUploader.drawWithShader(shadowBuilder.buildOrThrow());
-            }
 
-            // --- Layer 2: Scrolling Clouds ---
-            if (CLOUD_TEXTURE_ID != null) {
-                RenderSystem.setShaderTexture(0, CLOUD_TEXTURE_ID);
-                long factor = 1000L * SkyDataHandler.toTrueSize(planet.getPowerSize() / 2);
-                float timeOffset = (System.currentTimeMillis() % (20L * factor)) / (float) factor;
-
+                // --- Layer 2: Scrolling Clouds ---
                 BufferBuilder cloudBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-                cloudBuilder.addVertex(matrix, relX - size, relY, relZ - size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(0.0f + timeOffset, 0.0f);
-                cloudBuilder.addVertex(matrix, relX - size, relY, relZ + size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(0.0f + timeOffset, 1.0f);
-                cloudBuilder.addVertex(matrix, relX + size, relY, relZ + size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(1.0f + timeOffset, 1.0f);
-                cloudBuilder.addVertex(matrix, relX + size, relY, relZ - size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(1.0f + timeOffset, 0.0f);
+                cloudBuilder.addVertex(matrix, relX - size, relY, relZ - size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(cu0, 0.0f);
+                cloudBuilder.addVertex(matrix, relX - size, relY, relZ + size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(cu0, 1.0f);
+                cloudBuilder.addVertex(matrix, relX + size, relY, relZ + size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(cu1, 1.0f);
+                cloudBuilder.addVertex(matrix, relX + size, relY, relZ - size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(cu1, 0.0f);
                 BufferUploader.drawWithShader(cloudBuilder.buildOrThrow());
             }
         }
 
         // --- Layer 2.5: Pixelated Light, Shadow & Atmospheric Crescent Glow Overlay ---
-        ensureLightOverlayTexture(celestialAngle);
-        if (LIGHT_OVERLAY_TEXTURE_ID != null) {
-            RenderSystem.setShaderTexture(0, LIGHT_OVERLAY_TEXTURE_ID);
-            BufferBuilder lightBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-            lightBuilder.addVertex(matrix, relX - size, relY, relZ - size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(0.0f, 0.0f);
-            lightBuilder.addVertex(matrix, relX - size, relY, relZ + size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(0.0f, 1.0f);
-            lightBuilder.addVertex(matrix, relX + size, relY, relZ + size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(1.0f, 1.0f);
-            lightBuilder.addVertex(matrix, relX + size, relY, relZ - size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(1.0f, 0.0f);
-            BufferUploader.drawWithShader(lightBuilder.buildOrThrow());
+        if (!isModern) {
+            ensureLightOverlayTexture(celestialAngle);
+            if (LIGHT_OVERLAY_TEXTURE_ID != null) {
+                RenderSystem.setShaderTexture(0, LIGHT_OVERLAY_TEXTURE_ID);
+                BufferBuilder lightBuilder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+                lightBuilder.addVertex(matrix, relX - size, relY, relZ - size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(0.0f, 0.0f);
+                lightBuilder.addVertex(matrix, relX - size, relY, relZ + size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(0.0f, 1.0f);
+                lightBuilder.addVertex(matrix, relX + size, relY, relZ + size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(1.0f, 1.0f);
+                lightBuilder.addVertex(matrix, relX + size, relY, relZ - size).setColor(1.0f, 1.0f, 1.0f, visibility).setUv(1.0f, 0.0f);
+                BufferUploader.drawWithShader(lightBuilder.buildOrThrow());
+            }
         }
 
         // --- Layer 3: Atmospheric Halo (Glow) ---
@@ -326,9 +368,9 @@ public class SkyHandler {
             Minecraft mc = Minecraft.getInstance();
 
             int size = 1024;
-            NativeImage image = new NativeImage(size, size, false);
+            NativeImage image = new NativeImage(size * 6, size, false);
 
-            for (int x = 0; x < size; x++) {
+            for (int x = 0; x < size * 6; x++) {
                 for (int y = 0; y < size; y++) {
                     int color = (255 << 24) | (80 << 16) | (40 << 8) | 10;
                     image.setPixelRGBA(x, y, color);
@@ -337,7 +379,7 @@ public class SkyHandler {
 
             DynamicTexture tex = new DynamicTexture(image);
             ResourceLocation id = mc.getTextureManager().register("rocketnautics_planet_main", tex);
-            tex.setFilter(true, false);
+            tex.setFilter(false, false);
             PLANET_TEXTURE_OBJ = new PlanetRenderInfo(id, tex);
             image.close();
         }
@@ -345,9 +387,9 @@ public class SkyHandler {
             Minecraft mc = Minecraft.getInstance();
 
             int size = 1024;
-            NativeImage image = new NativeImage(size, size, false);
+            NativeImage image = new NativeImage(size * 6, size, false);
 
-            for (int x = 0; x < size; x++) {
+            for (int x = 0; x < size * 6; x++) {
                 for (int y = 0; y < size; y++) {
                     int color = (255 << 24) | (80 << 16) | (40 << 8) | 10;
                     image.setPixelRGBA(x, y, color);
@@ -356,7 +398,7 @@ public class SkyHandler {
 
             DynamicTexture tex = new DynamicTexture(image);
             ResourceLocation id = mc.getTextureManager().register("rocketnautics_planet_last", tex);
-            tex.setFilter(true, false);
+            tex.setFilter(false, false);
             PLANET_TEXTURE_OBJ_LAST = new PlanetRenderInfo(id, tex);
             image.close();
         }
@@ -398,22 +440,30 @@ public class SkyHandler {
         mc.execute(() -> {
             if (PLANET_TEXTURE_OBJ == null) return;
 
-            NativeImage image;
+            NativeImage singleImage;
             if (mapDataPosXPosZ != null) {
-                image = composePlanetTexture(new CompoundPaletteAccess(mapDataPosXPosZ, mapDataPosXNegZ, mapDataNegXPosZ, mapDataNegXNegZ));
+                singleImage = composePlanetTexture(new CompoundPaletteAccess(mapDataPosXPosZ, mapDataPosXNegZ, mapDataNegXPosZ, mapDataNegXNegZ));
             } else {
                 // Fallback to a default/blank texture since we have no server map data
-                image = new NativeImage(1024, 1024, false);
+                singleImage = new NativeImage(1024, 1024, false);
                 for (int x = 0; x < 1024; x++) {
                     for (int y = 0; y < 1024; y++) {
-                        image.setPixelRGBA(x, y, (255 << 24) | (80 << 16) | (40 << 8) | 10);
+                        singleImage.setPixelRGBA(x, y, (255 << 24) | (80 << 16) | (40 << 8) | 10);
                     }
                 }
             }
 
+            int w = singleImage.getWidth();
+            int h = singleImage.getHeight();
+            NativeImage image = new NativeImage(w * 6, h, false);
+            for (int face = 0; face < 6; face++) {
+                singleImage.copyRect(image, 0, 0, face * w, 0, w, h, false, false);
+            }
+            singleImage.close();
+
             PLANET_TEXTURE_OBJ.getTexture().setPixels(image);
             PLANET_TEXTURE_OBJ.getTexture().upload();
-            PLANET_TEXTURE_OBJ.getTexture().setFilter(true, false);
+            PLANET_TEXTURE_OBJ.getTexture().setFilter(false, false);
             image.close();
             awaitUpdate = false;
         });
@@ -602,16 +652,17 @@ public class SkyHandler {
 
     public static ResourceLocation CLOUD_TEXTURE_ID = null;
     private static DynamicTexture CLOUD_TEXTURE_OBJ = null;
-
     private static ResourceLocation SONIC_BOOM_TEXTURE_ID = null;
     private static DynamicTexture SONIC_BOOM_TEXTURE_OBJ = null;
+    public static ResourceLocation MODERN_CLOUD_TEXTURE_ID = null;
+    private static DynamicTexture MODERN_CLOUD_TEXTURE_OBJ = null;
 
     public static void ensureCloudTexture() {
         if (CLOUD_TEXTURE_ID != null) return;
         Minecraft mc = Minecraft.getInstance();
         
         int size = 512; // High-resolution canvas for micro-eddies and swirls
-        NativeImage image = new NativeImage(size, size, false);
+        NativeImage singleImage = new NativeImage(size, size, false);
         
         java.util.Random rand = new java.util.Random(1337L);
         Noise2D noiseGen = new Noise2D(64, rand);
@@ -709,14 +760,72 @@ public class SkyHandler {
                 }
 
                 int color = (alpha << 24) | (255 << 16) | (255 << 8) | 255;
-                image.setPixelRGBA(x, y, color);
+                singleImage.setPixelRGBA(x, y, color);
             }
         }
+        
+        NativeImage image = new NativeImage(size * 6, size, false);
+        for (int face = 0; face < 6; face++) {
+            singleImage.copyRect(image, 0, 0, face * size, 0, size, size, false, false);
+        }
+        singleImage.close();
         
         CLOUD_TEXTURE_OBJ = new DynamicTexture(image);
         CLOUD_TEXTURE_ID = mc.getTextureManager().register("rocketnautics_clouds", CLOUD_TEXTURE_OBJ);
         CLOUD_TEXTURE_OBJ.setFilter(false, false); // Keep them crisp and pixelated!
         image.close();
+    }
+
+    public static void ensureModernCloudTexture() {
+        if (MODERN_CLOUD_TEXTURE_ID != null) return;
+        Minecraft mc = Minecraft.getInstance();
+        
+        int size = 64; // Lighter 64 x 64 resolution
+        NativeImage singleImage = new NativeImage(size, size, false);
+        
+        java.util.Random rand = new java.util.Random(1337L);
+        Noise2D noiseGen = new Noise2D(16, rand);
+
+        for (int x = 0; x < size; x++) {
+            for (int y = 0; y < size; y++) {
+                // Map coordinates from 0 to 16.0f to match the Noise2D period
+                float u = (x / (float)size) * 16.0f;
+                float v = (y / (float)size) * 16.0f;
+                
+                // Simpler 2-octave noise (lighter, no complex warping/cyclones)
+                float noise = noiseGen.sample(u, v) * 0.7f + noiseGen.sample(u * 2.0f, v * 2.0f) * 0.3f;
+                
+                int alpha = 0;
+                if (noise > 0.58f) {
+                    alpha = 220; // Strictly binary solid alpha for a blocky vanilla cloud look
+                }
+
+                int color = (alpha << 24) | (255 << 16) | (255 << 8) | 255;
+                singleImage.setPixelRGBA(x, y, color);
+            }
+        }
+        
+        NativeImage image = new NativeImage(size * 6, size, false);
+        for (int face = 0; face < 6; face++) {
+            singleImage.copyRect(image, 0, 0, face * size, 0, size, size, false, false);
+        }
+        singleImage.close();
+        
+        MODERN_CLOUD_TEXTURE_OBJ = new DynamicTexture(image);
+        MODERN_CLOUD_TEXTURE_ID = mc.getTextureManager().register("rocketnautics_clouds_modern", MODERN_CLOUD_TEXTURE_OBJ);
+        MODERN_CLOUD_TEXTURE_OBJ.setFilter(false, false); // Keep them crisp and pixelated!
+        image.close();
+    }
+
+    public static ResourceLocation getCloudTextureId() {
+        boolean isLegacy = dev.devce.rocketnautics.RocketConfig.CLIENT.skyRenderingSystem.get() == dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem.LEGACY;
+        if (isLegacy) {
+            ensureCloudTexture();
+            return CLOUD_TEXTURE_ID;
+        } else {
+            ensureModernCloudTexture();
+            return MODERN_CLOUD_TEXTURE_ID;
+        }
     }
 
     private static void ensureSonicBoomTexture() {
@@ -2353,5 +2462,237 @@ public class SkyHandler {
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();
+    }
+
+    public static final ResourceLocation SKYBOX_TEXTURE_ID = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/environment/skybox.png");
+    public static final ResourceLocation SKYBOX_HIGH_TEXTURE_ID = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/environment/skybox_high.png");
+
+    public static void ensureSkyboxTexture(boolean isDeepSpace) {
+        // Textures are packaged statically as assets in the mod JAR
+    }
+
+    public static void renderSkybox(PoseStack poseStack, float visibility, Camera camera, float celestialAngle) {
+        Minecraft mc = Minecraft.getInstance();
+        boolean isDeepSpace = mc.level != null && DeepSpaceHelper.isDeepSpace(mc.level);
+        boolean highExposure = isDeepSpace && dev.devce.rocketnautics.RocketConfig.CLIENT.skyboxExposure.get() == dev.devce.rocketnautics.RocketConfig.SkyboxExposure.HIGH;
+        ResourceLocation textureId = highExposure ? SKYBOX_HIGH_TEXTURE_ID : SKYBOX_TEXTURE_ID;
+        if (visibility <= 0) return;
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.depthMask(false);
+        RenderSystem.disableDepthTest();
+        RenderSystem.disableCull();
+
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        RenderSystem.setShaderTexture(0, textureId);
+
+        poseStack.pushPose();
+
+        // Rotate the skybox in sync with the celestial sphere (day/night cycle)
+        poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(celestialAngle * 360.0f));
+
+        Matrix4f matrix = poseStack.last().pose();
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+
+        float size = SKYBOX_DISTANCE;
+        float alpha = visibility;
+
+        // 4x3 Cubemap layout mapping
+        float uScale = 0.25f;
+        float vScale = 1.0f / 3.0f;
+
+        // Front (Col 1, Row 1)
+        float fUMin = 1.0f * uScale, fUMax = 2.0f * uScale;
+        float fVMin = 1.0f * vScale, fVMax = 2.0f * vScale;
+        buffer.addVertex(matrix, -size, size, -size).setUv(fUMin, fVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, -size, -size, -size).setUv(fUMin, fVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, -size, -size).setUv(fUMax, fVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, size, -size).setUv(fUMax, fVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+
+        // Back (Col 3, Row 1)
+        float bUMin = 3.0f * uScale, bUMax = 4.0f * uScale;
+        float bVMin = 1.0f * vScale, bVMax = 2.0f * vScale;
+        buffer.addVertex(matrix, size, size, size).setUv(bUMin, bVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, -size, size).setUv(bUMin, bVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, -size, -size, size).setUv(bUMax, bVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, -size, size, size).setUv(bUMax, bVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+
+        // Left (Col 0, Row 1)
+        float lUMin = 0.0f * uScale, lUMax = 1.0f * uScale;
+        float lVMin = 1.0f * vScale, lVMax = 2.0f * vScale;
+        buffer.addVertex(matrix, -size, size, size).setUv(lUMin, lVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, -size, -size, size).setUv(lUMin, lVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, -size, -size, -size).setUv(lUMax, lVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, -size, size, -size).setUv(lUMax, lVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+
+        // Right (Col 2, Row 1)
+        float rUMin = 2.0f * uScale, rUMax = 3.0f * uScale;
+        float rVMin = 1.0f * vScale, rVMax = 2.0f * vScale;
+        buffer.addVertex(matrix, size, size, -size).setUv(rUMin, rVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, -size, -size).setUv(rUMin, rVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, -size, size).setUv(rUMax, rVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, size, size).setUv(rUMax, rVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+
+        // Top (Col 1, Row 0)
+        float tUMin = 1.0f * uScale, tUMax = 2.0f * uScale;
+        float tVMin = 0.0f * vScale, tVMax = 1.0f * vScale;
+        buffer.addVertex(matrix, -size, size, size).setUv(tUMin, tVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, -size, size, -size).setUv(tUMin, tVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, size, -size).setUv(tUMax, tVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, size, size).setUv(tUMax, tVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+
+        // Bottom (Col 1, Row 2)
+        float dnUMin = 1.0f * uScale, dnUMax = 2.0f * uScale;
+        float dnVMin = 2.0f * vScale, dnVMax = 3.0f * vScale;
+        buffer.addVertex(matrix, -size, -size, -size).setUv(dnUMin, dnVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, -size, -size, size).setUv(dnUMin, dnVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, -size, size).setUv(dnUMax, dnVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, -size, -size).setUv(dnUMax, dnVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
+        
+        poseStack.popPose();
+        
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.enableCull();
+    }
+
+    public static String getBakedPlanetFolderName(String planetName) {
+        String lower = planetName.toLowerCase();
+        if (lower.contains("earth") || lower.contains("overworld")) {
+            return "planet_0_earth_seed_880";
+        } else if (lower.contains("moon")) {
+            return "planet_1_moon_seed_881";
+        } else if (lower.contains("mars")) {
+            return "planet_2_mars_seed_882";
+        } else if (lower.contains("mercury") || lower.contains("ice")) {
+            return "planet_3_mercury_seed_883";
+        } else if (lower.contains("venus") || lower.contains("giant") || lower.contains("gas")) {
+            return "planet_4_venus_seed_884";
+        }
+        return "planet_0_earth_seed_880";
+    }
+
+    public static ResourceLocation loadBakedPlanetTexture(String planetName, int planetId) {
+        String folderName = getBakedPlanetFolderName(planetName);
+        Minecraft mc = Minecraft.getInstance();
+        
+        try {
+            int w = 512;
+            int h = 512;
+            ResourceLocation firstFaceLoc = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/planet_pack/" + folderName + "/albedo_py.png");
+            var firstRes = mc.getResourceManager().getResource(firstFaceLoc);
+            if (firstRes.isPresent()) {
+                try (java.io.InputStream is = firstRes.get().open()) {
+                    NativeImage sample = NativeImage.read(is);
+                    w = sample.getWidth();
+                    h = sample.getHeight();
+                    sample.close();
+                }
+            } else {
+                return null;
+            }
+            
+            NativeImage sheet = new NativeImage(w * 6, h, false);
+            
+            String[] faceFiles = {
+                "albedo_py.png", // 0: py
+                "albedo_ny.png", // 1: ny
+                "albedo_nz.png", // 2: nz
+                "albedo_pz.png", // 3: pz
+                "albedo_nx.png", // 4: nx
+                "albedo_px.png"  // 5: px
+            };
+            
+            for (int i = 0; i < 6; i++) {
+                ResourceLocation faceLoc = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/planet_pack/" + folderName + "/" + faceFiles[i]);
+                var res = mc.getResourceManager().getResource(faceLoc);
+                if (res.isPresent()) {
+                    try (java.io.InputStream is = res.get().open()) {
+                        NativeImage faceImg = NativeImage.read(is);
+                        faceImg.copyRect(sheet, 0, 0, i * w, 0, w, h, false, false);
+                        faceImg.close();
+                    }
+                } else {
+                    for (int x = 0; x < w; x++) {
+                        for (int y = 0; y < h; y++) {
+                            sheet.setPixelRGBA(i * w + x, y, 0xFFFFFFFF);
+                        }
+                    }
+                }
+            }
+            
+            DynamicTexture constructed = new DynamicTexture(sheet);
+            ResourceLocation id = mc.getTextureManager().register("rocketnautics_baked_planet_" + planetId, constructed);
+            constructed.setFilter(false, false);
+            sheet.close();
+            return id;
+        } catch (Exception e) {
+            RocketNautics.LOGGER.error("Failed to load baked planet texture for " + planetName, e);
+            return null;
+        }
+    }
+
+    public static ResourceLocation loadBakedPlanetNormalTexture(String planetName, int planetId) {
+        String folderName = getBakedPlanetFolderName(planetName);
+        Minecraft mc = Minecraft.getInstance();
+        
+        try {
+            int w = 512;
+            int h = 512;
+            ResourceLocation firstFaceLoc = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/planet_pack/" + folderName + "/normal_py.png");
+            var firstRes = mc.getResourceManager().getResource(firstFaceLoc);
+            if (firstRes.isPresent()) {
+                try (java.io.InputStream is = firstRes.get().open()) {
+                    NativeImage sample = NativeImage.read(is);
+                    w = sample.getWidth();
+                    h = sample.getHeight();
+                    sample.close();
+                }
+            } else {
+                return null;
+            }
+            
+            NativeImage sheet = new NativeImage(w * 6, h, false);
+            
+            String[] faceFiles = {
+                "normal_py.png", // 0: py
+                "normal_ny.png", // 1: ny
+                "normal_nz.png", // 2: nz
+                "normal_pz.png", // 3: pz
+                "normal_nx.png", // 4: nx
+                "normal_px.png"  // 5: px
+            };
+            
+            for (int i = 0; i < 6; i++) {
+                ResourceLocation faceLoc = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/planet_pack/" + folderName + "/" + faceFiles[i]);
+                var res = mc.getResourceManager().getResource(faceLoc);
+                if (res.isPresent()) {
+                    try (java.io.InputStream is = res.get().open()) {
+                        NativeImage faceImg = NativeImage.read(is);
+                        faceImg.copyRect(sheet, 0, 0, i * w, 0, w, h, false, false);
+                        faceImg.close();
+                    }
+                } else {
+                    for (int x = 0; x < w; x++) {
+                        for (int y = 0; y < h; y++) {
+                            sheet.setPixelRGBA(i * w + x, y, (255 << 24) | (255 << 16) | (128 << 8) | 128);
+                        }
+                    }
+                }
+            }
+            
+            DynamicTexture constructed = new DynamicTexture(sheet);
+            ResourceLocation id = mc.getTextureManager().register("rocketnautics_baked_planet_normal_" + planetId, constructed);
+            constructed.setFilter(false, false);
+            sheet.close();
+            return id;
+        } catch (Exception e) {
+            RocketNautics.LOGGER.error("Failed to load baked planet normal texture for " + planetName, e);
+            return null;
+        }
     }
 }

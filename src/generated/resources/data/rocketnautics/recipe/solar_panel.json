@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "tag": "c:plates/copper"
+    },
+    "E": {
+      "item": "create:electron_tube"
+    },
+    "I": {
+      "tag": "c:plates/iron"
+    },
+    "L": {
+      "item": "minecraft:lapis_lazuli"
+    },
+    "Q": {
+      "item": "minecraft:quartz"
+    }
+  },
+  "pattern": [
+    "LQL",
+    "CEC",
+    "III"
+  ],
+  "result": {
+    "count": 2,
+    "id": "rocketnautics:solar_panel"
+  }
+}

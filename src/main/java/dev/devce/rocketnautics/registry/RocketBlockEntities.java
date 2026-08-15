@@ -98,11 +98,23 @@ public class RocketBlockEntities {
             .renderer(() -> dev.devce.rocketnautics.client.render.EngineNozzleRenderer::new)
             .register();
 
+    public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.solar.SolarPanelBlockEntity> SOLAR_PANEL = REGISTRATE
+            .blockEntity("solar_panel", dev.devce.rocketnautics.content.blocks.solar.SolarPanelBlockEntity::new)
+            .validBlocks(RocketBlocks.SOLAR_PANEL)
+            .register();
+
+    public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.ion.IonEngineBlockEntity> ION_ENGINE = REGISTRATE
+            .blockEntity("ion_engine", dev.devce.rocketnautics.content.blocks.ion.IonEngineBlockEntity::new)
+            .validBlocks(RocketBlocks.ION_ENGINE)
+            .register();
+
     public static void register(IEventBus eventBus) {
         eventBus.addListener(RocketBlockEntities::registerCapabilities);
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, SOLAR_PANEL.get(), (be, side) -> be.getEnergyStorage(side));
+        event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, ION_ENGINE.get(), (be, side) -> be.getEnergyStorage(side));
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, ROCKET_THRUSTER.get(), (be, side) -> be.fuelTank);
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, VECTOR_THRUSTER.get(), (be, side) -> be.fuelTank);
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, HOSE_ANCHOR.get(), (be, side) -> be.fuelTank);

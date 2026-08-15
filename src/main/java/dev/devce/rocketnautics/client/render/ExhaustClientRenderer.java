@@ -65,9 +65,10 @@ public class ExhaustClientRenderer {
         public float currentThrottle;
         public float ignitionTicks;
         public final boolean isRCS;
+        public final boolean isIon;
         public long lastUpdateTime;
 
-        public PlumeInfo(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float targetThrottle, float ignitionTicks, boolean isRCS) {
+        public PlumeInfo(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float targetThrottle, float ignitionTicks, boolean isRCS, boolean isIon) {
             this.level = level;
             this.pos = pos;
             this.offset = offset;
@@ -76,7 +77,12 @@ public class ExhaustClientRenderer {
             this.currentThrottle = isRCS ? 0.0f : targetThrottle;
             this.ignitionTicks = ignitionTicks;
             this.isRCS = isRCS;
+            this.isIon = isIon;
             this.lastUpdateTime = System.currentTimeMillis();
+        }
+
+        public PlumeInfo(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float targetThrottle, float ignitionTicks, boolean isRCS) {
+            this(level, pos, offset, exhaustDir, targetThrottle, ignitionTicks, isRCS, false);
         }
 
         public void update(Vec3 offset, Vec3 exhaustDir, float targetThrottle, float ignitionTicks) {
@@ -104,15 +110,19 @@ public class ExhaustClientRenderer {
     /**
      * Registers or updates an active engine plume to be rendered in the level translucent stage.
      */
-    public static void registerPlume(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float throttle, float ignitionTicks, boolean isRCS) {
+    public static void registerPlume(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float throttle, float ignitionTicks, boolean isRCS, boolean isIon) {
         if (level == null || pos == null) return;
         PlumeKey key = new PlumeKey(level, pos);
         PlumeInfo existing = ACTIVE_PLUMES.get(key);
         if (existing != null) {
             existing.update(offset, exhaustDir, throttle, ignitionTicks);
         } else {
-            ACTIVE_PLUMES.put(key, new PlumeInfo(level, pos, offset, exhaustDir, throttle, ignitionTicks, isRCS));
+            ACTIVE_PLUMES.put(key, new PlumeInfo(level, pos, offset, exhaustDir, throttle, ignitionTicks, isRCS, isIon));
         }
+    }
+
+    public static void registerPlume(Level level, BlockPos pos, Vec3 offset, Vec3 exhaustDir, float throttle, float ignitionTicks, boolean isRCS) {
+        registerPlume(level, pos, offset, exhaustDir, throttle, ignitionTicks, isRCS, false);
     }
 
     /**
@@ -245,9 +255,9 @@ public class ExhaustClientRenderer {
 
         for (RenderablePlume plume : rawList) {
             boolean added = false;
-            if (mergeEnabled) {
+            if (mergeEnabled && !plume.plume.isIon && !plume.plume.isRCS) {
                 for (PlumeCluster cluster : clusters) {
-                    if (cluster.isRCS == plume.plume.isRCS) {
+                    if (!cluster.isRCS && !cluster.isIon) {
                         // Ensure they point in roughly the same direction
                         if (cluster.worldExhaustDir.dot(plume.worldExhaustDir) > 0.95) {
                             // If within config-defined radius
@@ -284,7 +294,7 @@ public class ExhaustClientRenderer {
                 b /= maxVal;
             }
             
-            renderList.add(new RenderableCluster(center, cluster.worldExhaustDir, avgThrottle, cluster.maxIgnitionTicks, cluster.isRCS(), r, g, b, cluster.count, distSq));
+            renderList.add(new RenderableCluster(center, cluster.worldExhaustDir, avgThrottle, cluster.maxIgnitionTicks, cluster.isRCS(), cluster.isIon, r, g, b, cluster.count, distSq));
         }
 
         // 4. Sort clusters by distance (furthest first) for proper transparency
@@ -301,17 +311,18 @@ public class ExhaustClientRenderer {
             ms.translate(relX, relY, relZ);
 
             // ── VECTOR THRUSTER / DIRECTION ROTATION ────────────────────────────
-            Vector3f defaultDir = new Vector3f(0.0f, -1.0f, 0.0f);
-            Vector3f targetDir = new Vector3f((float) cluster.worldExhaustDir.x, (float) cluster.worldExhaustDir.y, (float) cluster.worldExhaustDir.z);
-            
-            Quaternionf rot = new Quaternionf().rotationTo(defaultDir, targetDir);
+            Quaternionf rot = getPlumeRotation(cluster.worldExhaustDir);
             ms.mulPose(rot);
 
             Direction direction = Direction.getNearest(cluster.worldExhaustDir.x, cluster.worldExhaustDir.y, cluster.worldExhaustDir.z);
             
-            // The scale of the flame increases based on the number of merged engines (square root prevents it from getting too insanely huge)
-            float scale = (float) Math.sqrt(cluster.count);
-            ExhaustRenderer.renderExhaustPlume(ms, mc.renderBuffers().bufferSource(), cluster.throttle, cluster.ignitionTicks, direction, cluster.isRCS, scale, cluster.r, cluster.g, cluster.b);
+            if (cluster.isIon) {
+                ExhaustRenderer.renderIonPlume(ms, mc.renderBuffers().bufferSource(), cluster.throttle, direction);
+            } else {
+                // The scale of the flame increases based on the number of merged engines (square root prevents it from getting too insanely huge)
+                float scale = (float) Math.sqrt(cluster.count);
+                ExhaustRenderer.renderExhaustPlume(ms, mc.renderBuffers().bufferSource(), cluster.throttle, cluster.ignitionTicks, direction, cluster.isRCS, scale, cluster.r, cluster.g, cluster.b);
+            }
 
             ms.popPose();
         }
@@ -321,6 +332,28 @@ public class ExhaustClientRenderer {
         mc.renderBuffers().bufferSource().endBatch(ExhaustRenderer.getRcsRenderType());
     }
 
+    public static Quaternionf getPlumeRotation(Vec3 exhaustDir) {
+        Direction dir = Direction.getNearest(exhaustDir.x, exhaustDir.y, exhaustDir.z);
+        Quaternionf baseRot = new Quaternionf();
+        switch (dir) {
+            case DOWN -> baseRot.identity();
+            case UP -> baseRot.rotationX((float) Math.PI);
+            case NORTH -> baseRot.rotationX((float) (Math.PI / 2.0));
+            case SOUTH -> baseRot.rotationX((float) (-Math.PI / 2.0));
+            case WEST -> baseRot.rotationZ((float) (Math.PI / 2.0));
+            case EAST -> baseRot.rotationZ((float) (-Math.PI / 2.0));
+        }
+
+        Vector3f cardinalStep = new Vector3f(dir.getStepX(), dir.getStepY(), dir.getStepZ());
+        Vector3f target = new Vector3f((float) exhaustDir.x, (float) exhaustDir.y, (float) exhaustDir.z).normalize();
+        if (cardinalStep.dot(target) < 0.9999f) {
+            Quaternionf tilt = new Quaternionf().rotationTo(cardinalStep, target);
+            tilt.mul(baseRot);
+            return tilt;
+        }
+        return baseRot;
+    }
+
     public static Vector3f getEngineColor(BlockEntity be) {
         if (be instanceof dev.devce.rocketnautics.content.blocks.BoosterThrusterBlockEntity) {
             return new Vector3f(0.3f, 0.65f, 1.0f); // Sky Blue (like the screenshot)
@@ -328,6 +361,8 @@ public class ExhaustClientRenderer {
             return new Vector3f(0.82f, 0.92f, 1.0f); // White-blue (mostly white, slightly blue)
         } else if (be instanceof dev.devce.rocketnautics.content.blocks.RCSThrusterBlockEntity) {
             return new Vector3f(0.5f, 0.8f, 1.0f); // Ice Blue
+        } else if (be instanceof dev.devce.rocketnautics.content.blocks.ion.IonEngineBlockEntity) {
+            return new Vector3f(0.18f, 0.95f, 1.0f); // Electric Cyan
         } else if (be instanceof dev.devce.rocketnautics.content.blocks.CreativeThrusterBlockEntity) {
             return new Vector3f(0.9f, 0.1f, 0.9f); // Vibrant Purple/Magenta
         } else if (be instanceof dev.devce.rocketnautics.content.blocks.RocketThrusterBlockEntity) {
@@ -359,6 +394,7 @@ public class ExhaustClientRenderer {
         public Vec3 worldPosSum = Vec3.ZERO;
         public final Vec3 worldExhaustDir;
         public final boolean isRCS;
+        public final boolean isIon;
         public float totalThrottle = 0;
         public float maxIgnitionTicks = 0;
         public float totalR = 0;
@@ -369,6 +405,7 @@ public class ExhaustClientRenderer {
         public PlumeCluster(RenderablePlume initial) {
             this.worldExhaustDir = initial.worldExhaustDir;
             this.isRCS = initial.plume.isRCS;
+            this.isIon = initial.plume.isIon;
             add(initial);
         }
 
@@ -403,16 +440,18 @@ public class ExhaustClientRenderer {
         public final float throttle;
         public final float ignitionTicks;
         public final boolean isRCS;
+        public final boolean isIon;
         public final float r, g, b;
         public final int count;
         public final double distanceSq;
 
-        public RenderableCluster(Vec3 worldPos, Vec3 worldExhaustDir, float throttle, float ignitionTicks, boolean isRCS, float r, float g, float b, int count, double distanceSq) {
+        public RenderableCluster(Vec3 worldPos, Vec3 worldExhaustDir, float throttle, float ignitionTicks, boolean isRCS, boolean isIon, float r, float g, float b, int count, double distanceSq) {
             this.worldPos = worldPos;
             this.worldExhaustDir = worldExhaustDir;
             this.throttle = throttle;
             this.ignitionTicks = ignitionTicks;
             this.isRCS = isRCS;
+            this.isIon = isIon;
             this.r = r;
             this.g = g;
             this.b = b;
