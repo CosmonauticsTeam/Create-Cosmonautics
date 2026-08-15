@@ -51,14 +51,19 @@ public class JetpackLayer<T extends AbstractClientPlayer, M extends PlayerModel<
         this.modelNormal = new JetpackModel(modelSet.bakeLayer(JetpackModel.LAYER_LOCATION));
     }
 
-    public static Vector3f modelPart2worldSpace(Player player, JetpackModelPart part, Vector3f vec) {
+    public static Vector3f modelPart2worldSpace(Player player, JetpackModelPart part, Vector3f localVec) {
         Map<JetpackModelPart, Matrix4f> playerTransforms = MODEL_PART_TRANSFORMS.get(player.getId());
-        if (playerTransforms == null) return new Vector3f(0);
+        if (playerTransforms == null) return null;
 
-        vec.div(16);
+        Matrix4f partTransform = playerTransforms.get(part);
+        if (partTransform == null) return null;
 
-        Matrix4f partTransform = playerTransforms.getOrDefault(part, new Matrix4f().identity());
+        Vector3f vec = new Vector3f(localVec).div(16.0f);
         partTransform.transformPosition(vec);
+
+        if (Minecraft.getInstance().gameRenderer == null || Minecraft.getInstance().gameRenderer.getMainCamera() == null) {
+            return null;
+        }
 
         Vector3f cameraPos = Minecraft.getInstance()
                 .gameRenderer
@@ -67,7 +72,6 @@ public class JetpackLayer<T extends AbstractClientPlayer, M extends PlayerModel<
                 .toVector3f();
 
         vec.add(cameraPos);
-
         return vec;
     }
     private static final Map<Integer, Map<JetpackModelPart, Matrix4f>> MODEL_PART_TRANSFORMS = new HashMap<>();

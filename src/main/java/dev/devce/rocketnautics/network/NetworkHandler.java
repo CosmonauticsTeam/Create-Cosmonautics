@@ -6,7 +6,6 @@ import dev.devce.rocketnautics.SkyDataHandler;
 import dev.devce.rocketnautics.api.FreeMotionEntity;
 import dev.devce.rocketnautics.api.orbit.ColorPalette;
 import dev.devce.rocketnautics.client.DeepSpaceHandler;
-import dev.devce.rocketnautics.client.FreeMotionHandler;
 import dev.devce.rocketnautics.client.SkyHandler;
 import dev.devce.rocketnautics.content.items.JetpackItem;
 import dev.devce.rocketnautics.content.items.LegThrustersItem;
@@ -14,7 +13,6 @@ import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.DeepSpaceTextureDefinition;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
-import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -165,37 +163,36 @@ public class NetworkHandler {
     }
 
     private static void handleFreeMotionMovement(IPayloadContext context, FreeMotionPayload payload) {
-        ServerPlayer player = (ServerPlayer) context.player();
-
+        if (!(context.player() instanceof ServerPlayer player)) return;
         if (!(player instanceof FreeMotionEntity fme)) return;
 
         fme.setOrientation(payload.orientation());
         player.setDeltaMovement(new Vec3(payload.deltaMovement()));
 
+        FreeMotionSyncPayload sync = new FreeMotionSyncPayload(
+                player.getId(),
+                fme.is6DOFEnabled(),
+                fme.isAmbulant(),
+                payload.orientation(),
+                payload.thrustStrength()
+        );
+
         for (ServerPlayer target : player.serverLevel().players()) {
             if (target == player) continue;
-
-            PacketDistributor.sendToPlayer(
-                    target,
-                    new FreeMotionSyncPayload(
-                            player.getId(),
-                            fme.is6DOFEnabled(),
-                            fme.isAmbulant(),
-                            payload.orientation(),
-                            FreeMotionHandler.getThrustStrength(player.getId())
-                    )
-            );
+            PacketDistributor.sendToPlayer(target, sync);
         }
     }
 
+    @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
     private static void handleFreeMotionClientSync(FreeMotionSyncPayload payload) {
-        Entity entity = Minecraft.getInstance().level.getEntity(payload.entityId());
+        if (net.minecraft.client.Minecraft.getInstance().level == null) return;
+        Entity entity = net.minecraft.client.Minecraft.getInstance().level.getEntity(payload.entityId());
 
         if (entity instanceof FreeMotionEntity fme) {
             fme.setOrientation(payload.orientation());
             fme.set6DOFEnabled(payload.freeMotionEnabled());
             fme.setAmbulant(payload.ambulant());
-            FreeMotionHandler.putThrustStrength(payload.entityId(), payload.thrustStrength());
+            dev.devce.rocketnautics.client.FreeMotionHandler.putThrustStrength(payload.entityId(), payload.thrustStrength());
         }
     }
 

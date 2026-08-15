@@ -1,12 +1,12 @@
 package dev.devce.rocketnautics.content.items;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.block.Block;
+import net.neoforged.fml.loading.FMLEnvironment;
 
 import java.util.List;
 
@@ -17,7 +17,7 @@ public class RocketBlockItem extends BlockItem {
 
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
-        if (Screen.hasShiftDown()) {
+        if (FMLEnvironment.dist.isClient() && net.minecraft.client.gui.screens.Screen.hasShiftDown()) {
             tooltipComponents.add(Component.literal(" ")); 
             tooltipComponents.add(Component.translatable(this.getDescriptionId() + ".tooltip.shift").withStyle(ChatFormatting.GOLD));
             

@@ -90,8 +90,9 @@ public class FreeMotionHandler {
         if (!fme.is6DOFEnabled()) return;
 
         Quaternionf quat = new Quaternionf(fme.getOrientation());
+        Vector3f thrust = getThrustStrength(player.getId());
 
-        PacketDistributor.sendToServer(new FreeMotionPayload(quat, player.getDeltaMovement().toVector3f()));
+        PacketDistributor.sendToServer(new FreeMotionPayload(quat, player.getDeltaMovement().toVector3f(), thrust));
 
         if (!fme.isAmbulant()) return;
 
@@ -125,6 +126,81 @@ public class FreeMotionHandler {
         motion = quat.transform(motion);
 
         if (Math.abs(vertical) != 0 ) player.addDeltaMovement(new Vec3(motion).normalize().scale(0.02f));
+    }
+
+    @SubscribeEvent
+    public static void onPlayerRender(net.neoforged.neoforge.client.event.RenderLivingEvent.Pre<?, ?> event) {
+        LivingEntity entity = event.getEntity();
+
+        if (!(entity instanceof Player player)) return;
+        if (!(player instanceof FreeMotionEntity fme)) return;
+
+        if (!fme.is6DOFEnabled() || !fme.isAmbulant()) return;
+
+        Vector3f thrustStrength = FreeMotionHandler.getThrustStrength(player.getId());
+        if (thrustStrength.lengthSquared() < 0.001f) return;
+
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.BODY, new Vector3f(0, 11, 8), new Vector3f(0.0f, 2.0f, 4.0f), 3.0f, thrustStrength, 2.0f, player);
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.BODY, new Vector3f(0, 6, -6), new Vector3f(0.0f, 0.0f, -2.0f), 3.0f, thrustStrength, 2.0f, player);
+
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.BODY, new Vector3f(6, 2.5f, 3.5f), new Vector3f(1.5f, 0.0f, 0.0f), 0.75f, thrustStrength, 0.75f, player);
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.BODY, new Vector3f(-6, 2.5f, 3.5f), new Vector3f(-1.5f, 0.0f, 0.0f), 0.75f, thrustStrength, 0.75f, player);
+
+        Vector3f arm_origin = new Vector3f(-0.5f, 8.0f, 5.0f);
+        Vector3f common_velocity = new Vector3f(0.0f, 2.0f, 1.0f);
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.RIGHT_ARM, new Vector3f(arm_origin), common_velocity, 1.0f, thrustStrength, 1.0f, player);
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.LEFT_ARM, new Vector3f(arm_origin).mul(-1, 1, 1), common_velocity, 1.0f, thrustStrength, 1.0f, player);
+
+        Vector3f leg_down_main_origin = new Vector3f(0, 12, 5);
+
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.RIGHT_LEG, new Vector3f(leg_down_main_origin), common_velocity, 2.0f, thrustStrength, 1.5f, player);
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.LEFT_LEG, new Vector3f(leg_down_main_origin).mul(-1, 1, 1), common_velocity, 2.0f, thrustStrength, 1.5f, player);
+
+        Vector3f leg_up_main_origin = new Vector3f(0, 3, 4);
+        Vector3f leg_up_main_velocity = new Vector3f(common_velocity).mul(1, -1, 1);
+
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.RIGHT_LEG, new Vector3f(leg_up_main_origin), leg_up_main_velocity, 1.0f, thrustStrength, 1.0f, player);
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.LEFT_LEG, new Vector3f(leg_up_main_origin).mul(-1, 1, 1), leg_up_main_velocity, 1.0f, thrustStrength, 1.0f, player);
+
+        Vector3f leg_sides_main_origin = new Vector3f(-4.75f, 8f, 0.0f);
+        Vector3f leg_sides_main_velocity = new Vector3f(-1.0f, 2.0f, 0.0f);
+
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.RIGHT_LEG, new Vector3f(leg_sides_main_origin), leg_sides_main_velocity, 1.0f, thrustStrength, 1.0f, player);
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.LEFT_LEG, new Vector3f(leg_sides_main_origin).mul(-1, 1, 1), new Vector3f(leg_sides_main_velocity).mul(-1, 1, 1), 1.0f, thrustStrength, 1.0f, player);
+
+        Vector3f leg_forward_aux_origin = new Vector3f(-3f, 3f, -3f);
+        Vector3f leg_forward_aux_velocity = new Vector3f(0.0f, 0.0f, -1.0f);
+
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.RIGHT_LEG, new Vector3f(leg_forward_aux_origin), leg_forward_aux_velocity, 0.75f, thrustStrength, 0.75f, player);
+        spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart.LEFT_LEG, new Vector3f(leg_forward_aux_origin).mul(-1, 1, 1), leg_forward_aux_velocity, 0.75f, thrustStrength, 0.75f, player);
+    }
+
+    private static void spawnJetpackFlame(dev.devce.rocketnautics.client.render.JetpackLayer.JetpackModelPart anchor, Vector3f originLocal, Vector3f velocityLocal, float maxThrust, Vector3f thrust, float scale, Player player) {
+        Vector3f origin = dev.devce.rocketnautics.client.render.JetpackLayer.modelPart2worldSpace(player, anchor, originLocal);
+        if (origin == null) return;
+
+        Vector3f tail = dev.devce.rocketnautics.client.render.JetpackLayer.modelPart2worldSpace(player, anchor, new Vector3f(originLocal).add(velocityLocal));
+        if (tail == null) return;
+
+        Vector3f delta = new Vector3f(tail).sub(origin);
+        if (delta.lengthSquared() < 1e-6f) return;
+        Vector3f direction = new Vector3f(delta).mul(-1).normalize();
+
+        Vector3f thrustNorm = new Vector3f(thrust);
+        if (thrustNorm.lengthSquared() > 1e-6f) {
+            thrustNorm.normalize();
+        }
+        float thrustStrength = (direction.dot(thrustNorm) + 1.0f) * 0.5f;
+
+        delta.mul(maxThrust * thrustStrength * 0.5f);
+
+        if (thrustStrength > 0.1f) {
+            player.level().addParticle(
+                    new dev.devce.rocketnautics.content.particles.JetpackFlameParticle.JetpackFlameParticleOptions(new Vector3f(0.1f, 1.0f, 1.0f), scale * thrustStrength, 3),
+                    origin.x, origin.y, origin.z,
+                    delta.x, delta.y, delta.z
+            );
+        }
     }
     public static boolean apply6DOFPhysics(Vector3f motion, LivingEntity e) {
         //
