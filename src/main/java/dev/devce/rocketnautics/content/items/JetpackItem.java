@@ -66,17 +66,26 @@ public class JetpackItem extends BaseArmorItem implements IBacktank {
         ItemStack worn = getWornItem(player);
         if (!(worn.getItem() instanceof JetpackItem j)) {
             fme.setAmbulant(false);
+            if (fme.is6DOFEnabled()) {
+                fme.set6DOFEnabled(false);
+            }
+            return;
         }
 
         List<ItemStack> backtanks = BacktankUtil.getAllWithAir(player);
         if (backtanks.isEmpty()) {
             fme.setAmbulant(false);
             setActive(worn, false);
+            if (fme.is6DOFEnabled()) {
+                fme.set6DOFEnabled(false);
+            }
+            return;
         }
 
         if (!fme.isAmbulant() && fme.is6DOFEnabled() && player.onGround()) {
             fme.set6DOFEnabled(false);
             setActive(worn, false);
+            return;
         }
 
         if (isActive(player)) {
@@ -85,6 +94,9 @@ public class JetpackItem extends BaseArmorItem implements IBacktank {
             fme.setAmbulant(true);
         } else {
             fme.setAmbulant(false);
+            if (fme.is6DOFEnabled()) {
+                fme.set6DOFEnabled(false);
+            }
         }
     }
 
@@ -142,22 +154,27 @@ public class JetpackItem extends BaseArmorItem implements IBacktank {
             List<ItemStack> backtanks = BacktankUtil.getAllWithAir(player);
             if (backtanks.isEmpty()) return;
 
-            boolean wasActive = j.setActive(worn, !j.isActive(worn));
+            boolean nowActive = !j.isActive(worn);
+            j.setActive(worn, nowActive);
 
-            fme.setAmbulant(!wasActive);
+            fme.setAmbulant(nowActive);
+            fme.set6DOFEnabled(nowActive);
 
-            if (!fme.is6DOFEnabled() && !wasActive) fme.set6DOFEnabled(true);
+            if (!nowActive) {
+                player.setSwimming(false);
+                player.setPose(net.minecraft.world.entity.Pose.STANDING);
+            }
 
             PacketDistributor.sendToPlayer(player,
                 new FreeMotionSetupPayload(
-                    fme.is6DOFEnabled(),
-                    !wasActive,
+                    nowActive,
+                    nowActive,
                     fme.getMovementAcceleration(),
                     fme.getDampenerForce()
                 )
             );
 
-            if (wasActive) {
+            if (!nowActive) {
                 player.displayClientMessage(Component.translatable("rocketnautics.jetpack.disabled").withStyle(ChatFormatting.RED), true);
             } else {
                 player.displayClientMessage(Component.translatable("rocketnautics.jetpack.enabled").withStyle(ChatFormatting.GREEN), true);

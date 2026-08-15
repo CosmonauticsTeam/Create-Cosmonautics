@@ -30,7 +30,23 @@ public abstract class LivingEntityMixin extends Entity implements FreeMotionEnti
     public boolean is6DOFEnabled() { return this.rocketnautics$6DOFEnabled; }
 
     @Override
-    public void set6DOFEnabled(boolean enabled) { rocketnautics$6DOFEnabled = enabled; }
+    public void set6DOFEnabled(boolean enabled) {
+        if (this.rocketnautics$6DOFEnabled && !enabled) {
+            LivingEntity entity = (LivingEntity)(Object)this;
+            entity.setSwimming(false);
+            if (entity instanceof net.minecraft.world.entity.player.Player player) {
+                player.setPose(net.minecraft.world.entity.Pose.STANDING);
+            }
+            float yaw = entity.getYRot();
+            float pitch = entity.getXRot();
+            this.rocketnautics$orientation.rotationYXZ(
+                (float)Math.toRadians(180.0f - yaw),
+                (float)Math.toRadians(-pitch),
+                0.0f
+            ).normalize();
+        }
+        rocketnautics$6DOFEnabled = enabled;
+    }
 
     @Unique
     private boolean rocketnautics$6DOFEnabled;
@@ -39,7 +55,16 @@ public abstract class LivingEntityMixin extends Entity implements FreeMotionEnti
     public boolean isAmbulant() { return this.rocketnautics$ambulant; }
 
     @Override
-    public void setAmbulant(boolean ambulant) { rocketnautics$ambulant = ambulant; }
+    public void setAmbulant(boolean ambulant) {
+        if (this.rocketnautics$ambulant && !ambulant && !this.rocketnautics$6DOFEnabled) {
+            LivingEntity entity = (LivingEntity)(Object)this;
+            entity.setSwimming(false);
+            if (entity instanceof net.minecraft.world.entity.player.Player player) {
+                player.setPose(net.minecraft.world.entity.Pose.STANDING);
+            }
+        }
+        rocketnautics$ambulant = ambulant;
+    }
 
     @Unique
     private boolean rocketnautics$ambulant;

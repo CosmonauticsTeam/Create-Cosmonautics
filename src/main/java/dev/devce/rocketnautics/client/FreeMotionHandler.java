@@ -87,7 +87,13 @@ public class FreeMotionHandler {
         if (!player.level().getFluidState(player.blockPosition()).isEmpty()) return;
 
         FreeMotionEntity fme = (FreeMotionEntity) player;
-        if (!fme.is6DOFEnabled()) return;
+        if (!fme.is6DOFEnabled()) {
+            if (player.isSwimming() && player.level().getFluidState(player.blockPosition()).isEmpty()) {
+                player.setSwimming(false);
+                player.setPose(net.minecraft.world.entity.Pose.STANDING);
+            }
+            return;
+        }
 
         Quaternionf quat = new Quaternionf(fme.getOrientation());
         Vector3f thrust = getThrustStrength(player.getId());

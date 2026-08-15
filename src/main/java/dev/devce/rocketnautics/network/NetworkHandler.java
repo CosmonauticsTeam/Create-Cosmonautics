@@ -159,6 +159,10 @@ public class NetworkHandler {
             fme.setAmbulant(payload.isAmbulant());
             fme.setMovementAcceleration(payload.movementAcceleration());
             fme.setDampenerForce(payload.dampenerForce());
+            if (!payload.is6DOFEnabled() && context.player() instanceof net.minecraft.world.entity.player.Player player) {
+                player.setSwimming(false);
+                player.setPose(net.minecraft.world.entity.Pose.STANDING);
+            }
         }
     }
 
@@ -192,6 +196,12 @@ public class NetworkHandler {
             fme.setOrientation(payload.orientation());
             fme.set6DOFEnabled(payload.freeMotionEnabled());
             fme.setAmbulant(payload.ambulant());
+            if (!payload.freeMotionEnabled()) {
+                entity.setSwimming(false);
+                if (entity instanceof net.minecraft.world.entity.player.Player player) {
+                    player.setPose(net.minecraft.world.entity.Pose.STANDING);
+                }
+            }
             dev.devce.rocketnautics.client.FreeMotionHandler.putThrustStrength(payload.entityId(), payload.thrustStrength());
         }
     }

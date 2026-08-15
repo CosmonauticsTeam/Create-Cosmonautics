@@ -89,6 +89,7 @@ public abstract class CameraMixin implements IFreeMotionCamera {
     @Inject(method = "setup", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setPosition(DDD)V", shift = Shift.AFTER, ordinal = 0))
     private void rocketnautics$apply6DOFCamera(BlockGetter level, Entity cameraEntity, boolean detached, boolean mirrored, float partialTick, CallbackInfo ci) {
         if (!(cameraEntity instanceof FreeMotionEntity fme)) return;
+        if (!fme.is6DOFEnabled()) return;
 
         this.rotation.set(fme.getOrientation());
 
