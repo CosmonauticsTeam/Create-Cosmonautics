@@ -45,6 +45,10 @@
   "block.rocketnautics.magnetic_stabilizer.tooltip.condition1": "When Powered",
   "block.rocketnautics.magnetic_stabilizer.tooltip.behaviour1": "Dampens _angular momentum_ of the attached _ship_.",
 
+  "block.rocketnautics.gyrodyne": "Gyrodyne",
+  "block.rocketnautics.gyrodyne.funny": "Spinning heavy wheels in three dimensions because physics said conservation of angular momentum is free real estate.",
+  "block.rocketnautics.gyrodyne.summary": "An active gyroscopic attitude control stabilizer. Features configurable modes on its side displays: _SAS_ (holds orientation and damps spin), _Prograde_ (points forward along orbital velocity), and _Retrograde_ (points opposite to velocity). Works in Deep Space.",
+
   "block.rocketnautics.titanium_casing": "Resilient Casing",
 
   "item.rocketnautics.music_disc_space": "Music Disc",
@@ -60,6 +64,11 @@
   "gui.rocketnautics.thrust_power": "Thrust Power",
   "gui.rocketnautics.holo_size": "Hologram Size",
   "gui.rocketnautics.holo_scale": "Hologram Scale",
+  "gui.rocketnautics.gyrodyne.mode": "Mode",
+  "gui.rocketnautics.gyrodyne.mode.off": "Off",
+  "gui.rocketnautics.gyrodyne.mode.sas": "SAS (Hold)",
+  "gui.rocketnautics.gyrodyne.mode.prograde": "Prograde",
+  "gui.rocketnautics.gyrodyne.mode.retrograde": "Retrograde",
   "item.rocketnautics.credits_book": "Credits",
   "rocketnautics.goggles.status": "Status",
   "rocketnautics.goggles.active": "Active",

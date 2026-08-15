@@ -1,0 +1,40 @@
+{
+	"format_version": "1.21.11",
+	"credit": "Made with Blockbench",
+	"render_type": "minecraft:cutout_mipped",
+	"texture_size": [24, 16],
+	"textures": {
+		"0": "rocketnautics:block/gyrodyne",
+		"particle": "rocketnautics:block/gyrodyne"
+	},
+	"elements": [
+		{
+			"name": "movingpart2",
+			"from": [3.5, 6.5, 3.5],
+			"to": [12.5, 9.5, 12.5],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 8, 8]},
+			"faces": {
+				"north": {"uv": [12.66667, 0, 11.66667, 4.5], "rotation": 90, "texture": "#0"},
+				"east": {"uv": [12.66667, 0, 11.66667, 4.5], "rotation": 90, "texture": "#0"},
+				"south": {"uv": [12.66667, 0, 11.66667, 4.5], "rotation": 90, "texture": "#0"},
+				"west": {"uv": [12.66667, 0, 11.66667, 4.5], "rotation": 90, "texture": "#0"},
+				"up": {"uv": [6.33333, 9.5, 9.66667, 14.5], "texture": "#0"},
+				"down": {"uv": [6.33333, 9.5, 9.66667, 14.5], "texture": "#0"}
+			}
+		},
+		{
+			"name": "movingpart2inner",
+			"from": [3.5, 9.5, 3.5],
+			"to": [12.5, 6.5, 12.5],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 8, 8]},
+			"faces": {
+				"north": {"uv": [11.66667, 0, 12.66667, 4.5], "rotation": 90, "texture": "#0"},
+				"east": {"uv": [11.66667, 0, 12.66667, 4.5], "rotation": 90, "texture": "#0"},
+				"south": {"uv": [11.66667, 0, 12.66667, 4.5], "rotation": 90, "texture": "#0"},
+				"west": {"uv": [11.66667, 0, 12.66667, 4.5], "rotation": 90, "texture": "#0"},
+				"up": {"uv": [6.33333, 9.5, 9.66667, 14.5], "texture": "#0"},
+				"down": {"uv": [6.33333, 9.5, 9.66667, 14.5], "texture": "#0"}
+			}
+		}
+	]
+}

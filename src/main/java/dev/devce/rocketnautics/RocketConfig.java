@@ -41,6 +41,7 @@ public class RocketConfig {
         public final ModConfigSpec.BooleanValue brokenBarrier;
         public final ModConfigSpec.DoubleValue sonicBoomSpeedThreshold;
         public final ModConfigSpec.DoubleValue magneticStabilizerStrength;
+        public final ModConfigSpec.DoubleValue gyrodyneStrength;
 
         public final ModConfigSpec.EnumValue<PlanetShape> planetShape;
 
@@ -86,6 +87,9 @@ public class RocketConfig {
             magneticStabilizerStrength = builder
                     .comment("Strength of the Magnetic Stabilizer in dampening angular momentum")
                     .defineInRange("magneticStabilizerStrength", 50d, 1, 1000000);
+            gyrodyneStrength = builder
+                    .comment("Torque strength of the Gyrodyne (Reaction Wheel) in stabilizing and reorienting ships")
+                    .defineInRange("gyrodyneStrength", 100d, 1d, 1000000d);
             
             builder.push("Space");
             planetShape = builder

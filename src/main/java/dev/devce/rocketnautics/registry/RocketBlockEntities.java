@@ -74,6 +74,12 @@ public class RocketBlockEntities {
             .validBlocks(RocketBlocks.MAGNETIC_STABILIZER)
             .register();
 
+    public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlockEntity> GYRODYNE = REGISTRATE
+            .blockEntity("gyrodyne", dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlockEntity::new)
+            .validBlocks(RocketBlocks.GYRODYNE)
+            .renderer(() -> dev.devce.rocketnautics.client.render.GyrodyneRenderer::new)
+            .register();
+
     public static final BlockEntityEntry<HoseAnchorBlockEntity> HOSE_ANCHOR = REGISTRATE
             .blockEntity("hose_anchor", HoseAnchorBlockEntity::new)
             .validBlocks(RocketBlocks.HOSE_ANCHOR)

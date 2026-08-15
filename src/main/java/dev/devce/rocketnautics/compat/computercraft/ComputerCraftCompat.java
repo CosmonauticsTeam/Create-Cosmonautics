@@ -9,6 +9,7 @@ import dev.devce.rocketnautics.registry.RocketBlockEntities;
 public class ComputerCraftCompat {
     public static void init() {
         ComputerCraftAPI.registerGenericSource(new ThrusterMethods());
+        ComputerCraftAPI.registerGenericSource(new dev.devce.rocketnautics.compat.computercraft.generic.GyrodyneMethods());
     }
 
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {

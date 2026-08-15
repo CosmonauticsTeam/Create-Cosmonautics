@@ -331,6 +331,7 @@ public class RocketNauticsClient {
         event.registerBlockEntityRenderer(RocketBlockEntities.THRUSTER_MOUNT.get(), dev.devce.rocketnautics.client.render.ThrusterMountRenderer::new);
         event.registerBlockEntityRenderer(RocketBlockEntities.ENGINE_PIPES.get(), dev.devce.rocketnautics.client.render.EnginePipesRenderer::new);
         event.registerBlockEntityRenderer(RocketBlockEntities.ENGINE_NOZZLE.get(), dev.devce.rocketnautics.client.render.EngineNozzleRenderer::new);
+        event.registerBlockEntityRenderer(RocketBlockEntities.GYRODYNE.get(), dev.devce.rocketnautics.client.render.GyrodyneRenderer::new);
     }
 
     @SubscribeEvent
@@ -342,6 +343,9 @@ public class RocketNauticsClient {
         event.register(RocketPartials.ENGINE_PIPES_OPEN_MODEL);
         event.register(RocketPartials.ENGINE_PIPES_FULLFLOW_MODEL);
         event.register(RocketPartials.ENGINE_PIPES_EXPANDER_MODEL);
+        event.register(RocketPartials.GYRODYNE_ROTOR_MODEL);
+        event.register(RocketPartials.GYRODYNE_RING1_MODEL);
+        event.register(RocketPartials.GYRODYNE_RING2_MODEL);
     }
 
     @SubscribeEvent
@@ -353,6 +357,9 @@ public class RocketNauticsClient {
         RocketPartials.enginePipesOpen = event.getModels().get(RocketPartials.ENGINE_PIPES_OPEN_MODEL);
         RocketPartials.enginePipesFullflow = event.getModels().get(RocketPartials.ENGINE_PIPES_FULLFLOW_MODEL);
         RocketPartials.enginePipesExpander = event.getModels().get(RocketPartials.ENGINE_PIPES_EXPANDER_MODEL);
+        RocketPartials.gyrodyneRotor = event.getModels().get(RocketPartials.GYRODYNE_ROTOR_MODEL);
+        RocketPartials.gyrodyneRing1 = event.getModels().get(RocketPartials.GYRODYNE_RING1_MODEL);
+        RocketPartials.gyrodyneRing2 = event.getModels().get(RocketPartials.GYRODYNE_RING2_MODEL);
     }
 
     /**

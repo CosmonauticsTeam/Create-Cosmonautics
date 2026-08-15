@@ -41,6 +41,21 @@
   "rocketnautics.simulated_section.rocketnautics": "Cosmonautics",
   "itemGroup.rocketnautics.tab.resource": "Ресурсы Cosmonautics",
   "itemGroup.rocketnautics.tab.world": "Мир Cosmonautics",
+  "block.rocketnautics.magnetic_stabilizer": "Магнитный стабилизатор",
+  "block.rocketnautics.magnetic_stabilizer.tooltip.summary": "Создает _трение_ о _магнитное поле планеты_. Магниты. _Как они вообще работают?_",
+  "block.rocketnautics.magnetic_stabilizer.tooltip.condition1": "При сигнале редстоуна",
+  "block.rocketnautics.magnetic_stabilizer.tooltip.behaviour1": "Гасит _угловой момент_ (вращение) прикрепленного _корабля_.",
+
+  "block.rocketnautics.gyrodyne": "Гиродин",
+  "block.rocketnautics.gyrodyne.funny": "Вращение массивных маховиков в трёх измерениях, потому что физика разрешила бесплатно использовать закон сохранения углового момента.",
+  "block.rocketnautics.gyrodyne.summary": "Активный гироскопический стабилизатор ориентации корабля. Оснащён переключателем режимов на боковых панелях: _САС_ (удержание ориентации и гашение вращения), _Прогрейд_ (поворот по вектору орбитальной скорости) и _Ретрогрейд_ (поворот против вектора скорости). Работает в Deep Space.",
+
+  "gui.rocketnautics.gyrodyne.mode": "Режим",
+  "gui.rocketnautics.gyrodyne.mode.off": "Выкл",
+  "gui.rocketnautics.gyrodyne.mode.sas": "САС (Удержание)",
+  "gui.rocketnautics.gyrodyne.mode.prograde": "Прогрейд",
+  "gui.rocketnautics.gyrodyne.mode.retrograde": "Ретрогрейд",
+
   "gui.rocketnautics.min_thrust": "Мин. тяга (0 Сигнал)",
   "gui.rocketnautics.max_thrust": "Макс. тяга (15 Сигнал)",
   "gui.rocketnautics.thrust_power": "Мощность тяги",

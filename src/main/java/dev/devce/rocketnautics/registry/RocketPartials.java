@@ -24,6 +24,14 @@ public class RocketPartials {
         new ModelResourceLocation(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "block/engine_pipes_fullflow"), "standalone");
     public static final ModelResourceLocation ENGINE_PIPES_EXPANDER_MODEL = 
         new ModelResourceLocation(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "block/engine_pipes_expander"), "standalone");
+
+    public static final ModelResourceLocation GYRODYNE_ROTOR_MODEL = 
+        new ModelResourceLocation(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "block/gyrodyne_rotor"), "standalone");
+    public static final ModelResourceLocation GYRODYNE_RING1_MODEL = 
+        new ModelResourceLocation(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "block/gyrodyne_ring1"), "standalone");
+    public static final ModelResourceLocation GYRODYNE_RING2_MODEL = 
+        new ModelResourceLocation(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "block/gyrodyne_ring2"), "standalone");
+
     public static BakedModel vectorThrusterNozzle;
     public static BakedModel engineNozzle;
     public static BakedModel enginePipesBase;
@@ -31,6 +39,9 @@ public class RocketPartials {
     public static BakedModel enginePipesOpen;
     public static BakedModel enginePipesFullflow;
     public static BakedModel enginePipesExpander;
+    public static BakedModel gyrodyneRotor;
+    public static BakedModel gyrodyneRing1;
+    public static BakedModel gyrodyneRing2;
 
     public static void init() {
         
