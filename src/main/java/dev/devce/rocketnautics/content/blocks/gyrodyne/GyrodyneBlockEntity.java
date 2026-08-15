@@ -128,8 +128,8 @@ public class GyrodyneBlockEntity extends SmartBlockEntity implements BlockEntity
         handle.getAngularVelocity(tempAngVel);
 
         double strength = RocketConfig.SERVER.gyrodyneStrength.getAsDouble();
-        double kp = 6.0;  // Proportional gain
-        double kd = 3.5;  // Derivative gain (damping)
+        double kp = 8.0;  // Proportional gain (orientation stiffness)
+        double kd = 5.0;  // Derivative gain (angular momentum / spin damping)
 
         Vector3d correctiveTorque = new Vector3d();
 
@@ -139,7 +139,7 @@ public class GyrodyneBlockEntity extends SmartBlockEntity implements BlockEntity
                     lockedOrientation = new Quaterniond(shipOrientation);
                 }
 
-                // Error quaternion: from current to locked
+                // Error quaternion: from current orientation to locked target orientation
                 Quaterniond errorQuat = new Quaterniond(lockedOrientation).mul(new Quaterniond(shipOrientation).conjugate());
                 if (errorQuat.w < 0) {
                     errorQuat.x = -errorQuat.x;
@@ -155,12 +155,14 @@ public class GyrodyneBlockEntity extends SmartBlockEntity implements BlockEntity
                 Vector3d errorRot = new Vector3d(axisAngle.x, axisAngle.y, axisAngle.z).mul(angle);
                 if (Double.isFinite(errorRot.x) && Double.isFinite(errorRot.y) && Double.isFinite(errorRot.z)) {
                     correctiveTorque.set(errorRot).mul(kp).sub(new Vector3d(tempAngVel).mul(kd));
+                } else {
+                    correctiveTorque.set(tempAngVel).negate().mul(kd);
                 }
             }
 
             case PROGRADE -> {
-                Vector3d vel = new Vector3d(subLevel.logicalPose().position()).sub(subLevel.lastPose().position());
-                if (vel.lengthSquared() > 1e-4) {
+                Vector3d vel = getShipVelocity(subLevel, handle);
+                if (vel.lengthSquared() > 0.04) {
                     Vector3d desiredDir = new Vector3d(vel).normalize();
                     Vector3d shipForward = shipOrientation.transform(new Vector3d(0, 0, -1));
 
@@ -176,14 +178,14 @@ public class GyrodyneBlockEntity extends SmartBlockEntity implements BlockEntity
                     }
                     lockedOrientation = new Quaterniond(shipOrientation);
                 } else {
-                    // Not moving fast enough: dampen angular velocity
+                    // When stationary in Overworld/Space: act as SAS / damp spin
                     correctiveTorque.set(tempAngVel).negate().mul(kd);
                 }
             }
 
             case RETROGRADE -> {
-                Vector3d vel = new Vector3d(subLevel.logicalPose().position()).sub(subLevel.lastPose().position());
-                if (vel.lengthSquared() > 1e-4) {
+                Vector3d vel = getShipVelocity(subLevel, handle);
+                if (vel.lengthSquared() > 0.04) {
                     Vector3d desiredDir = new Vector3d(vel).negate().normalize();
                     Vector3d shipForward = shipOrientation.transform(new Vector3d(0, 0, -1));
 
@@ -199,7 +201,7 @@ public class GyrodyneBlockEntity extends SmartBlockEntity implements BlockEntity
                     }
                     lockedOrientation = new Quaterniond(shipOrientation);
                 } else {
-                    // Not moving fast enough: dampen angular velocity
+                    // When stationary in Overworld/Space: act as SAS / damp spin
                     correctiveTorque.set(tempAngVel).negate().mul(kd);
                 }
             }
@@ -227,6 +229,19 @@ public class GyrodyneBlockEntity extends SmartBlockEntity implements BlockEntity
             targetGimbalTiltX = 0f;
             targetGimbalTiltZ = 0f;
         }
+    }
+
+    private Vector3d getShipVelocity(ServerSubLevel subLevel, RigidBodyHandle handle) {
+        Vector3d vel = null;
+        try {
+            if (handle.isValid()) {
+                vel = new Vector3d(handle.getLinearVelocity());
+            }
+        } catch (Exception ignored) {}
+        if (vel == null || vel.lengthSquared() < 1e-4) {
+            vel = new Vector3d(subLevel.logicalPose().position()).sub(subLevel.lastPose().position()).mul(20.0);
+        }
+        return vel;
     }
 
     public float getRotorAngle(float partialTicks) {
