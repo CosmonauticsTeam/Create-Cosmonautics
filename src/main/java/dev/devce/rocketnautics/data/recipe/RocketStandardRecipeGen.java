@@ -104,6 +104,17 @@ public final class RocketStandardRecipeGen extends BaseRecipeProvider {
                     .define('C', Tags.Items.INGOTS_COPPER)
                     .define('P', MetalTags.TITANIUM_ALLOY.plates));
 
+    GeneratedRecipe SPACE_HELMET = create(RocketItems.SPACE_HELMET)
+            .unlockedByTag(MetalTags.TITANIUM::ingots)
+            .viaShaped(b -> b
+                    .pattern("TAT")
+                    .pattern("TGT")
+                    .pattern(" C ")
+                    .define('T', MetalTags.TITANIUM.plates)
+                    .define('A', MetalTags.TITANIUM_ALLOY.ingots)
+                    .define('G', Items.TINTED_GLASS)
+                    .define('C', Tags.Items.INGOTS_COPPER));
+
     private Marker COMPONENTS = enterFolder("components");
 
     GeneratedRecipe TITANIUM_NOZZLE = create(RocketItems.TITANIUM_NOZZLE).unlockedByTag(MetalTags.TITANIUM::ingots).viaShaped(b -> b
@@ -125,6 +136,47 @@ public final class RocketStandardRecipeGen extends BaseRecipeProvider {
             .define('D', CommonMetal.COPPER.ingots));
 
     private Marker MECHANISMS = enterFolder("mechanisms");
+
+    GeneratedRecipe TITANIUM_CASING = create(RocketBlocks.TITANIUM_CASING).unlockedByTag(MetalTags.TITANIUM::ingots).viaShaped(b -> b
+            .pattern(" T ")
+            .pattern("TAT")
+            .pattern(" T ")
+            .define('T', MetalTags.TITANIUM.plates)
+            .define('A', AllBlocks.ANDESITE_CASING));
+
+    GeneratedRecipe THRUSTER_MOUNT = create(RocketBlocks.THRUSTER_MOUNT).unlockedBy(RocketBlocks.ROCKET_THRUSTER).viaShaped(b -> b
+            .pattern("PSP")
+            .pattern("PCP")
+            .pattern("T T")
+            .define('P', AllBlocks.FLUID_PIPE)
+            .define('S', MetalTags.TITANIUM_ALLOY.plates)
+            .define('C', RocketBlocks.TITANIUM_CASING)
+            .define('T', MetalTags.TITANIUM.plates));
+
+    GeneratedRecipe ENGINE_PIPES = create(RocketBlocks.ENGINE_PIPES).returns(4).unlockedBy(RocketBlocks.THRUSTER_MOUNT).viaShaped(b -> b
+            .pattern(" T ")
+            .pattern("CPC")
+            .pattern(" T ")
+            .define('T', MetalTags.TITANIUM.plates)
+            .define('C', CommonMetal.COPPER.plates)
+            .define('P', AllBlocks.FLUID_PIPE));
+
+    GeneratedRecipe ENGINE_NOZZLE = create(RocketBlocks.ENGINE_NOZZLE).unlockedByTag(ItemTags.NOZZLES::tag).viaShaped(b -> b
+            .pattern(" A ")
+            .pattern("T T")
+            .pattern("N N")
+            .define('A', MetalTags.TITANIUM_ALLOY.plates)
+            .define('T', MetalTags.TITANIUM.plates)
+            .define('N', RocketItems.TITANIUM_NOZZLE));
+
+    GeneratedRecipe HOSE_ANCHOR = create(RocketBlocks.HOSE_ANCHOR).unlockedByTag(MetalTags.TITANIUM::ingots).viaShaped(b -> b
+            .pattern(" H ")
+            .pattern("ICI")
+            .pattern(" P ")
+            .define('H', AllBlocks.HOSE_PULLEY)
+            .define('I', CommonMetal.IRON.plates)
+            .define('C', RocketBlocks.TITANIUM_CASING)
+            .define('P', AllBlocks.FLUID_PIPE));
 
     GeneratedRecipe SEPARATOR = create(RocketBlocks.SEPARATOR).unlockedByTag(() -> CommonMetal.ZINC.ingots).viaShaped(b -> b
             .pattern("A")

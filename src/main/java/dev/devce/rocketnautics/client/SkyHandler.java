@@ -2470,7 +2470,8 @@ public class SkyHandler {
     private static DynamicTexture SKYBOX_HIGH_TEXTURE_OBJ = null;
 
     public static void ensureSkyboxTexture(boolean isDeepSpace) {
-        if (isDeepSpace) {
+        boolean highExposure = isDeepSpace && dev.devce.rocketnautics.RocketConfig.CLIENT.skyboxExposure.get() == dev.devce.rocketnautics.RocketConfig.SkyboxExposure.HIGH;
+        if (highExposure) {
             if (SKYBOX_HIGH_TEXTURE_ID != null) return;
             Minecraft mc = Minecraft.getInstance();
             java.nio.file.Path path = java.nio.file.Paths.get("scratch/skybox_high.png");
@@ -2513,7 +2514,8 @@ public class SkyHandler {
         Minecraft mc = Minecraft.getInstance();
         boolean isDeepSpace = mc.level != null && DeepSpaceHelper.isDeepSpace(mc.level);
         ensureSkyboxTexture(isDeepSpace);
-        ResourceLocation textureId = isDeepSpace ? SKYBOX_HIGH_TEXTURE_ID : SKYBOX_TEXTURE_ID;
+        boolean highExposure = isDeepSpace && dev.devce.rocketnautics.RocketConfig.CLIENT.skyboxExposure.get() == dev.devce.rocketnautics.RocketConfig.SkyboxExposure.HIGH;
+        ResourceLocation textureId = highExposure ? SKYBOX_HIGH_TEXTURE_ID : SKYBOX_TEXTURE_ID;
         if (textureId == null || visibility <= 0) return;
 
         RenderSystem.enableBlend();

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "rocketnautics:titanium_casing"
+    },
+    "H": {
+      "item": "create:hose_pulley"
+    },
+    "I": {
+      "tag": "c:plates/iron"
+    },
+    "P": {
+      "item": "create:fluid_pipe"
+    }
+  },
+  "pattern": [
+    " H ",
+    "ICI",
+    " P "
+  ],
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:hose_anchor"
+  }
+}

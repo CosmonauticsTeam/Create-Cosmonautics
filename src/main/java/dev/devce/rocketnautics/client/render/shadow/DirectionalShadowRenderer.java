@@ -85,11 +85,16 @@ public class DirectionalShadowRenderer {
         if (len < 1e-4f) return;
         sunX /= len; sunY /= len; sunZ /= len;
 
-        // Shadow camera position looking from sun direction towards camera focus
+        // Texel-snapped focus point in world coordinates to completely eliminate camera movement jitter
         Vec3 camPos = camera.getPosition();
-        float eyeX = (float) (camPos.x + sunX * SHADOW_DISTANCE);
-        float eyeY = (float) (camPos.y + sunY * SHADOW_DISTANCE);
-        float eyeZ = (float) (camPos.z + sunZ * SHADOW_DISTANCE);
+        float texelSize = (SHADOW_BOX_SIZE * 2.0f) / 2048.0f;
+        double focusX = Math.floor(camPos.x / texelSize) * texelSize;
+        double focusY = Math.floor(camPos.y / texelSize) * texelSize;
+        double focusZ = Math.floor(camPos.z / texelSize) * texelSize;
+
+        float eyeX = (float) (focusX + sunX * SHADOW_DISTANCE);
+        float eyeY = (float) (focusY + sunY * SHADOW_DISTANCE);
+        float eyeZ = (float) (focusZ + sunZ * SHADOW_DISTANCE);
         SHADOW_CAM_POS.set(eyeX, eyeY, eyeZ);
 
         Vector3f up = Math.abs(sunY) > 0.95f ? new Vector3f(0, 0, 1) : new Vector3f(0, 1, 0);
@@ -102,10 +107,10 @@ public class DirectionalShadowRenderer {
             1.0f, SHADOW_DISTANCE * 2.0f
         );
 
-        // Standard world-space Light View Matrix
+        // Standard world-space Light View Matrix locked to snapped world grid
         Matrix4f lightViewWorld = new Matrix4f().lookAt(
             eyeX, eyeY, eyeZ,
-            (float) camPos.x, (float) camPos.y, (float) camPos.z,
+            (float) focusX, (float) focusY, (float) focusZ,
             up.x, up.y, up.z
         );
 

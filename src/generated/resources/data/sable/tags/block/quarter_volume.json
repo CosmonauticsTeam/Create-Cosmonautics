@@ -1,5 +1,8 @@
 {
   "values": [
-    "rocketnautics:rcs_thruster"
+    "rocketnautics:rcs_thruster",
+    "rocketnautics:rcs_thruster",
+    "rocketnautics:ion_engine",
+    "rocketnautics:ion_engine"
   ]
 }

@@ -48,7 +48,7 @@ public class SunDirectionalShadingPreProcessor implements ShaderPreProcessor {
         "  vec3 sc = lightSpace.xyz / lightSpace.w;" +
         "  float shadow = 1.0;" +
         "  if (sc.x >= 0.001 && sc.x <= 0.999 && sc.y >= 0.001 && sc.y <= 0.999 && sc.z >= 0.001 && sc.z <= 0.999) {" +
-        "    float bias = max(0.0025 * (1.0 - max(NdotL, 0.0)), 0.0005);" +
+        "    float bias = max(0.0045 * (1.0 - max(NdotL, 0.0)), 0.0016);" +
         "    float sSum = 0.0;" +
         "    vec2 tSz = vec2(1.0 / 2048.0);" +
         "    for (int ix = -1; ix <= 1; ++ix) {" +
@@ -59,16 +59,18 @@ public class SunDirectionalShadingPreProcessor implements ShaderPreProcessor {
         "    }" +
         "    shadow = sSum / 9.0;" +
         "  }" +
-        "  float sunDiffuse = smoothstep(-0.15, 0.35, NdotL) * shadow * max(SunIntensity, 0.01);" +
-        "  vec3 SUN_COLOR = vec3(1.28, 1.22, 1.12);" +
-        "  vec3 SPACE_AMBIENT = vec3(0.18, 0.22, 0.30);" +
+        "  float sunDiffuse = clamp(NdotL * 1.3, 0.0, 1.0) * shadow * max(SunIntensity, 0.01);" +
+        "  vec3 SUN_COLOR = vec3(1.36, 1.32, 1.25);" +
+        "  vec3 SPACE_AMBIENT = vec3(0.008, 0.010, 0.015);" +
         "  vec3 directSun = SUN_COLOR * sunDiffuse;" +
         "  vec3 ambientLight = SPACE_AMBIENT;" +
         "  vec3 viewSun = normalize((ModelViewMat * vec4(sunDir, 0.0)).xyz);" +
         "  vec3 viewNorm = normalize(mat3(ModelViewMat) * Normal);" +
         "  vec3 halfVec = normalize(viewSun + vec3(0.0, 0.0, 1.0));" +
-        "  float spec = pow(max(dot(viewNorm, halfVec), 0.0), 32.0) * sunDiffuse * 0.35;" +
-        "  vec3 outerLight = ambientLight + directSun + (SUN_COLOR * spec);" +
+        "  float spec = pow(max(dot(viewNorm, halfVec), 0.0), 32.0) * sunDiffuse * 0.40;" +
+        "  float fresnel = pow(clamp(1.0 - abs(viewNorm.z), 0.0, 1.0), 3.0);" +
+        "  vec3 rimLight = (SUN_COLOR * max(NdotL, 0.0) * 0.8 + vec3(0.15, 0.25, 0.45) * 0.2) * fresnel * 0.40;" +
+        "  vec3 outerLight = ambientLight + directSun + (SUN_COLOR * spec) + rimLight;" +
         "  vec3 finalLight = outerLight + torchSample.rgb;" +
         "  vertexColor.rgb = Color.rgb * mix(minecraft_sample_lightmap(Sampler2, UV2).rgb, finalLight, _subLevelLit);" +
         "}";

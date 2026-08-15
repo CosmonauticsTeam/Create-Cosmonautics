@@ -1,4 +1,10 @@
 {
+  "block.rocketnautics.ion_engine": "Ion Engine",
+  "block.rocketnautics.ion_engine.funny": "Accelerates charged particles into deep space. Whisper-quiet, highly efficient, and glows with electric prestige.",
+  "block.rocketnautics.ion_engine.summary": "High-efficiency electrical propulsion powered by FE and throttled via Redstone signal strength (up to 180 N). Consumes up to 160 FE/t at full throttle — perfectly matched to a single Solar Panel. Exhaust port must remain unobstructed.",
+  "block.rocketnautics.solar_panel": "Solar Panel",
+  "block.rocketnautics.solar_panel.funny": "Captures unfiltered solar rays to power your orbital dreams.",
+  "block.rocketnautics.solar_panel.summary": "Generates Forge Energy (FE) from sunlight. Highly efficient in Deep Space when oriented toward the Sun, but also provides modest power in planetary daytime.",
   "block.rocketnautics.rocket_thruster": "Rocket Thruster",
   "block.rocketnautics.rocket_thruster.funny": "Turns _fuel_ into noise and _hope_. High-performance, _low-survival_.",
   "block.rocketnautics.rocket_thruster.summary": "The _core_ of any liquid-fueled _rocket_. Requires a constant supply of _propellant_ (Lava) to generate _thrust_. Throttling is controlled via pump _RPM_. _Warning_: exhaust is _extremely hot_!",

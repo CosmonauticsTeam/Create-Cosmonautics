@@ -29,7 +29,7 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
     public static final BehaviourType<ThrustBehaviour> TYPE = new BehaviourType<>();
 
     public enum EngineType {
-        ROCKET, RCS, STEAM
+        ROCKET, RCS, STEAM, ION
     }
 
     // Configuration
@@ -138,10 +138,13 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
                     this.exhaustDir,
                     visualThrottle,
                     (float) this.ignitionTicks,
-                    this.engineType == EngineType.RCS
+                    this.engineType == EngineType.RCS,
+                    this.engineType == EngineType.ION
                 );
                 spawnParticles(level);
-                handleCameraShake(level);
+                if (this.engineType != EngineType.ION && this.engineType != EngineType.RCS) {
+                    handleCameraShake(level);
+                }
             } else {
                 dev.devce.rocketnautics.client.render.ExhaustClientRenderer.removePlume(level, blockEntity.getBlockPos());
                 if (isSteamWarmup) {

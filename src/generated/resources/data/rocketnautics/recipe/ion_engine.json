@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "tag": "c:plates/copper"
+    },
+    "E": {
+      "item": "create:electron_tube"
+    },
+    "G": {
+      "tag": "c:plates/gold"
+    },
+    "N": {
+      "item": "rocketnautics:copper_nozzle"
+    },
+    "T": {
+      "tag": "c:plates/titanium"
+    }
+  },
+  "pattern": [
+    " G ",
+    "TEN",
+    " C "
+  ],
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:ion_engine"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "type": "create:mixing",
-  "heat_requirement": "superheated",
+  "heat_requirement": "heated",
   "ingredients": [
     {
       "tag": "c:ingots/titanium"
@@ -12,7 +12,7 @@
       "tag": "c:ingots/titanium"
     },
     {
-      "item": "minecraft:netherite_scrap"
+      "tag": "c:ingots/brass"
     }
   ],
   "results": [

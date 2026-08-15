@@ -23,9 +23,9 @@ public class RocketMixingRecipeGen extends MixingRecipeGen {
             .require(MetalTags.TITANIUM.ingots)
             .require(MetalTags.TITANIUM.ingots)
             .require(MetalTags.TITANIUM.ingots)
-            .require(Items.NETHERITE_SCRAP)
+            .require(com.simibubi.create.foundation.data.recipe.CommonMetal.BRASS.ingots)
             .output(RocketItems.TITANIUM_ALLOY, 4)
-            .requiresHeat(HeatCondition.SUPERHEATED));
+            .requiresHeat(HeatCondition.HEATED));
 
     GeneratedRecipe LUNAR_AGED_BASALT = create("lunar_aged_basalt", b -> b
             .require(LUNAR_SHATTERED_REGOLITH)

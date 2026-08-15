@@ -201,13 +201,30 @@ public class RocketSettingsScreen extends Screen {
         String[] skyModes = { "Legacy", "Modern" };
         list.addCycle(
             "Sky Rendering Mode",
-            "Modern mode provides high-fidelity universe rendering with planet physics integration.",
+            "Modern is the primary supported system. Legacy is deprecated, unsupported, and provided as-is.",
             skyModes,
             RocketConfig.CLIENT.skyRenderingSystem.get().ordinal(),
             val -> {
                 RocketConfig.SkyRenderingSystem mode = RocketConfig.SkyRenderingSystem.values()[val];
-                RocketConfig.CLIENT.skyRenderingSystem.set(mode);
-                RocketConfig.CLIENT.skyRenderingSystem.save();
+                if (mode == RocketConfig.SkyRenderingSystem.LEGACY) {
+                    this.minecraft.setScreen(new LegacyWarningScreen(this));
+                } else {
+                    RocketConfig.CLIENT.skyRenderingSystem.set(RocketConfig.SkyRenderingSystem.MODERN);
+                    RocketConfig.CLIENT.skyRenderingSystem.save();
+                }
+            }
+        );
+
+        String[] exposures = { "Low (Dark)", "High (Vivid)" };
+        list.addCycle(
+            "Skybox Exposure",
+            "Low exposure provides a dark cinematic space backdrop. High exposure displays brighter nebulas.",
+            exposures,
+            RocketConfig.CLIENT.skyboxExposure.get().ordinal(),
+            val -> {
+                RocketConfig.SkyboxExposure exposure = RocketConfig.SkyboxExposure.values()[val];
+                RocketConfig.CLIENT.skyboxExposure.set(exposure);
+                RocketConfig.CLIENT.skyboxExposure.save();
             }
         );
 
@@ -759,6 +776,103 @@ public class RocketSettingsScreen extends Screen {
 
             graphics.drawCenteredString(Minecraft.getInstance().font, this.getMessage(),
                 this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, TEXT_PRIMARY);
+        }
+    }
+
+    public static class LegacyWarningScreen extends Screen {
+        private final Screen parent;
+
+        public LegacyWarningScreen(Screen parent) {
+            super(Component.literal("Warning: Deprecated Legacy Rendering"));
+            this.parent = parent;
+        }
+
+        @Override
+        protected void init() {
+            int cardW = 390;
+            int cardH = 180;
+            int cardX = (this.width - cardW) / 2;
+            int cardY = (this.height - cardH) / 2;
+
+            int btnW = 165;
+            int btnH = 24;
+            int btnY = cardY + cardH - 34;
+
+            // Keep Modern Button (Recommended)
+            this.addRenderableWidget(new ModernButton(cardX + 16, btnY, btnW, btnH,
+                Component.literal("Keep Modern (Recommended)"),
+                b -> {
+                    RocketConfig.CLIENT.skyRenderingSystem.set(RocketConfig.SkyRenderingSystem.MODERN);
+                    RocketConfig.CLIENT.skyRenderingSystem.save();
+                    this.minecraft.setScreen(parent);
+                },
+                ACCENT_BLUE));
+
+            // Enable Legacy Button
+            this.addRenderableWidget(new ModernButton(cardX + cardW - btnW - 16, btnY, btnW, btnH,
+                Component.literal("Enable Legacy (Unsupported)"),
+                b -> {
+                    RocketConfig.CLIENT.skyRenderingSystem.set(RocketConfig.SkyRenderingSystem.LEGACY);
+                    RocketConfig.CLIENT.skyRenderingSystem.save();
+                    this.minecraft.setScreen(parent);
+                },
+                0xFFEF4444));
+        }
+
+        @Override
+        public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            // Dark dim background
+            graphics.fill(0, 0, this.width, this.height, 0xDD0A0D12);
+        }
+
+        @Override
+        public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            this.renderBackground(graphics, mouseX, mouseY, partialTick);
+
+            int cardW = 390;
+            int cardH = 180;
+            int cardX = (this.width - cardW) / 2;
+            int cardY = (this.height - cardH) / 2;
+
+            // Card Panel with amber warning border and drop shadow
+            graphics.fill(cardX + 2, cardY + 2, cardX + cardW + 2, cardY + cardH + 2, 0x99000000);
+            graphics.fill(cardX, cardY, cardX + cardW, cardY + cardH, 0xFF18202C);
+            graphics.renderOutline(cardX, cardY, cardW, cardH, 0xFFF59E0B);
+            graphics.fill(cardX, cardY, cardX + cardW, cardY + 2, 0xFFF59E0B);
+
+            // Title
+            graphics.drawCenteredString(this.font, "Warning: Deprecated Legacy Rendering", this.width / 2, cardY + 12, 0xFFFFB020);
+
+            // Body message with clean margins and crisp bright text
+            int textX = cardX + 16;
+            int textY = cardY + 32;
+            int textW = cardW - 32;
+
+            String p1 = "The Legacy sky rendering system is provided 'as is' and is entirely unsupported by the developers. No fixes or optimizations will be provided.";
+            String p2 = "It is preserved solely for users who prefer the legacy visual look. Performance drops and visual bugs may occur.";
+            String p3 = "We strongly recommend using the Modern rendering system.";
+
+            for (net.minecraft.util.FormattedCharSequence line : this.font.split(Component.literal(p1), textW)) {
+                graphics.drawString(this.font, line, textX, textY, 0xFFFFFFFF, true);
+                textY += 10;
+            }
+            textY += 4;
+            for (net.minecraft.util.FormattedCharSequence line : this.font.split(Component.literal(p2), textW)) {
+                graphics.drawString(this.font, line, textX, textY, 0xFFE2E8F0, true);
+                textY += 10;
+            }
+            textY += 4;
+            for (net.minecraft.util.FormattedCharSequence line : this.font.split(Component.literal(p3), textW)) {
+                graphics.drawString(this.font, line, textX, textY, 0xFF38BDF8, true);
+                textY += 10;
+            }
+
+            super.render(graphics, mouseX, mouseY, partialTick);
+        }
+
+        @Override
+        public void onClose() {
+            this.minecraft.setScreen(parent);
         }
     }
 }
