@@ -29,6 +29,7 @@ run/
 local.properties
 /buildSrc/build/
 /buildSrc/.gradle/
+gradle.properties
 
 # Python
 __pycache__/
