@@ -65,7 +65,7 @@ public class RocketConfig {
             brokenBarrier = builder
                     .comment("Allow engine thrust to exceed standard limits (up to 5000N)")
                     .define("brokenBarrier", false);
-            sonicBoomEnabled = builder
+            boomEnabled = builder
                     .comment("Whether to enable or disable sonic boom")
                     .define("boomEnabled", true);
             sonicBoomSpeedThreshold = builder
