@@ -3,6 +3,9 @@
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
+# JDK
+jdk/
+
 # IntelliJ IDEA
 .idea/
 *.iws
@@ -55,3 +58,5 @@ compile_output.txt
 .editorconfig
 **/.cache
 veil_src
+gradle.properties
+settings.gradle
