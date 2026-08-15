@@ -3,355 +3,762 @@ package dev.devce.rocketnautics.client;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.SkyDataHandler;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.CycleButton;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.ChatFormatting;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ScreenEvent;
 
+import java.util.function.Consumer;
+
+/**
+ * Modern, clean Sodium-style configuration interface for Cosmonautics.
+ */
+@EventBusSubscriber(modid = RocketNautics.MODID, value = Dist.CLIENT)
 public class RocketSettingsScreen extends Screen {
-    private final Screen lastScreen;
-    public enum ScreenTab { CLIENT, SERVER }
-    private ScreenTab activeTab = ScreenTab.CLIENT;
-    
-    private float screenAnimation = 0.0f;
-    private long lastFrameTime = 0;
 
-    public RocketSettingsScreen(Screen lastScreen) {
-        super(Component.literal("RocketNautics Systems Configuration"));
-        this.lastScreen = lastScreen;
+    @SubscribeEvent
+    public static void onScreenInit(ScreenEvent.Init.Post event) {
+        Screen screen = event.getScreen();
+        if (screen instanceof PauseScreen) {
+            int targetX = screen.width / 2 + 104;
+            int targetY = screen.height / 4 + 48;
+
+            for (var child : event.getListenersList()) {
+                if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget) {
+                    // Match the right-column button in the 3rd row (Report Bugs / Feedback row)
+                    if (widget.getX() > screen.width / 2 && widget.getY() >= screen.height / 4 + 35 && widget.getY() <= screen.height / 4 + 75) {
+                        targetX = widget.getX() + widget.getWidth() + 4;
+                        targetY = widget.getY();
+                        break;
+                    }
+                }
+            }
+            event.addListener(new QuickConfigButton(targetX, targetY, screen));
+        } else if (screen instanceof OptionsScreen) {
+            int targetX = screen.width / 2 + 158;
+            int targetY = screen.height / 6 + 48 - 6;
+
+            for (var child : event.getListenersList()) {
+                if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget) {
+                    if (widget.getX() > screen.width / 2 && widget.getY() >= screen.height / 6 + 30 && widget.getY() <= screen.height / 6 + 60) {
+                        targetX = widget.getX() + widget.getWidth() + 4;
+                        targetY = widget.getY();
+                        break;
+                    }
+                }
+            }
+            event.addListener(new QuickConfigButton(targetX, targetY, screen));
+        }
     }
 
-    private class NodeButton extends Button {
-        private final int accentColor;
-
-        public NodeButton(int x, int y, int width, int height, Component message, OnPress onPress, int accentColor) {
-            super(x, y, width, height, message, onPress, DEFAULT_NARRATION);
-            this.accentColor = accentColor;
+    public static class QuickConfigButton extends Button {
+        public QuickConfigButton(int x, int y, Screen parent) {
+            super(x, y, 20, 20, Component.empty(),
+                b -> Minecraft.getInstance().setScreen(new RocketSettingsScreen(parent)),
+                DEFAULT_NARRATION);
+            this.setTooltip(Tooltip.create(Component.literal("Cosmonautics Settings")));
         }
 
         @Override
         public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             if (!this.visible) return;
-            
             boolean hovered = this.isHoveredOrFocused();
-            int bgColor = hovered ? 0xFF2A2A2A : 0xFF1A1A1A;
-            int borderColor = hovered ? accentColor : 0xFF444444;
-            int textColor = hovered ? 0xFFFFFFFF : 0xFFAAAAAA;
 
-            // Background
-            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);
-            // Border
-            graphics.renderOutline(this.getX(), this.getY(), this.width, this.height, borderColor);
-            
-            // Text
-            graphics.drawCenteredString(net.minecraft.client.Minecraft.getInstance().font, this.getMessage(), this.getX() + this.width / 2, this.getY() + (this.height - 9) / 2, textColor);
-            
-            if (hovered && active) {
-                // Glow effect on top
-                graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + 1, accentColor);
-            }
+            int bg = hovered ? 0xFF242E3B : 0xFF141A24;
+            int border = hovered ? 0xFF38BDF8 : 0xFF28313E;
+
+            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bg);
+            graphics.renderOutline(this.getX(), this.getY(), this.width, this.height, border);
+
+            net.minecraft.world.item.ItemStack stack = new net.minecraft.world.item.ItemStack(
+                dev.devce.rocketnautics.registry.RocketBlocks.ROCKET_THRUSTER.asItem()
+            );
+            graphics.renderFakeItem(stack, this.getX() + 2, this.getY() + 2);
         }
+    }
+
+    public enum Tab {
+        LIGHTING("Lighting", "Space lighting, shadow maps & PBR shading"),
+        VISUALS("Visuals", "Planets & engine plume visuals"),
+        CAMERA("Camera", "Camera shake & view effects"),
+        PHYSICS("Physics", "Engine thrust, fuel & server logic"),
+        PRESETS("Presets", "One-click quality profiles");
+
+        private final String title;
+        private final String desc;
+
+        Tab(String title, String desc) {
+            this.title = title;
+            this.desc = desc;
+        }
+    }
+
+    private final Screen lastScreen;
+    private Tab activeTab = Tab.LIGHTING;
+
+    // Theme Colors
+    private static final int BG_COLOR = 0xFF0F141C;
+    private static final int SIDEBAR_BG = 0xFF141A24;
+    private static final int HEADER_BG = 0xFF0B0F15;
+    private static final int BORDER_COLOR = 0xFF222B38;
+    private static final int ACCENT_BLUE = 0xFF38BDF8;
+    private static final int ACCENT_GREEN = 0xFF10B981;
+    private static final int CARD_BG = 0xFF18202C;
+    private static final int CARD_HOVER = 0xFF222D3E;
+    private static final int TEXT_PRIMARY = 0xFFF1F5F9;
+    private static final int TEXT_SECONDARY = 0xFF94A3B8;
+
+    public RocketSettingsScreen(Screen lastScreen) {
+        super(Component.literal("Cosmonautics Settings"));
+        this.lastScreen = lastScreen;
     }
 
     @Override
     protected void init() {
         this.clearWidgets();
-        int x = this.width / 2;
-        int y = 50;
 
-        if (activeTab == ScreenTab.CLIENT) {
-            initClientSettings(x, y);
-        } else {
-            initServerSettings(x, y);
+        int sidebarWidth = 135;
+
+        // Add Sidebar Tab Buttons
+        int tabY = 48;
+        int tabHeight = 28;
+        for (Tab tab : Tab.values()) {
+            boolean isSelected = (tab == activeTab);
+            this.addRenderableWidget(new SidebarButton(10, tabY, sidebarWidth - 20, tabHeight, tab, isSelected, b -> {
+                if (activeTab != tab) {
+                    activeTab = tab;
+                    this.init(this.minecraft, this.width, this.height);
+                }
+            }));
+            tabY += 32;
         }
 
-        // Back Button positioned under the panel
-        int ph = 155;
-        this.addRenderableWidget(new NodeButton(this.width / 2 - 100, y + ph + 15, 200, 20, 
-            Component.translatable("gui.done"), b -> this.minecraft.setScreen(this.lastScreen), 0xFF00FF88));
+        // Content Area Layout
+        int contentX = sidebarWidth + 24;
+        int contentY = 50;
+        int contentWidth = Math.min(this.width - contentX - 24, 460);
+
+        switch (activeTab) {
+            case LIGHTING -> initLightingTab(contentX, contentY, contentWidth);
+            case VISUALS -> initVisualsTab(contentX, contentY, contentWidth);
+            case CAMERA -> initCameraTab(contentX, contentY, contentWidth);
+            case PHYSICS -> initPhysicsTab(contentX, contentY, contentWidth);
+            case PRESETS -> initPresetsTab(contentX, contentY, contentWidth);
+        }
+
+        // Bottom Action Buttons
+        int bottomY = this.height - 34;
+        this.addRenderableWidget(new ModernButton(this.width - 110, bottomY, 90, 24,
+            Component.literal("Done"),
+            b -> this.minecraft.setScreen(this.lastScreen),
+            ACCENT_BLUE));
+
+        this.addRenderableWidget(new ModernButton(this.width - 210, bottomY, 90, 24,
+            Component.literal("Reset Tab"),
+            b -> {
+                resetTabDefaults();
+                this.init(this.minecraft, this.width, this.height);
+            },
+            0xFFEF4444));
     }
 
-    private void addNodeConfig(int x, int y, String title, int color, java.util.function.Consumer<NodeConfigBuilder> setup) {
-        int width = 430;
-        NodeConfigBuilder builder = new NodeConfigBuilder(x - width / 2, y + 25, color);
-        setup.accept(builder);
+    private void initLightingTab(int x, int y, int width) {
+        SettingList list = new SettingList(x, y, width);
+
+        list.addToggle(
+            "Space Directional Light",
+            "Simulates realistic directional sunlight with soft terminator & specular on ships in Deep Space.",
+            RocketConfig.CLIENT.enableSpaceLighting.get(),
+            val -> {
+                RocketConfig.CLIENT.enableSpaceLighting.set(val);
+                RocketConfig.CLIENT.enableSpaceLighting.save();
+            }
+        );
+
+        list.addToggle(
+            "Directional Shadow Maps",
+            "Renders real-time 3D cast shadows from occluding ship parts, pillars, and hull walls in Deep Space.",
+            RocketConfig.CLIENT.enableSpaceShadowMaps.get(),
+            val -> {
+                RocketConfig.CLIENT.enableSpaceShadowMaps.set(val);
+                RocketConfig.CLIENT.enableSpaceShadowMaps.save();
+            }
+        );
     }
 
-    private void initClientSettings(int x, int y) {
-        addNodeConfig(x, y, "Visuals", 0xFF00FF88, builder -> {
-            builder.addToggle("Debug Overlay", RocketConfig.CLIENT.showDebugOverlay.get(), val -> {
-                RocketConfig.CLIENT.showDebugOverlay.set(val);
-                RocketConfig.CLIENT.showDebugOverlay.save();
-            });
-            builder.addToggle("Dynamic Render Distance", RocketConfig.CLIENT.enableDynamicRenderDistance.get(), val -> {
-                RocketConfig.CLIENT.enableDynamicRenderDistance.set(val);
-                RocketConfig.CLIENT.enableDynamicRenderDistance.save();
-            });
-            builder.addToggle("Custom Sky", RocketConfig.CLIENT.enableCustomSky.get(), val -> {
-                RocketConfig.CLIENT.enableCustomSky.set(val);
-                RocketConfig.CLIENT.enableCustomSky.save();
-            });
-            builder.addToggle("Flame Merging", RocketConfig.CLIENT.enablePlumeMerging.get(), val -> {
+    private void initVisualsTab(int x, int y, int width) {
+        SettingList list = new SettingList(x, y, width);
+
+        String[] skyModes = { "Legacy", "Modern" };
+        list.addCycle(
+            "Sky Rendering Mode",
+            "Modern mode provides high-fidelity universe rendering with planet physics integration.",
+            skyModes,
+            RocketConfig.CLIENT.skyRenderingSystem.get().ordinal(),
+            val -> {
+                RocketConfig.SkyRenderingSystem mode = RocketConfig.SkyRenderingSystem.values()[val];
+                RocketConfig.CLIENT.skyRenderingSystem.set(mode);
+                RocketConfig.CLIENT.skyRenderingSystem.save();
+            }
+        );
+
+        list.addToggle(
+            "Engine Plume Merging",
+            "Clusters adjacent rocket thruster exhaust plumes into unified realistic fiery streams.",
+            RocketConfig.CLIENT.enablePlumeMerging.get(),
+            val -> {
                 RocketConfig.CLIENT.enablePlumeMerging.set(val);
                 RocketConfig.CLIENT.enablePlumeMerging.save();
-            });
-            builder.addSlider("Camera Shake Intensity", RocketConfig.CLIENT.shakeIntensity.get(), 0.0, 2.0, val -> {
-                RocketConfig.CLIENT.shakeIntensity.set(val);
-                RocketConfig.CLIENT.shakeIntensity.save();
-            });
-            builder.addSlider("Shake Radius (m)", RocketConfig.CLIENT.shakeRadius.get(), 4.0, 32.0, val -> {
-                RocketConfig.CLIENT.shakeRadius.set(val);
-                RocketConfig.CLIENT.shakeRadius.save();
-            });
-            builder.addSlider("Maximum Planet Render Scale", RocketConfig.CLIENT.planetRenderMaximumScale.get(), SkyDataHandler.MIN_POWER_SIZE, 100, val -> {
+            }
+        );
+
+        list.addSlider(
+            "Planet Texture Scale",
+            "Resolution scale for planets rendered in deep space (higher = sharper continents).",
+            RocketConfig.CLIENT.planetRenderMaximumScale.get(),
+            SkyDataHandler.MIN_POWER_SIZE, 100, 1.0, "x",
+            val -> {
                 RocketConfig.CLIENT.planetRenderMaximumScale.set(val.intValue());
                 RocketConfig.CLIENT.planetRenderMaximumScale.save();
-            });
+            }
+        );
 
-        });
+        list.addToggle(
+            "Dynamic Render Distance",
+            "Automatically increases render distance when reaching high altitudes and orbital space.",
+            RocketConfig.CLIENT.enableDynamicRenderDistance.get(),
+            val -> {
+                RocketConfig.CLIENT.enableDynamicRenderDistance.set(val);
+                RocketConfig.CLIENT.enableDynamicRenderDistance.save();
+            }
+        );
+
+        list.addToggle(
+            "Debug Flight Overlay",
+            "Displays altitude, orbital velocity, and ship telemetry HUD on screen.",
+            RocketConfig.CLIENT.showDebugOverlay.get(),
+            val -> {
+                RocketConfig.CLIENT.showDebugOverlay.set(val);
+                RocketConfig.CLIENT.showDebugOverlay.save();
+            }
+        );
     }
 
-    private void initServerSettings(int x, int y) {
-        boolean isLocal = this.minecraft.getSingleplayerServer() != null;
-        if (!isLocal) return;
+    private void initCameraTab(int x, int y, int width) {
+        SettingList list = new SettingList(x, y, width);
 
-        addNodeConfig(x, y, "Physics & Logic", 0xFFFFAA00, builder -> {
-            builder.addSlider("Max Fuel (mB/t)", RocketConfig.SERVER.maxFuelConsumption.get().doubleValue(), 10, 200, val -> {
+        list.addSlider(
+            "Camera Shake Intensity",
+            "Controls the strength of camera vibration near active rocket thrusters and atmospheric re-entry.",
+            RocketConfig.CLIENT.shakeIntensity.get(),
+            0.0, 2.0, 0.05, "",
+            val -> {
+                RocketConfig.CLIENT.shakeIntensity.set(val);
+                RocketConfig.CLIENT.shakeIntensity.save();
+            }
+        );
+
+        list.addSlider(
+            "Camera Shake Radius",
+            "Distance in blocks from engines where vibration is felt.",
+            RocketConfig.CLIENT.shakeRadius.get(),
+            4.0, 32.0, 1.0, "m",
+            val -> {
+                RocketConfig.CLIENT.shakeRadius.set(val);
+                RocketConfig.CLIENT.shakeRadius.save();
+            }
+        );
+    }
+
+    private void initPhysicsTab(int x, int y, int width) {
+        SettingList list = new SettingList(x, y, width);
+
+        boolean isLocal = this.minecraft.getSingleplayerServer() != null;
+        if (!isLocal) {
+            list.addNotice("Server Settings are managed by the remote host.");
+            return;
+        }
+
+        list.addSlider(
+            "Max Engine Fuel Flow",
+            "Maximum fuel consumption per engine in mB/tick.",
+            RocketConfig.SERVER.maxFuelConsumption.get().doubleValue(),
+            10, 200, 5.0, " mB/t",
+            val -> {
                 RocketConfig.SERVER.maxFuelConsumption.set(val.intValue());
                 RocketConfig.SERVER.maxFuelConsumption.save();
-            });
-            builder.addSlider("Jetpack Power", RocketConfig.SERVER.jetpackThrust.get(), 0.05, 0.5, val -> {
+            }
+        );
+
+        list.addSlider(
+            "Jetpack Thrust",
+            "Base propulsion power of the survival jetpack.",
+            RocketConfig.SERVER.jetpackThrust.get(),
+            0.05, 0.5, 0.01, "",
+            val -> {
                 RocketConfig.SERVER.jetpackThrust.set(val);
                 RocketConfig.SERVER.jetpackThrust.save();
-            });
-            builder.addSlider("Sprint Power", RocketConfig.SERVER.jetpackSprintThrust.get(), 0.1, 1.0, val -> {
+            }
+        );
+
+        list.addSlider(
+            "Jetpack Sprint Thrust",
+            "High-speed boost thrust when sprinting with jetpack.",
+            RocketConfig.SERVER.jetpackSprintThrust.get(),
+            0.1, 1.0, 0.05, "",
+            val -> {
                 RocketConfig.SERVER.jetpackSprintThrust.set(val);
                 RocketConfig.SERVER.jetpackSprintThrust.save();
-            });
-            builder.addSlider("Ignition Flow", RocketConfig.SERVER.ignitionFlow.get().doubleValue(), 1, 20, val -> {
-                RocketConfig.SERVER.ignitionFlow.set(val.intValue());
-                RocketConfig.SERVER.ignitionFlow.save();
-            });
-            builder.addToggle("Engine Debug Logs", RocketConfig.SERVER.enableEngineDebugLogging.get(), val -> {
-                RocketConfig.SERVER.enableEngineDebugLogging.set(val);
-                RocketConfig.SERVER.enableEngineDebugLogging.save();
-            });
-            String[] shapes = { "gui.rocketnautics.planet_shape.cube", "gui.rocketnautics.planet_shape.sphere" };
-            builder.addCycle("gui.rocketnautics.planet_shape", shapes, RocketConfig.SERVER.planetShape.get().ordinal(), val -> {
+            }
+        );
+
+        String[] shapes = { "Cube", "Sphere" };
+        list.addCycle(
+            "Celestial Planet Shape",
+            "Visual shape representation of celestial bodies.",
+            shapes,
+            RocketConfig.SERVER.planetShape.get().ordinal(),
+            val -> {
                 RocketConfig.PlanetShape shape = RocketConfig.PlanetShape.values()[val];
                 RocketConfig.SERVER.planetShape.set(shape);
                 RocketConfig.SERVER.planetShape.save();
                 DeepSpaceHandler.clearRenderCache();
-            });
-        });
+            }
+        );
+
+        list.addToggle(
+            "Engine Debug Logs",
+            "Outputs detailed engine performance and thrust data to game logs.",
+            RocketConfig.SERVER.enableEngineDebugLogging.get(),
+            val -> {
+                RocketConfig.SERVER.enableEngineDebugLogging.set(val);
+                RocketConfig.SERVER.enableEngineDebugLogging.save();
+            }
+        );
     }
 
-    private class NodeSlider extends net.minecraft.client.gui.components.AbstractSliderButton {
-        private final int accentColor;
-        private final String prefix;
-        private final double min, max;
-        private final java.util.function.Consumer<Double> onValueChange;
+    private void initPresetsTab(int x, int y, int width) {
+        SettingList list = new SettingList(x, y, width);
 
-        public NodeSlider(int x, int y, int width, int height, String prefix, double current, double min, double max, int accentColor, java.util.function.Consumer<Double> onValueChange) {
-            super(x, y, width, height, Component.literal(prefix), (current - min) / (max - min));
-            this.prefix = prefix;
-            this.min = min;
-            this.max = max;
-            this.accentColor = accentColor;
-            this.onValueChange = onValueChange;
-            updateMessage();
-        }
+        list.addPresetButton(
+            "Cinematic PBR (Ultra)",
+            "Enables all space lighting, high-res 2K shadow maps, modern sky, and maximum scale planets.",
+            () -> {
+                RocketConfig.CLIENT.enableSpaceLighting.set(true);
+                RocketConfig.CLIENT.enableSpaceShadowMaps.set(true);
+                RocketConfig.CLIENT.enableCustomSky.set(false);
+                RocketConfig.CLIENT.skyRenderingSystem.set(RocketConfig.SkyRenderingSystem.MODERN);
+                RocketConfig.CLIENT.planetRenderMaximumScale.set(100);
+                RocketConfig.CLIENT.enablePlumeMerging.set(true);
+                saveClientConfigs();
+                this.init(this.minecraft, this.width, this.height);
+            }
+        );
 
-        @Override
-        protected void updateMessage() {
-            double val = min + value * (max - min);
-            setMessage(Component.literal(prefix + ": " + String.format("%.2f", val)));
-        }
+        list.addPresetButton(
+            "High Quality (Balanced)",
+            "Full PBR space lighting, shadow maps, modern sky, with standard texture scale.",
+            () -> {
+                RocketConfig.CLIENT.enableSpaceLighting.set(true);
+                RocketConfig.CLIENT.enableSpaceShadowMaps.set(true);
+                RocketConfig.CLIENT.enableCustomSky.set(false);
+                RocketConfig.CLIENT.skyRenderingSystem.set(RocketConfig.SkyRenderingSystem.MODERN);
+                RocketConfig.CLIENT.planetRenderMaximumScale.set(64);
+                RocketConfig.CLIENT.enablePlumeMerging.set(true);
+                saveClientConfigs();
+                this.init(this.minecraft, this.width, this.height);
+            }
+        );
 
-        @Override
-        protected void applyValue() {
-            onValueChange.accept(min + value * (max - min));
-        }
+        list.addPresetButton(
+            "Performance (Fast)",
+            "Directional space lighting ON without shadow maps for maximum framerate.",
+            () -> {
+                RocketConfig.CLIENT.enableSpaceLighting.set(true);
+                RocketConfig.CLIENT.enableSpaceShadowMaps.set(false);
+                RocketConfig.CLIENT.enableCustomSky.set(false);
+                RocketConfig.CLIENT.skyRenderingSystem.set(RocketConfig.SkyRenderingSystem.MODERN);
+                RocketConfig.CLIENT.planetRenderMaximumScale.set(32);
+                saveClientConfigs();
+                this.init(this.minecraft, this.width, this.height);
+            }
+        );
 
-        @Override
-        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-            if (!this.visible) return;
-            
-            boolean hovered = this.isHoveredOrFocused();
-            int bgColor = 0xFF1A1A1A;
-            int borderColor = hovered ? accentColor : 0xFF444444;
-
-            // Background
-            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);
-            
-            // Slider fill
-            int fillW = (int) (this.value * (this.width - 2));
-            graphics.fill(this.getX() + 1, this.getY() + 1, this.getX() + 1 + fillW, this.getY() + this.height - 1, (accentColor & 0x44FFFFFF));
-            graphics.fill(this.getX() + fillW, this.getY() + 2, this.getX() + fillW + 2, this.getY() + this.height - 2, accentColor);
-            
-            // Border
-            graphics.renderOutline(this.getX(), this.getY(), this.width, this.height, borderColor);
-            
-            // Text
-            int textColor = hovered ? 0xFFFFFFFF : 0xFFAAAAAA;
-            graphics.drawCenteredString(net.minecraft.client.Minecraft.getInstance().font, this.getMessage(), this.getX() + this.width / 2, this.getY() + (this.height - 9) / 2, textColor);
-        }
+        list.addPresetButton(
+            "Minimal (Vanilla)",
+            "Disables custom space lighting and shadow maps for classic Minecraft look.",
+            () -> {
+                RocketConfig.CLIENT.enableSpaceLighting.set(false);
+                RocketConfig.CLIENT.enableSpaceShadowMaps.set(false);
+                RocketConfig.CLIENT.enableCustomSky.set(false);
+                saveClientConfigs();
+                this.init(this.minecraft, this.width, this.height);
+            }
+        );
     }
 
-    private class NodeConfigBuilder {
-        private final int startX;
-        private final int startY;
-        private final int accent;
-        private int count = 0;
+    private void saveClientConfigs() {
+        RocketConfig.CLIENT.enableSpaceLighting.save();
+        RocketConfig.CLIENT.enableSpaceShadowMaps.save();
+        RocketConfig.CLIENT.enableCustomSky.save();
+        RocketConfig.CLIENT.skyRenderingSystem.save();
+        RocketConfig.CLIENT.planetRenderMaximumScale.save();
+        RocketConfig.CLIENT.enablePlumeMerging.save();
+    }
 
-        public NodeConfigBuilder(int x, int y, int accent) {
-            this.startX = x;
-            this.startY = y;
-            this.accent = accent;
-        }
-
-        private int getColX() {
-            return startX + 10 + (count % 2) * 210;
-        }
-
-        private int getRowY() {
-            return startY + (count / 2) * 30;
-        }
-
-        public void addToggle(String name, boolean initial, java.util.function.Consumer<Boolean> callback) {
-            int cx = getColX();
-            int cy = getRowY();
-            addRenderableWidget(new NodeButton(cx, cy, 200, 20, 
-                Component.literal(name + ": " + (initial ? "ON" : "OFF")), 
-                btn -> {
-                    boolean isCurrentlyOn = btn.getMessage().getString().contains("ON");
-                    boolean next = !isCurrentlyOn;
-                    callback.accept(next);
-                    btn.setMessage(Component.literal(name + ": " + (next ? "ON" : "OFF")));
-                }, accent));
-            count++;
-        }
-
-        public void addSlider(String name, double initial, double min, double max, java.util.function.Consumer<Double> callback) {
-            int cx = getColX();
-            int cy = getRowY();
-            addRenderableWidget(new NodeSlider(cx, cy, 200, 20, name, initial, min, max, accent, callback));
-            count++;
-        }
-
-        public void addCycle(String nameKey, String[] optionKeys, int initialIndex, java.util.function.Consumer<Integer> callback) {
-            final int[] currentIndex = { initialIndex };
-            int cx = getColX();
-            int cy = getRowY();
-            addRenderableWidget(new NodeButton(cx, cy, 200, 20, 
-                Component.translatable(nameKey).append(": ").append(Component.translatable(optionKeys[currentIndex[0]])), 
-                btn -> {
-                    currentIndex[0] = (currentIndex[0] + 1) % optionKeys.length;
-                    callback.accept(currentIndex[0]);
-                    btn.setMessage(Component.translatable(nameKey).append(": ").append(Component.translatable(optionKeys[currentIndex[0]])));
-                }, accent));
-            count++;
+    private void resetTabDefaults() {
+        switch (activeTab) {
+            case LIGHTING -> {
+                RocketConfig.CLIENT.enableSpaceLighting.set(true);
+                RocketConfig.CLIENT.enableSpaceShadowMaps.set(true);
+                RocketConfig.CLIENT.enableSpaceLighting.save();
+                RocketConfig.CLIENT.enableSpaceShadowMaps.save();
+            }
+            case VISUALS -> {
+                RocketConfig.CLIENT.enableCustomSky.set(false);
+                RocketConfig.CLIENT.skyRenderingSystem.set(RocketConfig.SkyRenderingSystem.MODERN);
+                RocketConfig.CLIENT.enablePlumeMerging.set(true);
+                RocketConfig.CLIENT.planetRenderMaximumScale.set(100);
+                RocketConfig.CLIENT.enableDynamicRenderDistance.set(true);
+                RocketConfig.CLIENT.showDebugOverlay.set(false);
+                saveClientConfigs();
+            }
+            case CAMERA -> {
+                RocketConfig.CLIENT.shakeIntensity.set(0.5);
+                RocketConfig.CLIENT.shakeRadius.set(8.0);
+                RocketConfig.CLIENT.shakeIntensity.save();
+                RocketConfig.CLIENT.shakeRadius.save();
+            }
+            case PHYSICS -> {
+                if (this.minecraft.getSingleplayerServer() != null) {
+                    RocketConfig.SERVER.maxFuelConsumption.set(40);
+                    RocketConfig.SERVER.jetpackThrust.set(0.15);
+                    RocketConfig.SERVER.jetpackSprintThrust.set(0.35);
+                    RocketConfig.SERVER.planetShape.set(RocketConfig.PlanetShape.CUBE);
+                    RocketConfig.SERVER.enableEngineDebugLogging.set(false);
+                    RocketConfig.SERVER.maxFuelConsumption.save();
+                    RocketConfig.SERVER.jetpackThrust.save();
+                    RocketConfig.SERVER.jetpackSprintThrust.save();
+                    RocketConfig.SERVER.planetShape.save();
+                    RocketConfig.SERVER.enableEngineDebugLogging.save();
+                }
+            }
+            case PRESETS -> {}
         }
     }
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        long now = net.minecraft.Util.getMillis();
-        float deltaTime = (lastFrameTime == 0) ? 0.016f : (now - lastFrameTime) / 1000f;
-        lastFrameTime = now;
-        screenAnimation = Math.min(1.0f, screenAnimation + deltaTime * 4.0f);
-
-        graphics.fill(0, 0, width, height, 0xFF121212);
-        
-        // Grid
-        int gridSize = 20;
-        for (int i = 0; i < width; i += gridSize) graphics.fill(i, 0, i + 1, height, 0x1AFFFFFF);
-        for (int i = 0; i < height; i += gridSize) graphics.fill(0, i, width, i + 1, 0x1AFFFFFF);
-        
-        // Scanlines
-        for (int i = 0; i < height; i += 2) graphics.fill(0, i, width, i + 1, 0x0A000000);
+        // Intentionally override and fill solid dark background to prevent vanilla blur overlay
+        graphics.fill(0, 0, this.width, this.height, BG_COLOR);
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(graphics, mouseX, mouseY, partialTick);
-        
-        graphics.pose().pushPose();
-        
-        // Header
-        graphics.fill(0, 0, width, 24, 0xFF121212);
-        graphics.fill(0, 23, width, 24, 0xFF2A2A2A);
+        // 1. Solid Background
+        graphics.fill(0, 0, this.width, this.height, BG_COLOR);
 
-        renderTabs(graphics, mouseX, mouseY);
+        // 2. Sidebar Panel
+        int sidebarWidth = 135;
+        graphics.fill(0, 0, sidebarWidth, this.height, SIDEBAR_BG);
+        graphics.fill(sidebarWidth, 0, sidebarWidth + 1, this.height, BORDER_COLOR);
 
-        // Node Panel Background
-        int pw = 430;
-        int ph = 155;
-        int px = width / 2 - pw / 2;
-        int py = 50;
-        
-        graphics.fill(px + 2, py + 2, px + pw + 2, py + ph + 2, 0xAA000000); // Shadow
-        graphics.fill(px, py, px + pw, py + ph, 0xDD1A1A1A);
-        
-        int accentColor = activeTab == ScreenTab.CLIENT ? 0xFF00FF88 : 0xFFFFAA00;
-        graphics.fill(px, py, px + pw, py + 1, accentColor);
-        graphics.renderOutline(px, py, pw, ph, 0xFF444444);
-        
-        String title = activeTab == ScreenTab.CLIENT ? "§lCLIENT MODULE" : "§lSERVER KERNEL";
-        graphics.drawCenteredString(font, title, px + pw / 2, py + 5, 0xFFE0E0E0);
+        // 3. Top Header
+        graphics.fill(0, 0, this.width, 42, HEADER_BG);
+        graphics.fill(0, 41, this.width, 42, BORDER_COLOR);
 
-        if (activeTab == ScreenTab.SERVER && this.minecraft.getSingleplayerServer() == null) {
-            graphics.drawCenteredString(font, "§cRemote Server Detected", width / 2, py + 60, 0xFFFFFF);
-            graphics.drawCenteredString(font, "§7Physics settings are managed", width / 2, py + 75, 0x888888);
-            graphics.drawCenteredString(font, "§7by the server host.", width / 2, py + 85, 0x888888);
+        // 4. Bottom Action Bar
+        int bottomY = this.height - 42;
+        graphics.fill(sidebarWidth + 1, bottomY, this.width, this.height, HEADER_BG);
+        graphics.fill(sidebarWidth + 1, bottomY, this.width, bottomY + 1, BORDER_COLOR);
+
+        // 5. Header Texts
+        graphics.drawString(this.font, "Cosmonautics", 16, 17, ACCENT_BLUE, false);
+        int headerX = sidebarWidth + 24;
+        graphics.drawString(this.font, activeTab.title, headerX, 10, TEXT_PRIMARY, false);
+        graphics.drawString(this.font, activeTab.desc, headerX, 24, TEXT_SECONDARY, false);
+
+        // 6. Render widgets (buttons, sliders, labels, switches)
+        for (var widget : this.renderables) {
+            widget.render(graphics, mouseX, mouseY, partialTick);
         }
-
-        super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.pose().popPose();
-    }
-
-    private void renderTabs(GuiGraphics graphics, int mouseX, int mouseY) {
-        int tx = 15;
-        drawTab(graphics, "CLIENT", ScreenTab.CLIENT, tx, mouseX, mouseY);
-        tx += font.width("CLIENT") + 25;
-        drawTab(graphics, "SERVER", ScreenTab.SERVER, tx, mouseX, mouseY);
-    }
-
-    private void drawTab(GuiGraphics graphics, String label, ScreenTab tab, int x, int mouseX, int mouseY) {
-        int tw = font.width(label);
-        boolean hover = mouseX >= x && mouseX <= x + tw && mouseY >= 4 && mouseY <= 20;
-        boolean active = activeTab == tab;
-        int color = active ? 0xFF00FF88 : (hover ? 0xFFFFFFFF : 0xFF888888);
-        graphics.drawString(font, "§l" + label, x, 8, color);
-        if (active) graphics.fill(x - 2, 22, x + tw + 2, 24, 0xFF00FF88);
-    }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int tx = 15;
-        if (checkTabClick("CLIENT", ScreenTab.CLIENT, tx, mouseX, mouseY)) return true;
-        tx += font.width("CLIENT") + 25;
-        if (checkTabClick("SERVER", ScreenTab.SERVER, tx, mouseX, mouseY)) return true;
-        
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
-
-    private boolean checkTabClick(String label, ScreenTab tab, int x, double mouseX, double mouseY) {
-        int tw = font.width(label);
-        if (mouseX >= x && mouseX <= x + tw && mouseY >= 4 && mouseY <= 20) {
-            if (activeTab != tab) {
-                activeTab = tab;
-                this.init(this.minecraft, this.width, this.height);
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override
     public void onClose() {
         this.minecraft.setScreen(this.lastScreen);
+    }
+
+    // ==========================================
+    // UI Helpers & Modern Widgets
+    // ==========================================
+
+    private class SettingList {
+        private final int startX;
+        private int currentY;
+        private final int width;
+
+        public SettingList(int x, int y, int width) {
+            this.startX = x;
+            this.currentY = y;
+            this.width = width;
+        }
+
+        public void addToggle(String name, String tooltip, boolean initial, Consumer<Boolean> onChange) {
+            int rowH = 34;
+            int btnW = 75;
+            int btnH = 22;
+            int btnX = startX + width - btnW - 8;
+            int btnY = currentY + 6;
+
+            ModernSwitch toggle = new ModernSwitch(btnX, btnY, btnW, btnH, initial, onChange);
+            if (tooltip != null) {
+                toggle.setTooltip(Tooltip.create(Component.literal(tooltip)));
+            }
+
+            addRenderableWidget(new SettingRowLabel(startX, currentY, width - btnW - 16, rowH, name, tooltip));
+            addRenderableWidget(toggle);
+
+            currentY += rowH + 6;
+        }
+
+        public void addCycle(String name, String tooltip, String[] options, int initialIndex, Consumer<Integer> onChange) {
+            int rowH = 34;
+            int btnW = 90;
+            int btnH = 22;
+            int btnX = startX + width - btnW - 8;
+            int btnY = currentY + 6;
+
+            final int[] index = { initialIndex };
+            ModernButton cycleBtn = new ModernButton(btnX, btnY, btnW, btnH,
+                Component.literal(options[index[0]]),
+                b -> {
+                    index[0] = (index[0] + 1) % options.length;
+                    onChange.accept(index[0]);
+                    b.setMessage(Component.literal(options[index[0]]));
+                },
+                ACCENT_BLUE);
+
+            if (tooltip != null) {
+                cycleBtn.setTooltip(Tooltip.create(Component.literal(tooltip)));
+            }
+
+            addRenderableWidget(new SettingRowLabel(startX, currentY, width - btnW - 16, rowH, name, tooltip));
+            addRenderableWidget(cycleBtn);
+
+            currentY += rowH + 6;
+        }
+
+        public void addSlider(String name, String tooltip, double current, double min, double max, double step, String suffix, Consumer<Double> onChange) {
+            int rowH = 34;
+            int sliderW = 120;
+            int sliderH = 22;
+            int sliderX = startX + width - sliderW - 8;
+            int sliderY = currentY + 6;
+
+            ModernSlider slider = new ModernSlider(sliderX, sliderY, sliderW, sliderH, current, min, max, step, suffix, onChange);
+            if (tooltip != null) {
+                slider.setTooltip(Tooltip.create(Component.literal(tooltip)));
+            }
+
+            addRenderableWidget(new SettingRowLabel(startX, currentY, width - sliderW - 16, rowH, name, tooltip));
+            addRenderableWidget(slider);
+
+            currentY += rowH + 6;
+        }
+
+        public void addPresetButton(String title, String description, Runnable onApply) {
+            int rowH = 40;
+            int btnW = 80;
+            int btnH = 22;
+            int btnX = startX + width - btnW - 8;
+            int btnY = currentY + 9;
+
+            addRenderableWidget(new SettingRowLabel(startX, currentY, width - btnW - 16, rowH, title, description));
+            addRenderableWidget(new ModernButton(btnX, btnY, btnW, btnH,
+                Component.literal("Apply"),
+                b -> onApply.run(),
+                ACCENT_GREEN));
+
+            currentY += rowH + 6;
+        }
+
+        public void addNotice(String text) {
+            addRenderableWidget(new SettingRowLabel(startX, currentY, width, 30, text, ""));
+            currentY += 36;
+        }
+    }
+
+    private static class SidebarButton extends Button {
+        private final Tab tab;
+        private final boolean isSelected;
+
+        public SidebarButton(int x, int y, int width, int height, Tab tab, boolean isSelected, OnPress onPress) {
+            super(x, y, width, height, Component.literal(tab.title), onPress, DEFAULT_NARRATION);
+            this.tab = tab;
+            this.isSelected = isSelected;
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            if (!this.visible) return;
+            boolean hovered = this.isHoveredOrFocused();
+
+            int bg = isSelected ? 0xFF222B38 : (hovered ? 0xFF1A222E : 0x00000000);
+            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bg);
+
+            if (isSelected) {
+                graphics.fill(this.getX(), this.getY() + 3, this.getX() + 3, this.getY() + this.height - 3, ACCENT_BLUE);
+            }
+
+            int textColor = isSelected ? ACCENT_BLUE : (hovered ? TEXT_PRIMARY : TEXT_SECONDARY);
+            graphics.drawString(Minecraft.getInstance().font, tab.title, this.getX() + 10, this.getY() + 9, textColor, false);
+        }
+    }
+
+    private static class SettingRowLabel extends Button {
+        private final String title;
+        private final String desc;
+
+        public SettingRowLabel(int x, int y, int width, int height, String title, String desc) {
+            super(x, y, width, height, Component.literal(title), b -> {}, DEFAULT_NARRATION);
+            this.title = title;
+            this.desc = desc;
+            this.active = false;
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            graphics.drawString(Minecraft.getInstance().font, title, this.getX() + 4, this.getY() + 5, TEXT_PRIMARY, false);
+            if (desc != null && !desc.isEmpty()) {
+                String sub = desc.length() > 65 ? desc.substring(0, 62) + "..." : desc;
+                graphics.drawString(Minecraft.getInstance().font, sub, this.getX() + 4, this.getY() + 17, TEXT_SECONDARY, false);
+            }
+        }
+    }
+
+    private static class ModernButton extends Button {
+        private final int accent;
+
+        public ModernButton(int x, int y, int width, int height, Component message, OnPress onPress, int accent) {
+            super(x, y, width, height, message, onPress, DEFAULT_NARRATION);
+            this.accent = accent;
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            if (!this.visible) return;
+            boolean hovered = this.isHoveredOrFocused();
+
+            int bg = hovered ? CARD_HOVER : CARD_BG;
+            int border = hovered ? accent : BORDER_COLOR;
+
+            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bg);
+            graphics.renderOutline(this.getX(), this.getY(), this.width, this.height, border);
+
+            int textCol = hovered ? TEXT_PRIMARY : TEXT_SECONDARY;
+            graphics.drawCenteredString(Minecraft.getInstance().font, this.getMessage(),
+                this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, textCol);
+        }
+    }
+
+    private static class ModernSwitch extends Button {
+        private boolean state;
+        private final Consumer<Boolean> onChange;
+
+        public ModernSwitch(int x, int y, int width, int height, boolean initial, Consumer<Boolean> onChange) {
+            super(x, y, width, height, Component.literal(initial ? "ON" : "OFF"), b -> {}, DEFAULT_NARRATION);
+            this.state = initial;
+            this.onChange = onChange;
+        }
+
+        @Override
+        public void onPress() {
+            this.state = !this.state;
+            this.setMessage(Component.literal(state ? "ON" : "OFF"));
+            this.onChange.accept(this.state);
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            if (!this.visible) return;
+            boolean hovered = this.isHoveredOrFocused();
+
+            int bg = state ? (hovered ? 0xFF059669 : 0xFF10B981) : (hovered ? 0xFF334155 : 0xFF1E293B);
+            int border = hovered ? 0xFF94A3B8 : BORDER_COLOR;
+
+            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bg);
+            graphics.renderOutline(this.getX(), this.getY(), this.width, this.height, border);
+
+            int textCol = state ? 0xFFFFFFFF : 0xFF94A3B8;
+            graphics.drawCenteredString(Minecraft.getInstance().font, state ? "ON" : "OFF",
+                this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, textCol);
+        }
+    }
+
+    private static class ModernSlider extends AbstractSliderButton {
+        private final double min;
+        private final double max;
+        private final double step;
+        private final String suffix;
+        private final Consumer<Double> onChange;
+
+        public ModernSlider(int x, int y, int width, int height, double current, double min, double max, double step, String suffix, Consumer<Double> onChange) {
+            super(x, y, width, height, Component.empty(), (current - min) / (max - min));
+            this.min = min;
+            this.max = max;
+            this.step = step;
+            this.suffix = suffix;
+            this.onChange = onChange;
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            double raw = min + this.value * (max - min);
+            if (step >= 1.0) {
+                setMessage(Component.literal((int) Math.round(raw) + suffix));
+            } else {
+                setMessage(Component.literal(String.format("%.2f", raw) + suffix));
+            }
+        }
+
+        @Override
+        protected void applyValue() {
+            double raw = min + this.value * (max - min);
+            double snapped = Math.round(raw / step) * step;
+            this.onChange.accept(snapped);
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            if (!this.visible) return;
+            boolean hovered = this.isHoveredOrFocused();
+
+            int bg = CARD_BG;
+            int border = hovered ? ACCENT_BLUE : BORDER_COLOR;
+
+            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bg);
+
+            int fillW = (int) (this.value * (this.width - 4));
+            if (fillW > 0) {
+                graphics.fill(this.getX() + 2, this.getY() + 2, this.getX() + 2 + fillW, this.getY() + this.height - 2, 0x4438BDF8);
+                graphics.fill(this.getX() + fillW, this.getY() + 2, this.getX() + fillW + 3, this.getY() + this.height - 2, ACCENT_BLUE);
+            }
+
+            graphics.renderOutline(this.getX(), this.getY(), this.width, this.height, border);
+
+            graphics.drawCenteredString(Minecraft.getInstance().font, this.getMessage(),
+                this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, TEXT_PRIMARY);
+        }
     }
 }

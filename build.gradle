@@ -214,3 +214,20 @@ artifacts {
 tasks.withType(ProcessResources).configureEach {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
+// Copy local mods to run/mods before runClient or runServer tasks start
+tasks.register('copyLocalMods', Copy) {
+    from 'localmods'
+    into 'run/mods'
+    include '*.jar'
+    doFirst {
+        println "Copying local mods from localmods/ to run/mods/..."
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name == 'runClient' || task.name == 'runServer') {
+        task.dependsOn 'copyLocalMods'
+    }
+}
+

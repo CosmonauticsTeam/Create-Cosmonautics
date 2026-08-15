@@ -50,26 +50,7 @@ public abstract class LevelRendererMixin implements StarBufferExposer {
         return original.call(instance, partial);
     }
 
-    @WrapOperation(method = "renderSky", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/RenderSystem;setShaderTexture(ILnet/minecraft/resources/ResourceLocation;)V"))
-    private void rocketnautics$disableVanillaSunMoon(int textureUnit, net.minecraft.resources.ResourceLocation textureLocation, Operation<Void> original) {
-        if (!RocketConfig.CLIENT.enableCustomSky.get()) {
-            original.call(textureUnit, textureLocation);
-            return;
-        }
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) {
-            double y = mc.player.getY() + SkyDataHandler.getHeightOffsetForLevel(mc.level.dimension());
-            if (y > 1000.0 && textureLocation != null) {
-                String path = textureLocation.getPath();
-                if (path.equals("textures/environment/sun.png") || path.equals("textures/environment/moon_phases.png")) {
-                    // Bind a transparent empty texture instead of sun/moon!
-                    original.call(textureUnit, dev.devce.rocketnautics.RocketNauticsClient.EMPTY_TEXTURE);
-                    return;
-                }
-            }
-        }
-        original.call(textureUnit, textureLocation);
-    }
+
 
     @WrapOperation(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientLevel;getSkyColor(Lnet/minecraft/world/phys/Vec3;F)Lnet/minecraft/world/phys/Vec3;"))
     private Vec3 rocketnautics$forceBlackSky(ClientLevel instance, Vec3 pos, float partialTick, Operation<Vec3> original) {
@@ -92,7 +73,6 @@ public abstract class LevelRendererMixin implements StarBufferExposer {
     private float[] rocketnautics$disableSunriseAtAltitude(DimensionSpecialEffects instance, float angle, float partialTick, Operation<float[]> original) {
         float[] color = original.call(instance, angle, partialTick);
         if (color == null) return null;
-        if (!RocketConfig.CLIENT.enableCustomSky.get()) return color;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null && mc.player.getY() > 1000.0) {
@@ -109,10 +89,6 @@ public abstract class LevelRendererMixin implements StarBufferExposer {
     
     @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderClouds(Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;FDDD)V"))
     private void rocketnautics$fadeOutClouds(LevelRenderer instance, PoseStack pPoseStack, Matrix4f pProjectionMatrix, Matrix4f pCloudProjectionMatrix, float pPartialTick, double pCamX, double pCamY, double pCamZ, Operation<Void> original) {
-        if (!RocketConfig.CLIENT.enableCustomSky.get()) {
-            original.call(instance, pPoseStack, pProjectionMatrix, pCloudProjectionMatrix, pPartialTick, pCamX, pCamY, pCamZ);
-            return;
-        }
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
             double y = mc.player.getY();
@@ -124,7 +100,7 @@ public abstract class LevelRendererMixin implements StarBufferExposer {
 
     @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/LevelRenderer;renderSnowAndRain(Lnet/minecraft/client/renderer/LightTexture;FDDD)V"))
     private void rocketnautics$disableWeatherAtAltitude(LevelRenderer instance, LightTexture pLightTexture, float pPartialTick, double pCamX, double pCamY, double pCamZ, Operation<Void> original) {
-        if (!RocketConfig.CLIENT.enableCustomSky.get() || pCamY <= 400.0) {
+        if (pCamY <= 400.0) {
             original.call(instance, pLightTexture, pPartialTick, pCamX, pCamY, pCamZ);
             return;
         }
