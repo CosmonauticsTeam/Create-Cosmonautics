@@ -2464,59 +2464,19 @@ public class SkyHandler {
         RenderSystem.enableCull();
     }
 
-    public static ResourceLocation SKYBOX_TEXTURE_ID = null;
-    private static DynamicTexture SKYBOX_TEXTURE_OBJ = null;
-    public static ResourceLocation SKYBOX_HIGH_TEXTURE_ID = null;
-    private static DynamicTexture SKYBOX_HIGH_TEXTURE_OBJ = null;
+    public static final ResourceLocation SKYBOX_TEXTURE_ID = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/environment/skybox.png");
+    public static final ResourceLocation SKYBOX_HIGH_TEXTURE_ID = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/environment/skybox_high.png");
 
     public static void ensureSkyboxTexture(boolean isDeepSpace) {
-        boolean highExposure = isDeepSpace && dev.devce.rocketnautics.RocketConfig.CLIENT.skyboxExposure.get() == dev.devce.rocketnautics.RocketConfig.SkyboxExposure.HIGH;
-        if (highExposure) {
-            if (SKYBOX_HIGH_TEXTURE_ID != null) return;
-            Minecraft mc = Minecraft.getInstance();
-            java.nio.file.Path path = java.nio.file.Paths.get("scratch/skybox_high.png");
-            if (!java.nio.file.Files.exists(path)) {
-                path = java.nio.file.Paths.get("../scratch/skybox_high.png");
-            }
-            if (!java.nio.file.Files.exists(path)) {
-                path = java.nio.file.Paths.get("C:/Users/omni/Documents/projects/Create-Cosmonautics/scratch/skybox_high.png");
-            }
-            try (java.io.InputStream is = java.nio.file.Files.newInputStream(path)) {
-                NativeImage image = NativeImage.read(is);
-                SKYBOX_HIGH_TEXTURE_OBJ = new DynamicTexture(image);
-                SKYBOX_HIGH_TEXTURE_ID = mc.getTextureManager().register("rocketnautics_skybox_high", SKYBOX_HIGH_TEXTURE_OBJ);
-                SKYBOX_HIGH_TEXTURE_OBJ.setFilter(true, false);
-            } catch (Exception e) {
-                RocketNautics.LOGGER.error("Failed to load high-exposure skybox texture from " + path.toAbsolutePath(), e);
-            }
-        } else {
-            if (SKYBOX_TEXTURE_ID != null) return;
-            Minecraft mc = Minecraft.getInstance();
-            java.nio.file.Path path = java.nio.file.Paths.get("scratch/skybox.png");
-            if (!java.nio.file.Files.exists(path)) {
-                path = java.nio.file.Paths.get("../scratch/skybox.png");
-            }
-            if (!java.nio.file.Files.exists(path)) {
-                path = java.nio.file.Paths.get("C:/Users/omni/Documents/projects/Create-Cosmonautics/scratch/skybox.png");
-            }
-            try (java.io.InputStream is = java.nio.file.Files.newInputStream(path)) {
-                NativeImage image = NativeImage.read(is);
-                SKYBOX_TEXTURE_OBJ = new DynamicTexture(image);
-                SKYBOX_TEXTURE_ID = mc.getTextureManager().register("rocketnautics_skybox", SKYBOX_TEXTURE_OBJ);
-                SKYBOX_TEXTURE_OBJ.setFilter(true, false);
-            } catch (Exception e) {
-                RocketNautics.LOGGER.error("Failed to load skybox texture from " + path.toAbsolutePath(), e);
-            }
-        }
+        // Textures are packaged statically as assets in the mod JAR
     }
 
     public static void renderSkybox(PoseStack poseStack, float visibility, Camera camera, float celestialAngle) {
         Minecraft mc = Minecraft.getInstance();
         boolean isDeepSpace = mc.level != null && DeepSpaceHelper.isDeepSpace(mc.level);
-        ensureSkyboxTexture(isDeepSpace);
         boolean highExposure = isDeepSpace && dev.devce.rocketnautics.RocketConfig.CLIENT.skyboxExposure.get() == dev.devce.rocketnautics.RocketConfig.SkyboxExposure.HIGH;
         ResourceLocation textureId = highExposure ? SKYBOX_HIGH_TEXTURE_ID : SKYBOX_TEXTURE_ID;
-        if (textureId == null || visibility <= 0) return;
+        if (visibility <= 0) return;
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -2570,8 +2530,8 @@ public class SkyHandler {
         // Right (Col 2, Row 1)
         float rUMin = 2.0f * uScale, rUMax = 3.0f * uScale;
         float rVMin = 1.0f * vScale, rVMax = 2.0f * vScale;
-        buffer.addVertex(matrix, size, size, -size).setUv(rUMin, fVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
-        buffer.addVertex(matrix, size, -size, -size).setUv(rUMin, fVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, size, -size).setUv(rUMin, rVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
+        buffer.addVertex(matrix, size, -size, -size).setUv(rUMin, rVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
         buffer.addVertex(matrix, size, -size, size).setUv(rUMax, rVMax).setColor(1.0f, 1.0f, 1.0f, alpha);
         buffer.addVertex(matrix, size, size, size).setUv(rUMax, rVMin).setColor(1.0f, 1.0f, 1.0f, alpha);
 
@@ -2600,50 +2560,40 @@ public class SkyHandler {
         RenderSystem.enableCull();
     }
 
-    public static java.nio.file.Path getBakedPlanetFolder(String planetName) {
+    public static String getBakedPlanetFolderName(String planetName) {
         String lower = planetName.toLowerCase();
-        String folderName;
         if (lower.contains("earth") || lower.contains("overworld")) {
-            folderName = "planet_0_earth_seed_880";
+            return "planet_0_earth_seed_880";
         } else if (lower.contains("moon")) {
-            folderName = "planet_1_moon_seed_881";
+            return "planet_1_moon_seed_881";
         } else if (lower.contains("mars")) {
-            folderName = "planet_2_mars_seed_882";
+            return "planet_2_mars_seed_882";
         } else if (lower.contains("mercury") || lower.contains("ice")) {
-            folderName = "planet_3_mercury_seed_883";
+            return "planet_3_mercury_seed_883";
         } else if (lower.contains("venus") || lower.contains("giant") || lower.contains("gas")) {
-            folderName = "planet_4_venus_seed_884";
-        } else {
-            folderName = "planet_0_earth_seed_880";
+            return "planet_4_venus_seed_884";
         }
-        
-        java.nio.file.Path path = java.nio.file.Paths.get("scratch/planet_pack_5_planets(1)/" + folderName);
-        if (!java.nio.file.Files.exists(path)) {
-            path = java.nio.file.Paths.get("../scratch/planet_pack_5_planets(1)/" + folderName);
-        }
-        if (!java.nio.file.Files.exists(path)) {
-            path = java.nio.file.Paths.get("C:/Users/omni/Documents/projects/Create-Cosmonautics/scratch/planet_pack_5_planets(1)/" + folderName);
-        }
-        return path;
+        return "planet_0_earth_seed_880";
     }
 
     public static ResourceLocation loadBakedPlanetTexture(String planetName, int planetId) {
-        java.nio.file.Path folder = getBakedPlanetFolder(planetName);
-        if (!java.nio.file.Files.exists(folder)) {
-            return null;
-        }
+        String folderName = getBakedPlanetFolderName(planetName);
+        Minecraft mc = Minecraft.getInstance();
         
         try {
             int w = 512;
             int h = 512;
-            java.nio.file.Path firstFacePath = folder.resolve("albedo_py.png");
-            if (java.nio.file.Files.exists(firstFacePath)) {
-                try (java.io.InputStream is = java.nio.file.Files.newInputStream(firstFacePath)) {
+            ResourceLocation firstFaceLoc = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/planet_pack/" + folderName + "/albedo_py.png");
+            var firstRes = mc.getResourceManager().getResource(firstFaceLoc);
+            if (firstRes.isPresent()) {
+                try (java.io.InputStream is = firstRes.get().open()) {
                     NativeImage sample = NativeImage.read(is);
                     w = sample.getWidth();
                     h = sample.getHeight();
                     sample.close();
                 }
+            } else {
+                return null;
             }
             
             NativeImage sheet = new NativeImage(w * 6, h, false);
@@ -2658,9 +2608,10 @@ public class SkyHandler {
             };
             
             for (int i = 0; i < 6; i++) {
-                java.nio.file.Path facePath = folder.resolve(faceFiles[i]);
-                if (java.nio.file.Files.exists(facePath)) {
-                    try (java.io.InputStream is = java.nio.file.Files.newInputStream(facePath)) {
+                ResourceLocation faceLoc = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/planet_pack/" + folderName + "/" + faceFiles[i]);
+                var res = mc.getResourceManager().getResource(faceLoc);
+                if (res.isPresent()) {
+                    try (java.io.InputStream is = res.get().open()) {
                         NativeImage faceImg = NativeImage.read(is);
                         faceImg.copyRect(sheet, 0, 0, i * w, 0, w, h, false, false);
                         faceImg.close();
@@ -2674,7 +2625,6 @@ public class SkyHandler {
                 }
             }
             
-            Minecraft mc = Minecraft.getInstance();
             DynamicTexture constructed = new DynamicTexture(sheet);
             ResourceLocation id = mc.getTextureManager().register("rocketnautics_baked_planet_" + planetId, constructed);
             constructed.setFilter(false, false);
@@ -2687,22 +2637,23 @@ public class SkyHandler {
     }
 
     public static ResourceLocation loadBakedPlanetNormalTexture(String planetName, int planetId) {
-        java.nio.file.Path folder = getBakedPlanetFolder(planetName);
-        if (!java.nio.file.Files.exists(folder)) {
-            return null;
-        }
+        String folderName = getBakedPlanetFolderName(planetName);
+        Minecraft mc = Minecraft.getInstance();
         
         try {
             int w = 512;
             int h = 512;
-            java.nio.file.Path firstFacePath = folder.resolve("normal_py.png");
-            if (java.nio.file.Files.exists(firstFacePath)) {
-                try (java.io.InputStream is = java.nio.file.Files.newInputStream(firstFacePath)) {
+            ResourceLocation firstFaceLoc = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/planet_pack/" + folderName + "/normal_py.png");
+            var firstRes = mc.getResourceManager().getResource(firstFaceLoc);
+            if (firstRes.isPresent()) {
+                try (java.io.InputStream is = firstRes.get().open()) {
                     NativeImage sample = NativeImage.read(is);
                     w = sample.getWidth();
                     h = sample.getHeight();
                     sample.close();
                 }
+            } else {
+                return null;
             }
             
             NativeImage sheet = new NativeImage(w * 6, h, false);
@@ -2717,9 +2668,10 @@ public class SkyHandler {
             };
             
             for (int i = 0; i < 6; i++) {
-                java.nio.file.Path facePath = folder.resolve(faceFiles[i]);
-                if (java.nio.file.Files.exists(facePath)) {
-                    try (java.io.InputStream is = java.nio.file.Files.newInputStream(facePath)) {
+                ResourceLocation faceLoc = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "textures/planet_pack/" + folderName + "/" + faceFiles[i]);
+                var res = mc.getResourceManager().getResource(faceLoc);
+                if (res.isPresent()) {
+                    try (java.io.InputStream is = res.get().open()) {
                         NativeImage faceImg = NativeImage.read(is);
                         faceImg.copyRect(sheet, 0, 0, i * w, 0, w, h, false, false);
                         faceImg.close();
@@ -2733,14 +2685,13 @@ public class SkyHandler {
                 }
             }
             
-            Minecraft mc = Minecraft.getInstance();
             DynamicTexture constructed = new DynamicTexture(sheet);
             ResourceLocation id = mc.getTextureManager().register("rocketnautics_baked_planet_normal_" + planetId, constructed);
             constructed.setFilter(false, false);
             sheet.close();
             return id;
         } catch (Exception e) {
-            RocketNautics.LOGGER.error("Failed to load baked normal texture for " + planetName, e);
+            RocketNautics.LOGGER.error("Failed to load baked planet normal texture for " + planetName, e);
             return null;
         }
     }

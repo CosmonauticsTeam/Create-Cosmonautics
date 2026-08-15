@@ -78,6 +78,28 @@ public class SolarPanelBlock extends DirectionalBlock implements EntityBlock {
         return state.rotate(mirror.getRotation(state.getValue(FACING)));
     }
 
+    @Override
+    public void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean isMoving) {
+        super.onPlace(state, level, pos, oldState, isMoving);
+        if (!level.isClientSide && !state.is(oldState.getBlock())) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof SolarPanelBlockEntity solarBe) {
+                solarBe.updateConnectivity();
+            }
+        }
+    }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (!state.is(newState.getBlock())) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof SolarPanelBlockEntity solarBe) {
+                solarBe.destroyConnectivity();
+            }
+            super.onRemove(state, level, pos, newState, isMoving);
+        }
+    }
+
     @Nullable
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

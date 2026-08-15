@@ -39,10 +39,12 @@ public class SunDirectionalShadingPreProcessor implements ShaderPreProcessor {
         "if (_subLevelLit > 0.5) {" +
         "  float skyExposure = clamp(float(UV2.y) / 240.0, 0.0, 1.0);" +
         "  vec4 torchSample = minecraft_sample_lightmap(Sampler2, ivec2(UV2.x, 0));" +
-        "  vec3 _computedNormal = inverse(NormalMat) * (mat3(ModelViewMat) * Normal);" +
-        "  vec3 worldNormal = length(_computedNormal) > 0.01 ? normalize(_computedNormal) : Normal;" +
+        // NormalMat is already transpose(inverse(ModelViewMat)) — just multiply directly, no inverse() needed
+        "  vec3 viewNorm = normalize(NormalMat * Normal);" +
+        // Transform sun direction (world space) to view space via ModelViewMat
         "  vec3 sunDir = normalize(SunDirection);" +
-        "  float NdotL = dot(worldNormal, sunDir);" +
+        "  vec3 viewSun = normalize(mat3(ModelViewMat) * sunDir);" +
+        "  float NdotL = dot(viewNorm, viewSun);" +
         "  vec4 viewPos = ModelViewMat * vec4(pos, 1.0);" +
         "  vec4 lightSpace = LightSpaceMat * viewPos;" +
         "  vec3 sc = lightSpace.xyz / lightSpace.w;" +
@@ -63,14 +65,11 @@ public class SunDirectionalShadingPreProcessor implements ShaderPreProcessor {
         "  vec3 SUN_COLOR = vec3(1.36, 1.32, 1.25);" +
         "  vec3 SPACE_AMBIENT = vec3(0.008, 0.010, 0.015);" +
         "  vec3 directSun = SUN_COLOR * sunDiffuse;" +
-        "  vec3 ambientLight = SPACE_AMBIENT;" +
-        "  vec3 viewSun = normalize((ModelViewMat * vec4(sunDir, 0.0)).xyz);" +
-        "  vec3 viewNorm = normalize(mat3(ModelViewMat) * Normal);" +
         "  vec3 halfVec = normalize(viewSun + vec3(0.0, 0.0, 1.0));" +
         "  float spec = pow(max(dot(viewNorm, halfVec), 0.0), 32.0) * sunDiffuse * 0.40;" +
         "  float fresnel = pow(clamp(1.0 - abs(viewNorm.z), 0.0, 1.0), 3.0);" +
         "  vec3 rimLight = (SUN_COLOR * max(NdotL, 0.0) * 0.8 + vec3(0.15, 0.25, 0.45) * 0.2) * fresnel * 0.40;" +
-        "  vec3 outerLight = ambientLight + directSun + (SUN_COLOR * spec) + rimLight;" +
+        "  vec3 outerLight = SPACE_AMBIENT + directSun + (SUN_COLOR * spec) + rimLight;" +
         "  vec3 finalLight = outerLight + torchSample.rgb;" +
         "  vertexColor.rgb = Color.rgb * mix(minecraft_sample_lightmap(Sampler2, UV2).rgb, finalLight, _subLevelLit);" +
         "}";

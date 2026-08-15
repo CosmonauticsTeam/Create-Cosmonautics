@@ -13,8 +13,8 @@
   "fragment": "rocketnautics:rcs",
   "attributes": [
     "Position",
-    "Color",
-    "UV0"
+    "UV0",
+    "Color"
   ],
   "uniforms": [
     {

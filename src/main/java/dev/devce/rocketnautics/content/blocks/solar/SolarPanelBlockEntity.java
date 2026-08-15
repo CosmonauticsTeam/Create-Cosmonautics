@@ -27,20 +27,33 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
 
-import java.util.List;
+import java.util.*;
 
 /**
  * BlockEntity for the Solar Panel.
- * Generates Forge Energy based on sunlight incidence angle and supports Create's Goggles tooltip.
+ * Generates Forge Energy based on sunlight incidence angle.
+ * Adjacent coplanar solar panels automatically unite into a single shared FE solar array.
  */
 public class SolarPanelBlockEntity extends BlockEntity implements IHaveGoggleInformation {
 
     public static final int MAX_SPACE_GENERATION = 160; // Max FE/t in Deep Space at optimal 90 deg angle
     public static final int MAX_OVERWORLD_GENERATION = 60; // Max FE/t in Overworld during clear midday
+    public static final int CAPACITY_PER_PANEL = 10000;
+    public static final int TRANSFER_PER_PANEL = 200;
 
-    private final CustomEnergyStorage energyStorage = new CustomEnergyStorage(10000, 200);
+    private final CustomEnergyStorage energyStorage = new CustomEnergyStorage(CAPACITY_PER_PANEL, TRANSFER_PER_PANEL);
+
+    // Multiblock / Array state
+    @Nullable
+    private BlockPos controllerPos = null;
+    private int connectedPanelsCount = 1;
+    private boolean connectivityDirty = true;
+
+    // Generation stats
     private int currentGeneration = 0;
     private float efficiency = 0.0f;
+    private int totalArrayGeneration = 0;
+    private float avgArrayEfficiency = 0.0f;
 
     public SolarPanelBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -50,18 +63,205 @@ public class SolarPanelBlockEntity extends BlockEntity implements IHaveGoggleInf
         if (level == null) return;
 
         if (!level.isClientSide) {
-            int generated = computeGeneration();
-            if (generated > 0) {
-                energyStorage.receiveEnergyInternal(generated);
+            if (connectivityDirty) {
+                updateConnectivity();
+                connectivityDirty = false;
             }
+
+            // 1. Calculate local panel generation
+            int generated = computeGeneration();
             this.currentGeneration = generated;
 
+            // 2. Feed generated energy into the controller
+            SolarPanelBlockEntity controller = getController();
+            if (controller != null) {
+                if (generated > 0) {
+                    controller.energyStorage.receiveEnergyInternal(generated);
+                }
+            }
+
+            // 3. If controller, aggregate array statistics and push energy
+            if (isController()) {
+                aggregateArrayStats();
+            }
+
+            // 4. Any panel in the array with an adjacent consumer can push energy from the shared buffer
             pushEnergy();
 
+            // 5. Periodic sync
             if (level.getGameTime() % 10 == 0) {
                 setChanged();
                 level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
             }
+        }
+    }
+
+    public boolean isController() {
+        return controllerPos == null || controllerPos.equals(worldPosition);
+    }
+
+    @Nullable
+    public SolarPanelBlockEntity getController() {
+        if (isController()) return this;
+        if (level != null && controllerPos != null) {
+            BlockEntity be = level.getBlockEntity(controllerPos);
+            if (be instanceof SolarPanelBlockEntity solarBe && !solarBe.isRemoved()) {
+                return solarBe;
+            }
+        }
+        return this;
+    }
+
+    public static List<Direction> getPerpendicularDirections(Direction facing) {
+        return switch (facing.getAxis()) {
+            case Y -> List.of(Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST);
+            case Z -> List.of(Direction.UP, Direction.DOWN, Direction.EAST, Direction.WEST);
+            case X -> List.of(Direction.UP, Direction.DOWN, Direction.NORTH, Direction.SOUTH);
+        };
+    }
+
+    /**
+     * Traverses adjacent coplanar solar panels and forms a unified network with a deterministic controller.
+     */
+    public void updateConnectivity() {
+        if (level == null || level.isClientSide) return;
+        BlockState state = getBlockState();
+        if (!(state.getBlock() instanceof SolarPanelBlock)) return;
+        Direction facing = state.getValue(SolarPanelBlock.FACING);
+
+        Set<BlockPos> visited = new HashSet<>();
+        Queue<BlockPos> queue = new ArrayDeque<>();
+        List<SolarPanelBlockEntity> members = new ArrayList<>();
+
+        queue.add(worldPosition);
+        visited.add(worldPosition);
+
+        int totalEnergyStored = 0;
+
+        while (!queue.isEmpty()) {
+            BlockPos currentPos = queue.poll();
+            BlockEntity be = level.getBlockEntity(currentPos);
+            if (be instanceof SolarPanelBlockEntity solarBe && !solarBe.isRemoved()) {
+                BlockState beState = solarBe.getBlockState();
+                if (beState.getBlock() instanceof SolarPanelBlock && beState.getValue(SolarPanelBlock.FACING) == facing) {
+                    members.add(solarBe);
+                    totalEnergyStored += solarBe.energyStorage.getEnergyStored();
+
+                    for (Direction dir : getPerpendicularDirections(facing)) {
+                        BlockPos neighborPos = currentPos.relative(dir);
+                        if (!visited.contains(neighborPos)) {
+                            visited.add(neighborPos);
+                            queue.add(neighborPos);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (members.isEmpty()) return;
+
+        // Find member with minimum BlockPos to serve as the master controller
+        SolarPanelBlockEntity controller = members.stream()
+                .min(Comparator.comparingInt((SolarPanelBlockEntity b) -> b.worldPosition.getX())
+                        .thenComparingInt(b -> b.worldPosition.getY())
+                        .thenComparingInt(b -> b.worldPosition.getZ()))
+                .orElse(this);
+
+        int memberCount = members.size();
+        controller.energyStorage.setCapacity(memberCount * CAPACITY_PER_PANEL);
+        controller.energyStorage.setMaxExtract(memberCount * TRANSFER_PER_PANEL);
+        controller.energyStorage.setEnergy(Math.min(controller.energyStorage.getMaxEnergyStored(), totalEnergyStored));
+
+        for (SolarPanelBlockEntity member : members) {
+            member.controllerPos = controller.worldPosition;
+            member.connectedPanelsCount = memberCount;
+            if (member != controller) {
+                member.energyStorage.setEnergy(0);
+            }
+            member.setChanged();
+            level.sendBlockUpdated(member.worldPosition, member.getBlockState(), member.getBlockState(), 3);
+        }
+    }
+
+    /**
+     * Splits remaining connected panels and rebuilds connectivity when this panel is removed.
+     */
+    public void destroyConnectivity() {
+        if (level == null || level.isClientSide) return;
+        BlockState state = getBlockState();
+        if (!(state.getBlock() instanceof SolarPanelBlock)) return;
+        Direction facing = state.getValue(SolarPanelBlock.FACING);
+
+        List<SolarPanelBlockEntity> neighborsToUpdate = new ArrayList<>();
+        for (Direction dir : getPerpendicularDirections(facing)) {
+            BlockPos neighborPos = worldPosition.relative(dir);
+            BlockEntity be = level.getBlockEntity(neighborPos);
+            if (be instanceof SolarPanelBlockEntity solarBe && !solarBe.isRemoved()) {
+                neighborsToUpdate.add(solarBe);
+            }
+        }
+
+        for (SolarPanelBlockEntity neighbor : neighborsToUpdate) {
+            neighbor.controllerPos = null;
+            neighbor.connectedPanelsCount = 1;
+            neighbor.updateConnectivity();
+        }
+    }
+
+    private int arrayStoredEnergy = 0;
+    private int arrayMaxEnergy = CAPACITY_PER_PANEL;
+
+    private void aggregateArrayStats() {
+        if (level == null || !isController()) return;
+        BlockState state = getBlockState();
+        if (!(state.getBlock() instanceof SolarPanelBlock)) return;
+        Direction facing = state.getValue(SolarPanelBlock.FACING);
+
+        Set<BlockPos> visited = new HashSet<>();
+        Queue<BlockPos> queue = new ArrayDeque<>();
+        List<SolarPanelBlockEntity> members = new ArrayList<>();
+
+        queue.add(worldPosition);
+        visited.add(worldPosition);
+
+        int sumGen = 0;
+        float sumEff = 0.0f;
+        int count = 0;
+
+        while (!queue.isEmpty()) {
+            BlockPos currentPos = queue.poll();
+            BlockEntity be = level.getBlockEntity(currentPos);
+            if (be instanceof SolarPanelBlockEntity solarBe && !solarBe.isRemoved()) {
+                BlockState beState = solarBe.getBlockState();
+                if (beState.getBlock() instanceof SolarPanelBlock && beState.getValue(SolarPanelBlock.FACING) == facing) {
+                    members.add(solarBe);
+                    sumGen += solarBe.currentGeneration;
+                    sumEff += solarBe.efficiency;
+                    count++;
+
+                    for (Direction dir : getPerpendicularDirections(facing)) {
+                        BlockPos neighborPos = currentPos.relative(dir);
+                        if (!visited.contains(neighborPos)) {
+                            visited.add(neighborPos);
+                            queue.add(neighborPos);
+                        }
+                    }
+                }
+            }
+        }
+
+        this.totalArrayGeneration = sumGen;
+        this.avgArrayEfficiency = count > 0 ? (sumEff / count) : 0.0f;
+        this.connectedPanelsCount = count;
+        this.arrayStoredEnergy = energyStorage.getEnergyStored();
+        this.arrayMaxEnergy = energyStorage.getMaxEnergyStored();
+
+        for (SolarPanelBlockEntity member : members) {
+            member.totalArrayGeneration = this.totalArrayGeneration;
+            member.avgArrayEfficiency = this.avgArrayEfficiency;
+            member.connectedPanelsCount = this.connectedPanelsCount;
+            member.arrayStoredEnergy = this.arrayStoredEnergy;
+            member.arrayMaxEnergy = this.arrayMaxEnergy;
         }
     }
 
@@ -79,7 +279,6 @@ public class SolarPanelBlockEntity extends BlockEntity implements IHaveGoggleInf
         }
 
         if (DeepSpaceHelper.isDeepSpace(level)) {
-            // Deep Space generation: depends purely on the angle between the panel normal and the star/sun
             Vec3 panelNormal = getPanelWorldNormal(facing);
             Vec3 sunDir = getSunDirection();
             double dot = panelNormal.dot(sunDir);
@@ -92,7 +291,6 @@ public class SolarPanelBlockEntity extends BlockEntity implements IHaveGoggleInf
                 return 0;
             }
         } else {
-            // Overworld / planetary atmosphere generation
             if (!level.canSeeSky(frontPos)) {
                 this.efficiency = 0.0f;
                 return 0;
@@ -127,9 +325,9 @@ public class SolarPanelBlockEntity extends BlockEntity implements IHaveGoggleInf
     private Vec3 getSunDirection() {
         if (level != null && level.isClientSide) {
             return new Vec3(
-                SableSubLevelLightingHandler.getSunX(),
-                SableSubLevelLightingHandler.getSunY(),
-                SableSubLevelLightingHandler.getSunZ()
+                    SableSubLevelLightingHandler.getSunX(),
+                    SableSubLevelLightingHandler.getSunY(),
+                    SableSubLevelLightingHandler.getSunZ()
             ).normalize();
         }
 
@@ -140,39 +338,43 @@ public class SolarPanelBlockEntity extends BlockEntity implements IHaveGoggleInf
                 org.orekit.frames.Frame shipFrame = DeepSpaceHandler.getReceivedPosition().getFrame();
 
                 return DeepSpaceHandler.getUniverse().getPlanets().stream()
-                    .filter(p -> p.extras() != null && p.extras().star())
-                    .map(sol -> {
-                        try {
-                            Vector3D dir = sol.posInMyFrame(renderDate, shipPos, shipFrame).negate();
-                            return new Vec3(dir.getX(), dir.getY(), dir.getZ()).normalize();
-                        } catch (Exception e) {
-                            return null;
-                        }
-                    })
-                    .filter(v -> v != null)
-                    .findFirst()
-                    .orElse(new Vec3(0.577, 0.707, 0.408).normalize());
+                        .filter(p -> p.extras() != null && p.extras().star())
+                        .map(sol -> {
+                            try {
+                                Vector3D dir = sol.posInMyFrame(renderDate, shipPos, shipFrame).negate();
+                                return new Vec3(dir.getX(), dir.getY(), dir.getZ()).normalize();
+                            } catch (Exception e) {
+                                return null;
+                            }
+                        })
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .orElse(new Vec3(0.577, 0.707, 0.408).normalize());
             } catch (Exception ignored) {}
         }
         return new Vec3(0.577, 0.707, 0.408).normalize();
     }
 
     private void pushEnergy() {
-        if (energyStorage.getEnergyStored() <= 0 || level == null) return;
+        SolarPanelBlockEntity controller = getController();
+        if (controller == null || controller.energyStorage.getEnergyStored() <= 0 || level == null) return;
         Direction facing = getBlockState().getValue(SolarPanelBlock.FACING);
 
-        // Push energy to neighbor blocks on all sides except the front active surface
+        // Push energy to neighbor non-solar blocks on all sides except the front active surface
         for (Direction d : Direction.values()) {
             if (d == facing) continue;
             BlockPos targetPos = worldPosition.relative(d);
+            BlockEntity targetBe = level.getBlockEntity(targetPos);
+            if (targetBe instanceof SolarPanelBlockEntity) continue; // Don't push to internal array members
+
             IEnergyStorage target = level.getCapability(Capabilities.EnergyStorage.BLOCK, targetPos, d.getOpposite());
             if (target != null && target.canReceive()) {
-                int toExtract = Math.min(energyStorage.getEnergyStored(), 100);
+                int toExtract = Math.min(controller.energyStorage.getEnergyStored(), TRANSFER_PER_PANEL);
                 int simulated = target.receiveEnergy(toExtract, true);
                 if (simulated > 0) {
-                    int drained = energyStorage.extractEnergy(simulated, false);
+                    int drained = controller.energyStorage.extractEnergy(simulated, false);
                     target.receiveEnergy(drained, false);
-                    if (energyStorage.getEnergyStored() <= 0) break;
+                    if (controller.energyStorage.getEnergyStored() <= 0) break;
                 }
             }
         }
@@ -180,48 +382,94 @@ public class SolarPanelBlockEntity extends BlockEntity implements IHaveGoggleInf
 
     @Override
     public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
-        tooltip.add(Component.literal("    ").append(Component.translatable(getBlockState().getBlock().getDescriptionId()).withStyle(ChatFormatting.GOLD)));
+        boolean isArray = this.connectedPanelsCount > 1;
 
-        if (currentGeneration > 0) {
-            tooltip.add(Component.literal("  Status: ")
-                .append(Component.literal("Generating").withStyle(ChatFormatting.GREEN)));
-            int pct = Math.round(efficiency * 100.0f);
-            ChatFormatting effColor = pct >= 75 ? ChatFormatting.GREEN : (pct >= 35 ? ChatFormatting.YELLOW : ChatFormatting.GOLD);
-            tooltip.add(Component.literal("  Efficiency: ")
-                .append(Component.literal(pct + "%").withStyle(effColor)));
-            tooltip.add(Component.literal("  Output: ")
-                .append(Component.literal(currentGeneration + " FE/t").withStyle(ChatFormatting.AQUA)));
+        if (isArray) {
+            tooltip.add(Component.literal("    ")
+                    .append(Component.translatable("block.rocketnautics.solar_panel.array", this.connectedPanelsCount)
+                            .withStyle(ChatFormatting.GOLD)));
         } else {
-            tooltip.add(Component.literal("  Status: ")
-                .append(Component.literal("Inactive (No Sunlight)").withStyle(ChatFormatting.RED)));
-            tooltip.add(Component.literal("  Efficiency: ")
-                .append(Component.literal("0%").withStyle(ChatFormatting.GRAY)));
+            tooltip.add(Component.literal("    ")
+                    .append(Component.translatable(getBlockState().getBlock().getDescriptionId())
+                            .withStyle(ChatFormatting.GOLD)));
         }
 
+        int output = isArray ? this.totalArrayGeneration : this.currentGeneration;
+        float eff = isArray ? this.avgArrayEfficiency : this.efficiency;
+
+        Direction facing = getBlockState().getValue(SolarPanelBlock.FACING);
+        BlockPos frontPos = worldPosition.relative(facing);
+        boolean isObstructed = level != null && level.getBlockState(frontPos).isSolidRender(level, frontPos);
+
+        if (isObstructed) {
+            tooltip.add(Component.literal("  Status: ")
+                    .append(Component.literal("Obstructed").withStyle(ChatFormatting.RED)));
+        } else if (output > 0) {
+            tooltip.add(Component.literal("  Status: ")
+                    .append(Component.literal("Generating").withStyle(ChatFormatting.GREEN)));
+            int pct = Math.round(eff * 100.0f);
+            ChatFormatting effColor = pct >= 75 ? ChatFormatting.GREEN : (pct >= 35 ? ChatFormatting.YELLOW : ChatFormatting.GOLD);
+            tooltip.add(Component.literal("  Efficiency: ")
+                    .append(Component.literal(pct + "%").withStyle(effColor)));
+            tooltip.add(Component.literal(isArray ? "  Array Output: " : "  Output: ")
+                    .append(Component.literal(output + " FE/t").withStyle(ChatFormatting.AQUA)));
+        } else {
+            tooltip.add(Component.literal("  Status: ")
+                    .append(Component.literal("Inactive (No Sunlight)").withStyle(ChatFormatting.RED)));
+            tooltip.add(Component.literal("  Efficiency: ")
+                    .append(Component.literal("0%").withStyle(ChatFormatting.GRAY)));
+        }
+
+        int stored = isArray ? this.arrayStoredEnergy : this.energyStorage.getEnergyStored();
+        int max = isArray ? this.arrayMaxEnergy : this.energyStorage.getMaxEnergyStored();
+
         tooltip.add(Component.literal("  Stored: ")
-            .append(Component.literal(energyStorage.getEnergyStored() + " / " + energyStorage.getMaxEnergyStored() + " FE").withStyle(ChatFormatting.WHITE)));
+                .append(Component.literal(stored + " / " + max + " FE").withStyle(ChatFormatting.WHITE)));
 
         return true;
     }
 
     public IEnergyStorage getEnergyStorage(@Nullable Direction side) {
-        return energyStorage;
+        SolarPanelBlockEntity controller = getController();
+        return controller != null ? controller.energyStorage : this.energyStorage;
     }
 
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         tag.putInt("Energy", energyStorage.getEnergyStored());
+        tag.putInt("MaxEnergy", energyStorage.getMaxEnergyStored());
         tag.putInt("Generation", currentGeneration);
         tag.putFloat("Efficiency", efficiency);
+        tag.putInt("ConnectedPanels", connectedPanelsCount);
+        tag.putInt("ArrayGen", totalArrayGeneration);
+        tag.putFloat("ArrayEff", avgArrayEfficiency);
+        tag.putInt("ArrayStored", arrayStoredEnergy);
+        tag.putInt("ArrayMax", arrayMaxEnergy);
+        if (controllerPos != null) {
+            tag.putLong("ControllerPos", controllerPos.asLong());
+        }
     }
 
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         energyStorage.setEnergy(tag.getInt("Energy"));
+        if (tag.contains("MaxEnergy")) {
+            energyStorage.setCapacity(tag.getInt("MaxEnergy"));
+        }
         this.currentGeneration = tag.getInt("Generation");
         this.efficiency = tag.getFloat("Efficiency");
+        this.connectedPanelsCount = tag.getInt("ConnectedPanels");
+        this.totalArrayGeneration = tag.getInt("ArrayGen");
+        this.avgArrayEfficiency = tag.getFloat("ArrayEff");
+        this.arrayStoredEnergy = tag.getInt("ArrayStored");
+        this.arrayMaxEnergy = tag.getInt("ArrayMax");
+        if (tag.contains("ControllerPos")) {
+            this.controllerPos = BlockPos.of(tag.getLong("ControllerPos"));
+        } else {
+            this.controllerPos = null;
+        }
     }
 
     @Override
@@ -250,6 +498,14 @@ public class SolarPanelBlockEntity extends BlockEntity implements IHaveGoggleInf
 
         public void setEnergy(int energy) {
             this.energy = energy;
+        }
+
+        public void setCapacity(int capacity) {
+            this.capacity = capacity;
+        }
+
+        public void setMaxExtract(int maxExtract) {
+            this.maxExtract = maxExtract;
         }
     }
 }

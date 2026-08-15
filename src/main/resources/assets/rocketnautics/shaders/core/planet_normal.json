@@ -8,8 +8,8 @@
     "fragment": "rocketnautics:planet_normal",
     "attributes": [
         "Position",
-        "Color",
-        "UV0"
+        "UV0",
+        "Color"
     ],
     "samplers": [
         { "name": "Sampler0" },

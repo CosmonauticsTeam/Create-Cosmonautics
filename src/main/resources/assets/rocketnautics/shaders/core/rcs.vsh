@@ -1,8 +1,8 @@
-#version 150
+#version 330
 
-in vec3 Position;
-in vec4 Color;
-in vec2 UV0;
+layout(location = 0) in vec3 Position;
+layout(location = 1) in vec2 UV0;
+layout(location = 2) in vec4 Color;
 
 out vec4 vertexColor;
 out vec2 texCoord;
