@@ -126,6 +126,10 @@ public class GlobalSpacePhysicsHandler {
     private static final Map<UUID, Vector3d> LAST_SHIPS_VELOCITIES = new ConcurrentHashMap<>();
 
     private static void applySonicBoom(ServerSubLevel subLevel, RigidBodyHandle handle, ServerLevel level) {
+        boolean boomenabled = dev.devce.rocketnautics.RocketConfig.SERVER.boomEnabled.get();
+        if (!boomenabled) {
+            return;
+        }
         if (!handle.isValid()) {
             SUPERSONIC_SHIPS.remove(subLevel.getUniqueId());
             LAST_SHIPS_VELOCITIES.remove(subLevel.getUniqueId());
