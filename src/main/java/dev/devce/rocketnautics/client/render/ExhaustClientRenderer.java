@@ -361,12 +361,13 @@ public class ExhaustClientRenderer {
         }
 
         Vector3f cardinalStep = new Vector3f(dir.getStepX(), dir.getStepY(), dir.getStepZ());
-        Vector3f target = new Vector3f((float) exhaustDir.x, (float) exhaustDir.y, (float) exhaustDir.z).normalize();
-        if (cardinalStep.dot(target) < 0.9999f) {
-            Quaternionf tilt = new Quaternionf().rotationTo(cardinalStep, target);
-            tilt.mul(baseRot);
-            return tilt;
+        Vector3f dirVec = new Vector3f((float) exhaustDir.x, (float) exhaustDir.y, (float) exhaustDir.z);
+        if (dirVec.lengthSquared() > 1e-6f) {
+            dirVec.normalize();
+            Quaternionf offAxisRot = new Quaternionf().rotationTo(cardinalStep, dirVec);
+            baseRot.premul(offAxisRot);
         }
+
         return baseRot;
     }
 

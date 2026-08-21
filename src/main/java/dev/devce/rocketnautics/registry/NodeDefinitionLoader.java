@@ -164,6 +164,7 @@ public class NodeDefinitionLoader {
             "actuators/vector_control",
             "actuators/rcs_control",
             "actuators/booster_control",
+            "actuators/gyrodyne_control",
             "math/math_add",
             "math/math_subtract",
             "math/math_multiply",

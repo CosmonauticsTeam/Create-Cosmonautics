@@ -79,4 +79,8 @@ public final class InstanceList {
         }
         return instance;
     }
+
+    public java.util.Collection<DeepSpaceInstance> getAllInstances() {
+        return java.util.Collections.unmodifiableCollection(instances.values());
+    }
 }
