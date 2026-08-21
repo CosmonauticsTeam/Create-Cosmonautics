@@ -16,5 +16,7 @@ public class RocketPonderPlugin implements PonderPlugin {
     public void registerScenes(PonderSceneRegistrationHelper<ResourceLocation> helper) {
         helper.forComponents(RocketBlocks.ROCKET_THRUSTER.getId())
             .addStoryBoard(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "rocket_final"), RocketPonderScenes::thrusterIntro);
+        helper.forComponents(RocketBlocks.CREATIVE_THRUSTER.getId())
+            .addStoryBoard(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "rocket_final"), RocketPonderScenes::creativeThrusterThrottle);
     }
 }

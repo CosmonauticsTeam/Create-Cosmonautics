@@ -218,22 +218,9 @@ public class RocketThrusterBlockEntity extends AbstractThrusterBlockEntity {
             return;
         }
 
-        String fluidId = net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(stack.getFluid()).toString()
-                .toLowerCase();
-
-        if (fluidId.contains("kerosene")) {
-            currentIspMultiplier = 1.4f;
-            currentEfficiencyMultiplier = 0.5f;
-        } else if (fluidId.contains("diesel") || fluidId.contains("fuel_oil") || fluidId.contains("lpg")) {
-            currentIspMultiplier = 1.2f;
-            currentEfficiencyMultiplier = 0.7f;
-        } else if (fluidId.contains("gasoline") || fluidId.contains("petrol")) {
-            currentIspMultiplier = 1.1f;
-            currentEfficiencyMultiplier = 0.8f;
-        } else {
-            currentIspMultiplier = 1.0f;
-            currentEfficiencyMultiplier = 1.0f;
-        }
+        RocketFuelProperties properties = RocketFuelProperties.forFuel(stack);
+        currentIspMultiplier = properties.ispMultiplier();
+        currentEfficiencyMultiplier = properties.consumptionMultiplier();
     }
 
     private boolean isRocketFuel(FluidStack stack) {
