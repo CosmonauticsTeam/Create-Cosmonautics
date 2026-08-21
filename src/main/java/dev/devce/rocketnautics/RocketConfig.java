@@ -40,7 +40,6 @@ public class RocketConfig {
         public final ModConfigSpec.BooleanValue enableEngineDebugLogging;
         public final ModConfigSpec.BooleanValue brokenBarrier;
         public final ModConfigSpec.DoubleValue sonicBoomSpeedThreshold;
-        public final ModConfigSpec.DoubleValue magneticStabilizerStrength;
         public final ModConfigSpec.DoubleValue gyrodyneStrength;
 
         public final ModConfigSpec.EnumValue<PlanetShape> planetShape;
@@ -84,11 +83,8 @@ public class RocketConfig {
                     .comment("Base consumption per tick of pressurized air while leg thrusters are active")
                     .defineInRange("legThrusterBaseConsumption", 2, 1, 100);
             builder.pop();
-            magneticStabilizerStrength = builder
-                    .comment("Strength of the Magnetic Stabilizer in dampening angular momentum")
-                    .defineInRange("magneticStabilizerStrength", 50d, 1, 1000000);
             gyrodyneStrength = builder
-                    .comment("Torque strength of the Gyrodyne (Reaction Wheel) in stabilizing and reorienting ships")
+                    .comment("Torque strength of the Gyrodyne (CMG) in stabilizing and reorienting ships")
                     .defineInRange("gyrodyneStrength", 100d, 1d, 1000000d);
             
             builder.push("Space");
@@ -98,7 +94,31 @@ public class RocketConfig {
                     .comment(" - SPHERE: Smooth sphere-shaped planets.")
                     .defineEnum("planetShape", PlanetShape.CUBE);
             builder.pop();
+
+            builder.push("TelemetryServer");
+            telemetryServerEnabled = builder
+                    .comment("Enable the built-in HTTP telemetry and ephemeris server for external applications and science programs")
+                    .define("enabled", false);
+            telemetryServerBind = builder
+                    .comment("IP address to bind the telemetry HTTP server to (e.g. 127.0.0.1 for local/proxy, 0.0.0.0 for public)")
+                    .define("bindAddress", "127.0.0.1");
+            telemetryServerPort = builder
+                    .comment("TCP port for the telemetry HTTP server")
+                    .defineInRange("port", 8085, 1024, 65535);
+            telemetryServerToken = builder
+                    .comment("Optional Bearer authorization token. Leave empty to allow unauthenticated access.")
+                    .define("authToken", "");
+            telemetrySnapshotInterval = builder
+                    .comment("Frequency in server ticks at which world telemetry snapshots are refreshed")
+                    .defineInRange("snapshotIntervalTicks", 1, 1, 100);
+            builder.pop();
         }
+
+        public final ModConfigSpec.BooleanValue telemetryServerEnabled;
+        public final ModConfigSpec.ConfigValue<String> telemetryServerBind;
+        public final ModConfigSpec.IntValue telemetryServerPort;
+        public final ModConfigSpec.ConfigValue<String> telemetryServerToken;
+        public final ModConfigSpec.IntValue telemetrySnapshotInterval;
     }
 
 

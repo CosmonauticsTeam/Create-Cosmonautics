@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_iron_block": {
+    "has_copper": {
       "conditions": {
         "items": [
           {
-            "items": "minecraft:iron_block"
+            "items": "minecraft:copper_ingot"
           }
         ]
       },
@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "rocketnautics:magnetic_stabilizer"
+        "recipe": "rocketnautics:energy_tank"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
@@ -21,12 +21,12 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_iron_block"
+      "has_copper"
     ]
   ],
   "rewards": {
     "recipes": [
-      "rocketnautics:magnetic_stabilizer"
+      "rocketnautics:energy_tank"
     ]
   }
 }

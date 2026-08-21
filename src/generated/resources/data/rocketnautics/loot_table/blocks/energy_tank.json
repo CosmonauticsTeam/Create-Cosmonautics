@@ -11,11 +11,11 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "rocketnautics:magnetic_stabilizer"
+          "name": "rocketnautics:energy_tank"
         }
       ],
       "rolls": 1.0
     }
   ],
-  "random_sequence": "rocketnautics:blocks/magnetic_stabilizer"
+  "random_sequence": "rocketnautics:blocks/energy_tank"
 }
