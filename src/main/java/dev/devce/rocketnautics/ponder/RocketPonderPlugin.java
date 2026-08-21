@@ -3,6 +3,7 @@ package dev.devce.rocketnautics.ponder;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.ponder.scenes.BoosterThrusterPonderScene;
 import dev.devce.rocketnautics.ponder.scenes.CreativeThrusterPonderScene;
+import dev.devce.rocketnautics.ponder.scenes.GyrodynePonderScene;
 import dev.devce.rocketnautics.ponder.scenes.RcsThrusterPonderScene;
 import dev.devce.rocketnautics.ponder.scenes.RocketThrusterPonderScene;
 import dev.devce.rocketnautics.ponder.scenes.ThrusterMountPonderScene;
@@ -39,5 +40,7 @@ public class RocketPonderPlugin implements PonderPlugin {
                                 ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "rocket_final"), ThrusterMountPonderScene::show);
                 helper.forComponents(RocketBlocks.RCS_THRUSTER.getId()).addStoryBoard(
                                 ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "rcs_rocket"), RcsThrusterPonderScene::show);
+                helper.forComponents(RocketBlocks.GYRODYNE.getId()).addStoryBoard(
+                                ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "rocket_final"), GyrodynePonderScene::show);
         }
 }

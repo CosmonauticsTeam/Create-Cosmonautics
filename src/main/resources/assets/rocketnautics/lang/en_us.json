@@ -79,6 +79,13 @@
   "block.rocketnautics.gyrodyne": "Gyrodyne",
   "block.rocketnautics.gyrodyne.funny": "Spinning heavy wheels in three dimensions because physics said conservation of angular momentum is free real estate.",
   "block.rocketnautics.gyrodyne.summary": "An active gyroscopic attitude control stabilizer. Features configurable modes on its side displays: _SAS_ (holds orientation and damps spin), _Prograde_ (points forward along orbital velocity), and _Retrograde_ (points opposite to velocity). Works in Deep Space.",
+  "rocketnautics.ponder.gyrodyne.text_1": "The Gyrodyne needs stored FE and consumes 200 FE/t while a mode is active.",
+  "rocketnautics.ponder.gyrodyne.text_2": "Right-click a side Value Box to select a mode. Off stops the rotor and uses no energy.",
+  "rocketnautics.ponder.gyrodyne.text_3": "SAS damps rotation without changing the ship's current heading.",
+  "rocketnautics.ponder.gyrodyne.text_4": "Attitude Hold remembers the current orientation and returns the ship to it after a disturbance.",
+  "rocketnautics.ponder.gyrodyne.text_5": "Prograde and Retrograde follow or oppose velocity. Normal and Anti-Normal align with the orbital plane.",
+  "rocketnautics.ponder.gyrodyne.text_6": "Radial In and Out point toward or away from a planet. Horizon follows level flight; Sun Tracking faces the sun.",
+  "rocketnautics.ponder.gyrodyne.text_7": "Any Redstone signal disables the Gyrodyne without changing its selected mode.",
 
   "block.rocketnautics.titanium_casing": "Resilient Casing",
 
