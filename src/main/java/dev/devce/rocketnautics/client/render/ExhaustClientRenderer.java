@@ -340,8 +340,8 @@ public class ExhaustClientRenderer {
             case UP -> baseRot.rotationX((float) Math.PI);
             case NORTH -> baseRot.rotationX((float) (Math.PI / 2.0));
             case SOUTH -> baseRot.rotationX((float) (-Math.PI / 2.0));
-            case WEST -> baseRot.rotationZ((float) (Math.PI / 2.0));
-            case EAST -> baseRot.rotationZ((float) (-Math.PI / 2.0));
+            case WEST -> baseRot.rotationZ((float) (-Math.PI / 2.0));
+            case EAST -> baseRot.rotationZ((float) (Math.PI / 2.0));
         }
 
         Vector3f cardinalStep = new Vector3f(dir.getStepX(), dir.getStepY(), dir.getStepZ());
@@ -381,7 +381,8 @@ public class ExhaustClientRenderer {
         if (be instanceof EngineNozzleBlockEntity nozzle) {
             if (nozzle.smoothedHeat > 0.05f) {
                 Direction facing = nozzle.getBlockState().getValue(dev.devce.rocketnautics.content.blocks.EngineNozzleBlock.FACING);
-                Vec3 exhaustDir = new Vec3(facing.getOpposite().step()); // Vector pointing out of the nozzle
+                // ThrusterMount stores the nozzle's FACING as the direction away from the mount.
+                Vec3 exhaustDir = new Vec3(facing.step());
                 float throttle = Mth.clamp(nozzle.smoothedHeat / 1.5f, 0f, 1f);
                 registerPlume(nozzle.getLevel(), nozzle.getBlockPos(), new Vec3(0.5, 0.1, 0.5), exhaustDir, throttle, throttle * 40.0f, false);
             } else {

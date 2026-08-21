@@ -94,6 +94,7 @@ public class RocketNautics {
             modEventBus.register(dev.devce.rocketnautics.client.ClientModEvents.class);
             modEventBus.register(RocketNauticsClient.class);
             NeoForge.EVENT_BUS.register(dev.devce.rocketnautics.client.RocketNauticsClientEvents.class);
+            net.createmod.ponder.foundation.PonderIndex.addPlugin(new dev.devce.rocketnautics.ponder.RocketPonderPlugin());
 
             // Enable Sable's shadow maps for sublevels
             dev.ryanhcode.sable.render.sky_light_shadow.SableSkyLightShadows.setIsEnabled(true);
