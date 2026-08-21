@@ -8,6 +8,8 @@ import com.simibubi.create.content.redstone.analogLever.AnalogLeverBlockEntity;
 import com.simibubi.create.content.fluids.pump.PumpBlockEntity;
 import com.simibubi.create.content.fluids.tank.FluidTankBlock;
 import com.simibubi.create.content.fluids.tank.FluidTankBlockEntity;
+import dev.devce.rocketnautics.content.blocks.BoosterThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.BoosterThrusterBlockEntity;
 import dev.devce.rocketnautics.content.blocks.VectorThrusterBlockEntity;
 import dev.devce.rocketnautics.registry.RocketBlocks;
 import net.minecraft.core.BlockPos;
@@ -229,6 +231,64 @@ public class RocketPonderScenes {
                 .placeNearTarget();
         scene.addKeyframe();
         scene.idle(90);
+    }
+
+    public static void boosterThrusterFuel(SceneBuilder scene, SceneBuildingUtil util) {
+        scene.title("booster_thruster", "Booster Thruster: Solid Fuel");
+        scene.configureBasePlate(0, 0, 5);
+
+        BlockPos thrusterPos = util.grid().at(2, 1, 2);
+        BlockPos leverPos = util.grid().at(2, 1, 3);
+        BlockPos fuelPos = util.grid().at(3, 1, 2);
+
+        scene.world().showSection(util.select().everywhere(), Direction.DOWN);
+        scene.world().setBlocks(util.select().layersFrom(1), Blocks.AIR.defaultBlockState(), false);
+        scene.world().setBlock(thrusterPos, RocketBlocks.BOOSTER_THRUSTER.getDefaultState()
+                .setValue(BoosterThrusterBlock.FACING, Direction.WEST), false);
+        scene.world().setBlocks(util.select().fromTo(fuelPos, fuelPos.offset(1, 0, 0)), Blocks.COAL_BLOCK.defaultBlockState(), false);
+        scene.world().setBlock(leverPos, AllBlocks.ANALOG_LEVER.getDefaultState(), false);
+        setAnalogLever(scene, util, leverPos, 0);
+        scene.idle(20);
+
+        scene.overlay().showText(100)
+                .text("rocketnautics.ponder.booster_thruster.text_1")
+                .pointAt(util.vector().centerOf(fuelPos))
+                .placeNearTarget();
+        scene.idle(120);
+
+        scene.overlay().showText(100)
+                .text("rocketnautics.ponder.booster_thruster.text_2")
+                .pointAt(util.vector().topOf(leverPos))
+                .placeNearTarget();
+        scene.addKeyframe();
+        scene.idle(120);
+
+        setAnalogLever(scene, util, leverPos, 15);
+        scene.world().modifyBlock(thrusterPos, state -> state.setValue(BoosterThrusterBlock.POWERED, true), false);
+        scene.world().modifyBlockEntityNBT(util.select().position(thrusterPos), BoosterThrusterBlockEntity.class, nbt -> {
+            nbt.putBoolean("Burning", true);
+            nbt.putBoolean("Ignited", true);
+            nbt.putInt("Fuel", 200);
+            nbt.putInt("FuelTicks", 200);
+        });
+        scene.effects().indicateRedstone(leverPos);
+        scene.effects().indicateSuccess(thrusterPos);
+        scene.effects().emitParticles(util.vector().centerOf(thrusterPos).add(-0.7, 0, 0),
+                scene.effects().particleEmitterWithinBlockSpace(net.minecraft.core.particles.ParticleTypes.FLAME,
+                        new Vec3(-0.2, 0, 0)),
+                0.7f, 100);
+        scene.overlay().showText(110)
+                .text("rocketnautics.ponder.booster_thruster.text_3")
+                .pointAt(util.vector().topOf(thrusterPos))
+                .placeNearTarget();
+        scene.addKeyframe();
+        scene.idle(130);
+
+        scene.overlay().showText(100)
+                .text("rocketnautics.ponder.booster_thruster.text_4")
+                .pointAt(util.vector().blockSurface(thrusterPos, Direction.WEST))
+                .placeNearTarget();
+        scene.idle(120);
     }
 
     private static void setAnalogLever(SceneBuilder scene, SceneBuildingUtil util, BlockPos leverPos, int strength) {
