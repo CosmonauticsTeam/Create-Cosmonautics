@@ -289,12 +289,7 @@ public class RocketNodes {
                     }
                 }
 
-                globals[0] = JsePlatform.standardGlobals();
-                globals[0].set("os",      LuaValue.NIL);
-                globals[0].set("io",      LuaValue.NIL);
-                globals[0].set("luajava", LuaValue.NIL);
-                globals[0].set("debug",   LuaValue.NIL);
-                globals[0].set("require", LuaValue.NIL);
+                globals[0] = dev.devce.rocketnautics.lua.LuaSandbox.createSandboxedGlobals();
                 // Inject the UI bridge so scripts can build custom node UIs
                 LuaUIBridge.inject(globals[0], n, uiRegistry[0]);
 
