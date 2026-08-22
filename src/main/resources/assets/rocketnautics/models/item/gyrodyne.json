@@ -1,6 +1,6 @@
 {
-	"format_version": "1.21.11",
-	"credit": "Made with Blockbench",
+	"parent": "minecraft:block/block",
+	"credit": "webyep",
 	"render_type": "minecraft:cutout_mipped",
 	"texture_size": [24, 16],
 	"textures": {
@@ -197,7 +197,8 @@
 			"scale": [0.25, 0.25, 0.25]
 		},
 		"gui": {
-			"rotation": [30, 150, 0],
+			"rotation": [30, 225, 0],
+			"translation": [0, 1, 0],
 			"scale": [0.625, 0.625, 0.625]
 		},
 		"fixed": {

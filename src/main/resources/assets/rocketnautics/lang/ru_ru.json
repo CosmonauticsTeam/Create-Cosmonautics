@@ -41,10 +41,7 @@
   "rocketnautics.simulated_section.rocketnautics": "Cosmonautics",
   "itemGroup.rocketnautics.tab.resource": "Ресурсы Cosmonautics",
   "itemGroup.rocketnautics.tab.world": "Мир Cosmonautics",
-  "block.rocketnautics.magnetic_stabilizer": "Магнитный стабилизатор",
-  "block.rocketnautics.magnetic_stabilizer.tooltip.summary": "Создает _трение_ о _магнитное поле планеты_. Магниты. _Как они вообще работают?_",
-  "block.rocketnautics.magnetic_stabilizer.tooltip.condition1": "При сигнале редстоуна",
-  "block.rocketnautics.magnetic_stabilizer.tooltip.behaviour1": "Гасит _угловой момент_ (вращение) прикрепленного _корабля_.",
+
 
   "block.rocketnautics.gyrodyne": "Гиродин",
   "block.rocketnautics.gyrodyne.funny": "Вращение массивных маховиков в трёх измерениях, потому что физика разрешила бесплатно использовать закон сохранения углового момента.",
@@ -52,9 +49,16 @@
 
   "gui.rocketnautics.gyrodyne.mode": "Режим",
   "gui.rocketnautics.gyrodyne.mode.off": "Выкл",
-  "gui.rocketnautics.gyrodyne.mode.sas": "САС (Удержание)",
-  "gui.rocketnautics.gyrodyne.mode.prograde": "Прогрейд",
-  "gui.rocketnautics.gyrodyne.mode.retrograde": "Ретрогрейд",
+  "gui.rocketnautics.gyrodyne.mode.sas": "САС (Гашение вращения)",
+  "gui.rocketnautics.gyrodyne.mode.hold": "Удержание курса",
+  "gui.rocketnautics.gyrodyne.mode.prograde": "Прогрейд (По скорости)",
+  "gui.rocketnautics.gyrodyne.mode.retrograde": "Ретрогрейд (Против скорости)",
+  "gui.rocketnautics.gyrodyne.mode.normal": "Нормаль (Орбита +)",
+  "gui.rocketnautics.gyrodyne.mode.antinormal": "Антинормаль (Орбита -)",
+  "gui.rocketnautics.gyrodyne.mode.radial_in": "Радиально вниз (К планете)",
+  "gui.rocketnautics.gyrodyne.mode.radial_out": "Радиально вверх (От планеты)",
+  "gui.rocketnautics.gyrodyne.mode.horizon": "Горизонт (Выравнивание)",
+  "gui.rocketnautics.gyrodyne.mode.sun": "На Солнце (Зарядка)",
 
   "gui.rocketnautics.min_thrust": "Мин. тяга (0 Сигнал)",
   "gui.rocketnautics.max_thrust": "Макс. тяга (15 Сигнал)",
@@ -191,7 +195,17 @@
   "chat.rocketnautics.world_border_warning.text2": "Ограничить до рекомендуемых значений?",
   "chat.rocketnautics.world_border_warning.yes": "[ Да ]",
   "chat.rocketnautics.world_border_warning.no": "[ Нет ]",
-  "chat.rocketnautics.world_border_warning.success": "Размер мира успешно ограничен до 40 000 блоков.",
-  "chat.rocketnautics.world_border_warning.no_permission": "У вас нет прав для изменения границы мира.",
-  "rocketnautics.tooltip.creative_thruster.extra": "Требует редстоун-сигнала. Сила тяги зависит от силы сигнала."
+  "rocketnautics.tooltip.creative_thruster.extra": "Требует редстоун-сигнала. Сила тяги зависит от силы сигнала.",
+  "block.rocketnautics.copper_wire": "Медный провод",
+  "block.rocketnautics.copper_wire.funny": "Медный нерв вашего корабля. Передает энергию без лишних споров с физикой.",
+  "block.rocketnautics.copper_wire.summary": "Передает Forge Energy (FE) между подключенными устройствами (солнечные панели, ионные двигатели, гиродины, аккумуляторы) со скоростью до 1000 FE/t.",
+  "gui.rocketnautics.goggles.copper_wire": "Медный провод",
+  "gui.rocketnautics.goggles.wire_transfer": "Поток энергии",
+  "gui.rocketnautics.goggles.wire_max_rate": "Пропускная способность",
+  "gui.rocketnautics.goggles.energy_stored": "Энергия",
+  "gui.rocketnautics.goggles.energy_usage": "Потребление",
+  "gui.rocketnautics.goggles.tank_size": "Размер батареи",
+  "block.rocketnautics.energy_tank": "Энергетический резервуар",
+  "block.rocketnautics.energy_tank.funny": "Хранилище миллиардов невидимых электронов, упакованных в надежный корпус.",
+  "block.rocketnautics.energy_tank.summary": "Масштабируемый многоблочный аккумулятор (1x1, 2x2, 3x3) для накопления и быстрой отдачи Forge Energy (FE)."
 }

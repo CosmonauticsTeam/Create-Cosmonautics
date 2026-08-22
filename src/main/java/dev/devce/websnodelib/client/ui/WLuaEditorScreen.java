@@ -202,7 +202,7 @@ public class WLuaEditorScreen extends Screen {
 
     private void checkSyntax() {
         try {
-            org.luaj.vm2.lib.jse.JsePlatform.standardGlobals().load(codeArea.getValue());
+            dev.devce.rocketnautics.lua.LuaSandbox.createSandboxedGlobals().load(codeArea.getValue());
             node.getCustomData().putBoolean("err", false);
             log("§aSyntax OK");
         } catch (org.luaj.vm2.LuaError e) {
@@ -218,7 +218,7 @@ public class WLuaEditorScreen extends Screen {
         
         // Update failed state
         try {
-            org.luaj.vm2.lib.jse.JsePlatform.standardGlobals().load(code);
+            dev.devce.rocketnautics.lua.LuaSandbox.createSandboxedGlobals().load(code);
             node.getCustomData().putBoolean("err", false);
         } catch (Exception e) {
             node.getCustomData().putBoolean("err", true);

@@ -14,25 +14,26 @@ public class RocketExhaustParticle extends TextureSheetParticle {
         this.xd = xSpeed;
         this.yd = ySpeed;
         this.zd = zSpeed;
-        this.setAlpha(0.4F + this.random.nextFloat() * 0.3F);
+        this.setAlpha(1.0F);
         this.lifetime = 6 + this.random.nextInt(6);
-        this.baseScale = 0.4F + this.random.nextFloat() * 0.6F; 
+        this.baseScale = 0.4F + this.random.nextFloat() * 0.6F;
+        // Cache variance so tick() doesn't call random every frame
+        this.sizeVariance = 0.8f + this.random.nextFloat() * 0.4f;
         this.quadSize = this.baseScale;
-        
+
         if (sprites != null) {
             this.setSpriteFromAge(sprites);
         } else {
-            this.remove(); 
+            this.remove();
         }
-        
-        this.hasPhysics = true; 
-        this.friction = 0.90F;  
-        this.gravity = 0.01F;   
-        
-        
+
+        this.hasPhysics = true;
+        this.friction = 0.90F;
+        this.gravity = 0.01F;
+
         this.rCol = 1.0F;
-        this.gCol = 0.6F + this.random.nextFloat() * 0.4F;
-        this.bCol = 0.2F;
+        this.gCol = 1.0F;
+        this.bCol = 1.0F;
     }
 
     @Override
@@ -42,48 +43,45 @@ public class RocketExhaustParticle extends TextureSheetParticle {
         this.zo = this.z;
         if (this.age++ >= this.lifetime) {
             this.remove();
-        } else {
-            if (this.sprites != null) {
-                this.setSpriteFromAge(this.sprites);
-            }
-            
-            
-            
-            
-            float ageFactor = (float)this.age / (float)this.lifetime;
-            
-            float r, g, b;
-            float startR = 1.0f, startG = 1.0f, startB = 1.0f;
-            if (ageFactor < 0.2f) {
-                float f = ageFactor / 0.2f;
-                r = startR + (this.targetR - startR) * f;
-                g = startG + (this.targetG - startG) * f;
-                b = startB + (this.targetB - startB) * f;
-            } else {
-                float f = (ageFactor - 0.2f) / 0.8f;
-                r = this.targetR + (this.coolingR - this.targetR) * f;
-                g = this.targetG + (this.coolingG - this.targetG) * f;
-                b = this.targetB + (this.coolingB - this.targetB) * f;
-            }
-            
-            
-            float animScale = this.shrinking ? (1.0f - ageFactor * 0.9f) : (1.0f + ageFactor * 1.5f);
-            this.quadSize = this.baseScale * animScale * (0.8f + this.random.nextFloat() * 0.4f);
-            
-            this.rCol = r;
-            this.gCol = g;
-            this.bCol = b;
-            
-            
-            this.alpha = (1.0f - ageFactor) * this.maxAlpha;
-
-            this.move(this.xd, this.yd, this.zd);
-            
-            this.xd *= this.friction;
-            this.yd *= this.friction;
-            this.zd *= this.friction;
-            this.yd -= this.gravity;
+            return;
         }
+
+        // Animate sprite only if there are multiple frames to show
+        if (this.sprites != null && this.lifetime > 1) {
+            this.setSpriteFromAge(this.sprites);
+        }
+
+        float ageFactor = (float) this.age / (float) this.lifetime;
+
+        // Color interpolation: white → target → cooling
+        float r, g, b;
+        if (ageFactor < 0.2f) {
+            float f = ageFactor * 5.0f; // ageFactor / 0.2f, avoiding division
+            r = 1.0f + (this.targetR - 1.0f) * f;
+            g = 1.0f + (this.targetG - 1.0f) * f;
+            b = 1.0f + (this.targetB - 1.0f) * f;
+        } else {
+            float f = (ageFactor - 0.2f) * 1.25f; // / 0.8f
+            r = this.targetR + (this.coolingR - this.targetR) * f;
+            g = this.targetG + (this.coolingG - this.targetG) * f;
+            b = this.targetB + (this.coolingB - this.targetB) * f;
+        }
+        this.rCol = r;
+        this.gCol = g;
+        this.bCol = b;
+
+        // Scale: precomputed sizeVariance eliminates per-tick random call
+        float animScale = this.shrinking ? (1.0f - ageFactor * 0.9f) : (1.0f + ageFactor * 1.5f);
+        this.quadSize = this.baseScale * animScale * this.sizeVariance;
+
+        // Alpha
+        this.alpha = this.maxAlpha >= 1.0F ? 1.0F : (1.0f - ageFactor) * this.maxAlpha;
+
+        this.move(this.xd, this.yd, this.zd);
+        this.xd *= this.friction;
+        this.yd *= this.friction;
+        this.zd *= this.friction;
+        this.yd -= this.gravity;
     }
 
     private float targetR = 1.0f;
@@ -93,10 +91,12 @@ public class RocketExhaustParticle extends TextureSheetParticle {
     private float coolingR = 1.0f;
     private float coolingG = 0.5f;
     private float coolingB = 0.1f;
-    
+
     private boolean shrinking = false;
-    private float maxAlpha = 0.7f;
+    private float maxAlpha = 1.0f;
     private float baseScale = 1.0f;
+    /** Cached random size variance, computed once at construction. */
+    private final float sizeVariance;
 
     @Override
     public void setColor(float r, float g, float b) {
@@ -150,7 +150,6 @@ public class RocketExhaustParticle extends TextureSheetParticle {
         @Override
         public Particle createParticle(@NotNull SimpleParticleType type, @NotNull ClientLevel level, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {
             RocketExhaustParticle particle = new RocketExhaustParticle(level, x, y, z, xSpeed, ySpeed, zSpeed, this.sprites);
-            
             
             double speed = Math.sqrt(xSpeed * xSpeed + ySpeed * ySpeed + zSpeed * zSpeed);
             float thrustFactor = (float) ((speed - 2.5) / 1.5);
@@ -222,11 +221,12 @@ public class RocketExhaustParticle extends TextureSheetParticle {
             particle.scale(1.2f + level.random.nextFloat() * 0.8f);
             particle.setShrinking(false); 
             particle.friction = 0.98F; 
-            particle.setMaxAlpha(0.5F);
+            particle.setMaxAlpha(1.0F);
+            particle.setAlpha(1.0F);
             particle.gravity = 0.0F; // Stop it from falling
             
             particle.setColor(1.0F, 1.0F, 1.0F); // Pure white
-            particle.setCoolingColor(0.9F, 0.9F, 0.9F);
+            particle.setCoolingColor(1.0F, 1.0F, 1.0F); // Pure white throughout
             return particle;
         }
     }

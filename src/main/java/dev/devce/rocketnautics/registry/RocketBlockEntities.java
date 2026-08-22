@@ -69,11 +69,6 @@ public class RocketBlockEntities {
             .renderer(() -> HologramTableRenderer::new)
             .register();
 
-    public static final BlockEntityEntry<MagneticStabilizerBlockEntity> MAGNETIC_STABILIZER = REGISTRATE
-            .blockEntity("magnetic_stabilizer", MagneticStabilizerBlockEntity::new)
-            .validBlocks(RocketBlocks.MAGNETIC_STABILIZER)
-            .register();
-
     public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlockEntity> GYRODYNE = REGISTRATE
             .blockEntity("gyrodyne", dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlockEntity::new)
             .validBlocks(RocketBlocks.GYRODYNE)
@@ -114,6 +109,16 @@ public class RocketBlockEntities {
             .validBlocks(RocketBlocks.ION_ENGINE)
             .register();
 
+    public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.wire.CopperWireBlockEntity> COPPER_WIRE = REGISTRATE
+            .blockEntity("copper_wire", dev.devce.rocketnautics.content.blocks.wire.CopperWireBlockEntity::new)
+            .validBlocks(RocketBlocks.COPPER_WIRE)
+            .register();
+
+    public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.energy_tank.EnergyTankBlockEntity> ENERGY_TANK = REGISTRATE
+            .blockEntity("energy_tank", dev.devce.rocketnautics.content.blocks.energy_tank.EnergyTankBlockEntity::new)
+            .validBlocks(RocketBlocks.ENERGY_TANK)
+            .register();
+
     public static void register(IEventBus eventBus) {
         eventBus.addListener(RocketBlockEntities::registerCapabilities);
     }
@@ -121,6 +126,10 @@ public class RocketBlockEntities {
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, SOLAR_PANEL.get(), (be, side) -> be.getEnergyStorage(side));
         event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, ION_ENGINE.get(), (be, side) -> be.getEnergyStorage(side));
+        event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, COPPER_WIRE.get(), (be, side) -> be.getEnergyStorage(side));
+        event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, GYRODYNE.get(), (be, side) -> be.getEnergyStorage(side));
+        event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, SPUTNIK.get(), (be, side) -> be.getEnergyStorage(side));
+        event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, ENERGY_TANK.get(), (be, side) -> be.getEnergyStorage(side));
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, ROCKET_THRUSTER.get(), (be, side) -> be.fuelTank);
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, VECTOR_THRUSTER.get(), (be, side) -> be.fuelTank);
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, HOSE_ANCHOR.get(), (be, side) -> be.fuelTank);

@@ -132,3 +132,31 @@ All thruster engines implement the `IThruster` interface, allowing direct contro
 | **Write** | `"throttle"` | `value` (`0.0` - `1.0`) | Directly sets the thruster's throttle percentage. Sets active state to `false` if `value <= 0.0`. |
 | **Write** | `"thrust"` | `value` (in Newtons) | Calculates and sets throttle value relative to the engine's configured maximum thrust capacity. |
 | **Write Mult.** | `"gimbal"` | `pitch`, `yaw` (degrees) | Adjusts the thruster nozzle tilt angles (applicable to Vector Engines and gimbal mounts). |
+
+---
+
+### Gyrodyne (`"gyrodyne"`)
+
+Gyrodynes (Control Moment Gyroscopes / CMG) provide active 3D attitude stabilization and orientation control.
+
+#### ComputerCraft API:
+- `gyrodyne.getMode()` — Returns current mode string (`"off"`, `"sas"`, `"hold"`, `"prograde"`, `"retrograde"`, `"normal"`, `"antinormal"`, `"radial_in"`, `"radial_out"`, `"horizon"`, `"sun"`).
+- `gyrodyne.setMode(modeName)` — Sets active flight/attitude mode.
+- `gyrodyne.isActive()` — Returns true if gyrodyne is active and unpowered by redstone.
+- `gyrodyne.getId()` — Returns integer peripheral ID.
+- `gyrodyne.getGimbalTilt()` — Returns table with `{ x, z }` gimbal tilt angles in degrees.
+- `gyrodyne.getRotorSpeed()` — Returns current flywheel rotor speed.
+- `gyrodyne.getAvailableModes()` — Returns list of all available mode names.
+
+#### Sputnik Peripheral Keys:
+| Action | Key | Arguments / Return | Description |
+|---|---|---|---|
+| **Read** | `"mode"` | Returns `number` | Returns the current mode index (`0`..`10`). |
+| **Read** | `"active"` | Returns `number` | `1.0` if running, `0.0` if inactive. |
+| **Read** | `"tilt_x"` | Returns `number` | Gimbal deflection on X axis (degrees). |
+| **Read** | `"tilt_z"` | Returns `number` | Gimbal deflection on Z axis (degrees). |
+| **Read** | `"rotor_speed"` | Returns `number` | Rotor spin speed. |
+| **Read** | `"id"` | Returns `number` | Peripheral ID. |
+| **Write** | `"mode"` | `value` (`0`..`10`) | Directly sets the mode by ordinal. |
+| **Write** | `"sas"`, `"hold"`, `"prograde"`, etc. | `1.0` / `0.0` | Activates or deactivates the specific mode. |
+

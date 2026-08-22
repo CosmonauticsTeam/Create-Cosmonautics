@@ -1,0 +1,57 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "rocketnautics:block/copper_wire_core"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/copper_wire_north"
+      },
+      "when": {
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/copper_wire_south"
+      },
+      "when": {
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/copper_wire_east"
+      },
+      "when": {
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/copper_wire_west"
+      },
+      "when": {
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/copper_wire_up"
+      },
+      "when": {
+        "up": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/copper_wire_down"
+      },
+      "when": {
+        "down": "true"
+      }
+    }
+  ]
+}

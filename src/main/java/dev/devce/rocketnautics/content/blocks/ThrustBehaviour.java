@@ -215,7 +215,7 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
                 // }
 
                 // Persistent smoke trail (contrail)
-                if (random.nextFloat() < 0.08f) {
+                if (random.nextFloat() < 0.05f) { // Was 0.08f — reduced contrail density for performance
                     dev.ryanhcode.sable.sublevel.SubLevel ship = (dev.ryanhcode.sable.sublevel.SubLevel) dev.ryanhcode.sable.Sable.HELPER
                             .getContaining(level, pos);
                     if (ship != null) {
@@ -245,7 +245,8 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
         }
 
         // Ground smoke and contrail logic (Only for ROCKET)
-        if (engineType == EngineType.ROCKET) {
+        // Raycast is throttled to every 3 ticks to reduce CPU overhead
+        if (engineType == EngineType.ROCKET && level.getGameTime() % 3 == 0) {
             handleExhaustCollisions(level, start, random, visualPower);
         }
     }

@@ -19,19 +19,41 @@ import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.joml.Vector3d;
 import dev.devce.websnodelib.api.WGraph;
 
+import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
+import dev.devce.rocketnautics.content.energy.CustomEnergyStorage;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.neoforged.neoforge.energy.IEnergyStorage;
+import org.jetbrains.annotations.Nullable;
+import net.minecraft.core.Direction;
+
 import java.util.EnumSet;
+import java.util.List;
 import java.util.StringJoiner;
 
 /**
  * Sputnik Block Entity acts as the core central computer of a spacecraft.
  * It ticks the Lua script graph and provides vector telemetry (velocity, rotation, position).
  */
-public class SputnikBlockEntity extends BlockEntity {
+public class SputnikBlockEntity extends BlockEntity implements IHaveGoggleInformation {
+    public static final int ENERGY_CONSUMPTION_RATE = 50; // 50 FE/t when running scripts
+    public static final int ENERGY_CAPACITY = 5000;
+
     public final WGraph graph = new WGraph();
     private final java.util.Map<String, String> displayBridge = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.Map<String, Double> lastWirelessRedstone = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.Map<String, Double> lastRadioPackets = new java.util.concurrent.ConcurrentHashMap<>();
+    private final CustomEnergyStorage energyStorage = new CustomEnergyStorage(ENERGY_CAPACITY, 500);
     private int syncCooldown = 0;
+    private int lastSyncedEnergy = 0;
+
+    public IEnergyStorage getEnergyStorage(@Nullable Direction side) {
+        return energyStorage;
+    }
+
+    public boolean isPowered() {
+        return energyStorage.getEnergyStored() >= ENERGY_CONSUMPTION_RATE;
+    }
 
     public java.util.Map<String, String> getDisplayBridge() {
         return displayBridge;
@@ -72,17 +94,21 @@ public class SputnikBlockEntity extends BlockEntity {
     public static void tick(Level level, BlockPos pos, BlockState state, SputnikBlockEntity blockEntity) {
         if (!level.isClientSide) {
             blockEntity.tickNodes();
-            if (blockEntity.syncCooldown++ >= 10) {
+            blockEntity.syncCooldown++;
+            boolean energyChanged = Math.abs(blockEntity.energyStorage.getEnergyStored() - blockEntity.lastSyncedEnergy) >= 50;
+            if (blockEntity.syncCooldown >= 10 || energyChanged) {
                 blockEntity.syncCooldown = 0;
+                blockEntity.lastSyncedEnergy = blockEntity.energyStorage.getEnergyStored();
                 level.sendBlockUpdated(pos, state, state, 2);
             }
         }
     }
 
     private void tickNodes() {
-        // NOTE: LinkedSignalHandler.tick() is called once per server tick from
-        // RocketNautics.onLevelTick() to avoid double-ticking when multiple Sputniks exist.
-        graph.tick();
+        if (isPowered()) {
+            energyStorage.extractEnergyInternal(ENERGY_CONSUMPTION_RATE);
+            graph.tick();
+        }
     }
 
     public double getX() { return getGlobalPos().x; }
@@ -552,9 +578,27 @@ public class SputnikBlockEntity extends BlockEntity {
     }
 
     @Override
+    public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
+        tooltip.add(Component.literal("    ").append(Component.translatable("block.rocketnautics.sputnik").withStyle(ChatFormatting.GOLD)));
+        boolean powered = isPowered();
+        tooltip.add(Component.literal("  ").append(Component.translatable("rocketnautics.goggles.status")).append(": ")
+                .append(powered
+                        ? Component.translatable("rocketnautics.goggles.active").withStyle(ChatFormatting.GREEN)
+                        : Component.translatable("rocketnautics.goggles.inactive").withStyle(ChatFormatting.RED)));
+        tooltip.add(Component.literal("  ").append(Component.translatable("gui.rocketnautics.goggles.energy_stored")).append(": ")
+                .append(Component.literal(energyStorage.getEnergyStored() + " / " + ENERGY_CAPACITY + " FE").withStyle(ChatFormatting.YELLOW)));
+        if (powered) {
+            tooltip.add(Component.literal("  ").append(Component.translatable("gui.rocketnautics.goggles.energy_usage")).append(": ")
+                    .append(Component.literal(ENERGY_CONSUMPTION_RATE + " FE/t").withStyle(ChatFormatting.RED)));
+        }
+        return true;
+    }
+
+    @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
         tag.put("NodeGraph", graph.save());
+        tag.putInt("Energy", energyStorage.getEnergyStored());
         
         CompoundTag redstoneTag = new CompoundTag();
         for (var entry : lastWirelessRedstone.entrySet()) {
@@ -577,6 +621,9 @@ public class SputnikBlockEntity extends BlockEntity {
             graph.setRegistries(registries);
             graph.load(graphTag);
             graph.setContext(this);
+        }
+        if (tag.contains("Energy")) {
+            energyStorage.setEnergy(tag.getInt("Energy"));
         }
         
         lastWirelessRedstone.clear();

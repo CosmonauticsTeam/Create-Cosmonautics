@@ -78,6 +78,7 @@ public class DeepSpaceData extends SavedData implements SubLevelObserver {
     @SubscribeEvent
     public static void advanceUniverse(ServerTickEvent.Post event) {
         getInstance(event.getServer()).tick(event.getServer());
+        dev.devce.rocketnautics.server.telemetry.TelemetryServer.INSTANCE.tick(event.getServer());
     }
 
     @SubscribeEvent
@@ -205,6 +206,14 @@ public class DeepSpaceData extends SavedData implements SubLevelObserver {
 
     public AbsoluteDate getUniverseTime() {
         return DeepSpaceHelper.getDateByTicks(universeTicks);
+    }
+
+    public java.util.List<DeepSpaceInstance> getAllInstances() {
+        java.util.List<DeepSpaceInstance> all = new java.util.ArrayList<>();
+        for (InstanceList list : instances.values()) {
+            all.addAll(list.getAllInstances());
+        }
+        return all;
     }
 
     @Override

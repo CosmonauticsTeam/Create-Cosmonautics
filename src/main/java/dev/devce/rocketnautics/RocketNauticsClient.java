@@ -132,6 +132,35 @@ public class RocketNauticsClient {
         seamlessTransitionTicks = 0;
     }
 
+    /**
+     * Automatically configures Flywheel backend to OFF/Batching for Sable SubLevel & DeepSpace
+     * compatibility, ensuring Create cogwheels, shafts, and kinetic blocks render permanently.
+     */
+    public static void ensureFlywheelCompatibility() {
+        try {
+            Class<?> flwConfigClass = Class.forName("dev.engine_room.flywheel.config.FlwConfig");
+            Object clientConfig = flwConfigClass.getField("CLIENT").get(null);
+            Object backendValue = clientConfig.getClass().getField("backend").get(clientConfig);
+            if (backendValue instanceof net.neoforged.neoforge.common.ModConfigSpec.ConfigValue<?> configValue) {
+                Object current = configValue.get();
+                if (current != null && current.toString().equalsIgnoreCase("DEFAULT")) {
+                    for (Object enumConstant : current.getClass().getEnumConstants()) {
+                        if (enumConstant.toString().equalsIgnoreCase("OFF")) {
+                            @SuppressWarnings("unchecked")
+                            net.neoforged.neoforge.common.ModConfigSpec.ConfigValue<Object> typedValue =
+                                    (net.neoforged.neoforge.common.ModConfigSpec.ConfigValue<Object>) configValue;
+                            typedValue.set(enumConstant);
+                            typedValue.save();
+                            RocketNautics.LOGGER.info("[Cosmonautics] Auto-configured Flywheel backend to OFF for SubLevel & DeepSpace rendering compatibility.");
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            RocketNautics.LOGGER.debug("[Cosmonautics] Could not automatically tune Flywheel config: {}", t.getMessage());
+        }
+    }
 
     @SubscribeEvent
     public static void registerGuiLayers(RegisterGuiLayersEvent event) {

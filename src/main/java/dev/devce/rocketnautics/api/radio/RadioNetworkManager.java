@@ -89,12 +89,7 @@ public class RadioNetworkManager extends SavedData {
         if (script == null || script.isBlank()) return;
 
         try {
-            Globals globals = JsePlatform.standardGlobals();
-            globals.set("os",      LuaValue.NIL);
-            globals.set("io",      LuaValue.NIL);
-            globals.set("luajava", LuaValue.NIL);
-            globals.set("debug",   LuaValue.NIL);
-            globals.set("require", LuaValue.NIL);
+            Globals globals = dev.devce.rocketnautics.lua.LuaSandbox.createSandboxedGlobals();
 
             // Injected variables
             globals.set("packetCode", LuaValue.valueOf(code));

@@ -1,15 +1,10 @@
 {
   "values": [
-    "rocketnautics:creative_thruster",
-    "rocketnautics:vector_thruster",
-    "rocketnautics:booster_thruster",
-    "rocketnautics:rcs_thruster",
     "rocketnautics:rocket_thruster",
     "rocketnautics:creative_thruster",
     "rocketnautics:vector_thruster",
     "rocketnautics:booster_thruster",
     "rocketnautics:rcs_thruster",
-    "rocketnautics:ion_engine",
     "rocketnautics:ion_engine"
   ]
 }
