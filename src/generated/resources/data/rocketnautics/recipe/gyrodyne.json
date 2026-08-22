@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "rocketnautics:titanium_casing"
+    },
+    "F": {
+      "item": "create:flywheel"
+    },
+    "P": {
+      "item": "create:precision_mechanism"
+    },
+    "T": {
+      "tag": "c:plates/titanium"
+    }
+  },
+  "pattern": [
+    " P ",
+    "TFT",
+    " C "
+  ],
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:gyrodyne"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "variants": {
+    "facing=down,powered=false": {
+      "model": "rocketnautics:block/gyrodyne_base",
+      "x": 180
+    },
+    "facing=down,powered=true": {
+      "model": "rocketnautics:block/gyrodyne_base",
+      "x": 180
+    },
+    "facing=east,powered=false": {
+      "model": "rocketnautics:block/gyrodyne_base",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,powered=true": {
+      "model": "rocketnautics:block/gyrodyne_base",
+      "x": 90,
+      "y": 90
+    },
+    "facing=north,powered=false": {
+      "model": "rocketnautics:block/gyrodyne_base",
+      "x": 90
+    },
+    "facing=north,powered=true": {
+      "model": "rocketnautics:block/gyrodyne_base",
+      "x": 90
+    },
+    "facing=south,powered=false": {
+      "model": "rocketnautics:block/gyrodyne_base",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,powered=true": {
+      "model": "rocketnautics:block/gyrodyne_base",
+      "x": 90,
+      "y": 180
+    },
+    "facing=up,powered=false": {
+      "model": "rocketnautics:block/gyrodyne_base"
+    },
+    "facing=up,powered=true": {
+      "model": "rocketnautics:block/gyrodyne_base"
+    },
+    "facing=west,powered=false": {
+      "model": "rocketnautics:block/gyrodyne_base",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,powered=true": {
+      "model": "rocketnautics:block/gyrodyne_base",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

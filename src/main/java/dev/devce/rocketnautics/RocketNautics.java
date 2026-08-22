@@ -94,6 +94,10 @@ public class RocketNautics {
             modEventBus.register(dev.devce.rocketnautics.client.ClientModEvents.class);
             modEventBus.register(RocketNauticsClient.class);
             NeoForge.EVENT_BUS.register(dev.devce.rocketnautics.client.RocketNauticsClientEvents.class);
+            net.createmod.ponder.foundation.PonderIndex.addPlugin(new dev.devce.rocketnautics.ponder.RocketPonderPlugin());
+
+            // Auto-configure Flywheel backend to OFF for SubLevel & DeepSpace rendering compatibility
+            dev.devce.rocketnautics.RocketNauticsClient.ensureFlywheelCompatibility();
 
             // Enable Sable's shadow maps for sublevels
             dev.ryanhcode.sable.render.sky_light_shadow.SableSkyLightShadows.setIsEnabled(true);
@@ -155,15 +159,7 @@ public class RocketNautics {
      */
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
-        GravityCommand.register(event.getDispatcher());
-        OrbitCommand.register(event.getDispatcher());
-        ShipCopyPasteCommand.register(event.getDispatcher());
-        JetpackCommand.register(event.getDispatcher());
-        dev.devce.rocketnautics.content.commands.AsteroidCommand.register(event.getDispatcher());
-        dev.devce.rocketnautics.content.commands.BreakBarrierCommand.register(event.getDispatcher());
-        dev.devce.rocketnautics.content.commands.ReentryCommand.register(event.getDispatcher());
-        TimescaleCommand.register(event.getDispatcher());
-        dev.devce.rocketnautics.content.commands.NodesReloadCommand.register(event.getDispatcher());
+        dev.devce.rocketnautics.content.commands.CosmonauticsCommand.register(event.getDispatcher());
     }
 
     @SubscribeEvent
@@ -198,10 +194,12 @@ public class RocketNautics {
     @SubscribeEvent
     public void onServerStarting(net.neoforged.neoforge.event.server.ServerStartingEvent event) {
         dev.devce.rocketnautics.api.radio.RadioNetworkManager.setServer(event.getServer());
+        dev.devce.rocketnautics.server.telemetry.TelemetryServer.INSTANCE.start(event.getServer());
     }
 
     @SubscribeEvent
     public void onServerStopping(net.neoforged.neoforge.event.server.ServerStoppingEvent event) {
+        dev.devce.rocketnautics.server.telemetry.TelemetryServer.INSTANCE.stop();
         dev.devce.rocketnautics.api.radio.RadioNetworkManager.setServer(null);
     }
 

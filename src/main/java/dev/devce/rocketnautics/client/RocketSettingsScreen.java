@@ -91,6 +91,7 @@ public class RocketSettingsScreen extends Screen {
         VISUALS("Visuals", "Planets & engine plume visuals"),
         CAMERA("Camera", "Camera shake & view effects"),
         PHYSICS("Physics", "Engine thrust, fuel & server logic"),
+        TELEMETRY("Telemetry", "HTTP Ephemeris & Telemetry API server"),
         PRESETS("Presets", "One-click quality profiles");
 
         private final String title;
@@ -152,6 +153,7 @@ public class RocketSettingsScreen extends Screen {
             case VISUALS -> initVisualsTab(contentX, contentY, contentWidth);
             case CAMERA -> initCameraTab(contentX, contentY, contentWidth);
             case PHYSICS -> initPhysicsTab(contentX, contentY, contentWidth);
+            case TELEMETRY -> initTelemetryTab(contentX, contentY, contentWidth);
             case PRESETS -> initPresetsTab(contentX, contentY, contentWidth);
         }
 
@@ -374,6 +376,61 @@ public class RocketSettingsScreen extends Screen {
         );
     }
 
+    private void initTelemetryTab(int x, int y, int width) {
+        SettingList list = new SettingList(x, y, width);
+
+        boolean isLocal = this.minecraft.getSingleplayerServer() != null;
+        if (!isLocal) {
+            list.addNotice("Telemetry Server settings are managed by the remote server host.");
+            return;
+        }
+
+        list.addToggle(
+            "HTTP Telemetry Server",
+            "Enables built-in HTTP server to serve planetary, orbital, and cosmic telemetry as JSON.",
+            RocketConfig.SERVER.telemetryServerEnabled.get(),
+            val -> {
+                RocketConfig.SERVER.telemetryServerEnabled.set(val);
+                RocketConfig.SERVER.telemetryServerEnabled.save();
+                if (this.minecraft.getSingleplayerServer() != null) {
+                    if (val) {
+                        dev.devce.rocketnautics.server.telemetry.TelemetryServer.INSTANCE.start(this.minecraft.getSingleplayerServer());
+                    } else {
+                        dev.devce.rocketnautics.server.telemetry.TelemetryServer.INSTANCE.stop();
+                    }
+                }
+                this.init(this.minecraft, this.width, this.height);
+            }
+        );
+
+        list.addSlider(
+            "Server Port",
+            "TCP port for the HTTP Telemetry API server (default: 8085).",
+            RocketConfig.SERVER.telemetryServerPort.get().doubleValue(),
+            1024, 65535, 1.0, "",
+            val -> {
+                RocketConfig.SERVER.telemetryServerPort.set(val.intValue());
+                RocketConfig.SERVER.telemetryServerPort.save();
+            }
+        );
+
+        list.addSlider(
+            "Refresh Interval",
+            "Telemetry snapshot update frequency in server ticks (1 = every tick / 20 Hz).",
+            RocketConfig.SERVER.telemetrySnapshotInterval.get().doubleValue(),
+            1, 20, 1.0, " ticks",
+            val -> {
+                RocketConfig.SERVER.telemetrySnapshotInterval.set(val.intValue());
+                RocketConfig.SERVER.telemetrySnapshotInterval.save();
+            }
+        );
+
+        String statusText = dev.devce.rocketnautics.server.telemetry.TelemetryServer.INSTANCE.isRunning()
+            ? "ONLINE (http://" + RocketConfig.SERVER.telemetryServerBind.get() + ":" + RocketConfig.SERVER.telemetryServerPort.get() + "/api/v1)"
+            : "OFFLINE (Disabled)";
+        list.addNotice("Server Status: " + statusText);
+    }
+
     private void initPresetsTab(int x, int y, int width) {
         SettingList list = new SettingList(x, y, width);
 
@@ -480,6 +537,17 @@ public class RocketSettingsScreen extends Screen {
                     RocketConfig.SERVER.legThrusterThrustFactor.save();
                     RocketConfig.SERVER.planetShape.save();
                     RocketConfig.SERVER.enableEngineDebugLogging.save();
+                }
+            }
+            case TELEMETRY -> {
+                if (this.minecraft.getSingleplayerServer() != null) {
+                    RocketConfig.SERVER.telemetryServerEnabled.set(false);
+                    RocketConfig.SERVER.telemetryServerPort.set(8085);
+                    RocketConfig.SERVER.telemetrySnapshotInterval.set(1);
+                    RocketConfig.SERVER.telemetryServerEnabled.save();
+                    RocketConfig.SERVER.telemetryServerPort.save();
+                    RocketConfig.SERVER.telemetrySnapshotInterval.save();
+                    dev.devce.rocketnautics.server.telemetry.TelemetryServer.INSTANCE.stop();
                 }
             }
             case PRESETS -> {}

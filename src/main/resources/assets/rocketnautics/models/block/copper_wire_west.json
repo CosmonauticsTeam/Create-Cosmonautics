@@ -1,0 +1,24 @@
+{
+	"credit": "webyep",
+	"render_type": "minecraft:cutout_mipped",
+	"texture_size": [32, 32],
+	"textures": {
+		"0": "rocketnautics:block/wire",
+		"particle": "rocketnautics:block/wire"
+	},
+	"elements": [
+		{
+			"name": "x-",
+			"from": [0, 6, 6],
+			"to": [6, 10, 10],
+			"faces": {
+				"north": {"uv": [4, 2, 7, 4], "texture": "#0"},
+				"east": {"uv": [13, 0, 15, 2], "texture": "#0"},
+				"south": {"uv": [4, 2, 7, 4], "texture": "#0"},
+				"west": {"uv": [0, 12, 2, 14], "texture": "#0", "cullface": "west"},
+				"up": {"uv": [4, 0, 7, 2], "texture": "#0"},
+				"down": {"uv": [4, 2, 7, 4], "texture": "#0"}
+			}
+		}
+	]
+}
