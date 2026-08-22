@@ -1,0 +1,7 @@
+{
+  "parent": "rocketnautics:block/rcs_thruster_encasement",
+  "textures": {
+    "0": "create:block/railway_casing",
+    "particle": "create:block/railway_casing"
+  }
+}

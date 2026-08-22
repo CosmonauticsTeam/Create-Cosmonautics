@@ -1,30 +1,246 @@
 {
-  "variants": {
-    "facing=down": {
-      "model": "rocketnautics:block/rcs_thruster",
-      "x": 180
+  "multipart": [
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster",
+        "x": 180
+      },
+      "when": {
+        "facing": "down"
+      }
     },
-    "facing=east": {
-      "model": "rocketnautics:block/rcs_thruster",
-      "x": 90,
-      "y": 90
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_copper_encasement",
+        "x": 180
+      },
+      "when": {
+        "casing": "copper",
+        "facing": "down"
+      }
     },
-    "facing=north": {
-      "model": "rocketnautics:block/rcs_thruster",
-      "x": 90
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_encasement",
+        "x": 180
+      },
+      "when": {
+        "casing": "brass",
+        "facing": "down"
+      }
     },
-    "facing=south": {
-      "model": "rocketnautics:block/rcs_thruster",
-      "x": 90,
-      "y": 180
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_railway_encasement",
+        "x": 180
+      },
+      "when": {
+        "casing": "railway",
+        "facing": "down"
+      }
     },
-    "facing=up": {
-      "model": "rocketnautics:block/rcs_thruster"
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster"
+      },
+      "when": {
+        "facing": "up"
+      }
     },
-    "facing=west": {
-      "model": "rocketnautics:block/rcs_thruster",
-      "x": 90,
-      "y": 270
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_copper_encasement"
+      },
+      "when": {
+        "casing": "copper",
+        "facing": "up"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_encasement"
+      },
+      "when": {
+        "casing": "brass",
+        "facing": "up"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_railway_encasement"
+      },
+      "when": {
+        "casing": "railway",
+        "facing": "up"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster",
+        "x": 90
+      },
+      "when": {
+        "facing": "north"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_copper_encasement",
+        "x": 90
+      },
+      "when": {
+        "casing": "copper",
+        "facing": "north"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_encasement",
+        "x": 90
+      },
+      "when": {
+        "casing": "brass",
+        "facing": "north"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_railway_encasement",
+        "x": 90
+      },
+      "when": {
+        "casing": "railway",
+        "facing": "north"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster",
+        "x": 90,
+        "y": 180
+      },
+      "when": {
+        "facing": "south"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_copper_encasement",
+        "x": 90,
+        "y": 180
+      },
+      "when": {
+        "casing": "copper",
+        "facing": "south"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_encasement",
+        "x": 90,
+        "y": 180
+      },
+      "when": {
+        "casing": "brass",
+        "facing": "south"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_railway_encasement",
+        "x": 90,
+        "y": 180
+      },
+      "when": {
+        "casing": "railway",
+        "facing": "south"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster",
+        "x": 90,
+        "y": 270
+      },
+      "when": {
+        "facing": "west"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_copper_encasement",
+        "x": 90,
+        "y": 270
+      },
+      "when": {
+        "casing": "copper",
+        "facing": "west"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_encasement",
+        "x": 90,
+        "y": 270
+      },
+      "when": {
+        "casing": "brass",
+        "facing": "west"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_railway_encasement",
+        "x": 90,
+        "y": 270
+      },
+      "when": {
+        "casing": "railway",
+        "facing": "west"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "facing": "east"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_copper_encasement",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "casing": "copper",
+        "facing": "east"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_encasement",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "casing": "brass",
+        "facing": "east"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/rcs_thruster_railway_encasement",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "casing": "railway",
+        "facing": "east"
+      }
     }
-  }
+  ]
 }

@@ -31,6 +31,7 @@ import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.ShapedRecipeBuilder;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.ColorRGBA;
+import net.minecraft.advancements.critereon.StatePropertiesPredicate;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -43,6 +44,9 @@ import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.ApplyBonusCount;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.predicates.LootItemBlockStatePropertyCondition;
 import net.neoforged.neoforge.client.model.generators.ConfiguredModel;
 import net.neoforged.neoforge.client.model.generators.ModelFile;
 import net.neoforged.neoforge.client.model.generators.MultiPartBlockStateBuilder;
@@ -105,7 +109,25 @@ public class RocketBlocks {
             .properties(BlockBehaviour.Properties::noOcclusion)
             .transform(pickaxeOnly())
             .tag(RocketTags.BlockTags.THRUSTERS.tag, RocketTags.BlockTags.LIGHT.tag, RocketTags.BlockTags.QUARTER_VOLUME.tag)
-            .transform(existingDirectionalModel("rcs_thruster"))
+            .transform(casedDirectionalModel("rcs_thruster", Map.of(
+                    RCSThrusterBlock.Casing.BRASS, "rcs_thruster_encasement",
+                    RCSThrusterBlock.Casing.COPPER, "rcs_thruster_copper_encasement",
+                    RCSThrusterBlock.Casing.RAILWAY, "rcs_thruster_railway_encasement"
+            )))
+            .loot((tables, block) -> tables.add(block, LootTable.lootTable()
+                    .withPool(LootPool.lootPool().add(LootItem.lootTableItem(block)))
+                    .withPool(LootPool.lootPool()
+                            .when(LootItemBlockStatePropertyCondition.hasBlockStateProperties(block)
+                                    .setProperties(StatePropertiesPredicate.Builder.properties().hasProperty(RCSThrusterBlock.CASING, RCSThrusterBlock.Casing.BRASS)))
+                            .add(LootItem.lootTableItem(AllBlocks.BRASS_CASING)))
+                    .withPool(LootPool.lootPool()
+                            .when(LootItemBlockStatePropertyCondition.hasBlockStateProperties(block)
+                                    .setProperties(StatePropertiesPredicate.Builder.properties().hasProperty(RCSThrusterBlock.CASING, RCSThrusterBlock.Casing.COPPER)))
+                            .add(LootItem.lootTableItem(AllBlocks.COPPER_CASING)))
+                    .withPool(LootPool.lootPool()
+                            .when(LootItemBlockStatePropertyCondition.hasBlockStateProperties(block)
+                                    .setProperties(StatePropertiesPredicate.Builder.properties().hasProperty(RCSThrusterBlock.CASING, RCSThrusterBlock.Casing.RAILWAY)))
+                            .add(LootItem.lootTableItem(AllBlocks.RAILWAY_CASING)))))
             .item(RocketBlockItem::new).build().register();
 
     public static final BlockEntry<ThrusterMountBlock> THRUSTER_MOUNT = REGISTRATE.block("thruster_mount", ThrusterMountBlock::new)
@@ -611,6 +633,21 @@ public class RocketBlocks {
 
     private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> existingDirectionalModel(String name) {
         return b -> b.blockstate((ctx, prov) -> prov.directionalBlock(ctx.getEntry(), prov.models().getExistingFile(RocketNautics.path("block/" + name))));
+    }
+
+    private static <T extends DirectionalBlock> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> casedDirectionalModel(String model, Map<RCSThrusterBlock.Casing, String> casings) {
+        return b -> b.blockstate((ctx, prov) -> {
+            MultiPartBlockStateBuilder builder = prov.getMultipartBuilder(ctx.getEntry());
+            for (Direction direction : Direction.values()) {
+                directionalMultiPart(prov, builder, DirectionalBlock.FACING, direction, model);
+                for (var casing : casings.entrySet()) {
+                    builder.part().modelFile(prov.models().getExistingFile(RocketNautics.path("block/" + casing.getValue())))
+                            .rotationX(direction == Direction.DOWN ? 180 : direction.getAxis().isHorizontal() ? 90 : 0)
+                            .rotationY(direction.getAxis().isVertical() ? 0 : (((int) direction.toYRot()) + 180) % 360)
+                            .addModel().condition(DirectionalBlock.FACING, direction).condition(RCSThrusterBlock.CASING, casing.getKey()).end();
+                }
+            }
+        });
     }
 
     private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> existingSimpleModel(String name) {
