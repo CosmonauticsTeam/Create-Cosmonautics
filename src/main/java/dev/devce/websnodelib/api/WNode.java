@@ -67,6 +67,15 @@ public class WNode {
      */
     public void evaluate() {
         this.evaluator.evaluate(this);
+        // After evaluate() runs, elements may have been populated for the first time.
+        // Check if we have deferred element state saved from load() and apply it now.
+        if (this.customData.contains("_savedElements") && !elements.isEmpty()) {
+            net.minecraft.nbt.ListTag saved = this.customData.getList("_savedElements", 10);
+            for (int i = 0; i < Math.min(elements.size(), saved.size()); i++) {
+                elements.get(i).load(saved.getCompound(i));
+            }
+            this.customData.remove("_savedElements");
+        }
     }
 
     /**
@@ -409,8 +418,18 @@ public class WNode {
             for (int i = 0; i < Math.min(outputs.size(), outputsTag.size()); i++) outputs.get(i).load(outputsTag.getCompound(i));
         }
         
+        // Always load elements: handles both fresh nodes and already-populated nodes.
         net.minecraft.nbt.ListTag elementsTag = tag.getList("elements", 10);
-        for (int i = 0; i < Math.min(elements.size(), elementsTag.size()); i++) elements.get(i).load(elementsTag.getCompound(i));
+        if (elementsTag.size() > 0 && elements.isEmpty()) {
+            // Elements can't be reconstructed from NBT alone (no type registry),
+            // but their saved data will be applied once elements are populated by evaluate().
+            // Store them in customData so they can be restored after first evaluate().
+            this.customData.put("_savedElements", elementsTag);
+        } else {
+            for (int i = 0; i < Math.min(elements.size(), elementsTag.size()); i++) {
+                elements.get(i).load(elementsTag.getCompound(i));
+            }
+        }
         
         if (tag.contains("internalGraph")) {
             if (internalGraph == null) internalGraph = new WGraph();
@@ -418,7 +437,13 @@ public class WNode {
         }
         
         if (tag.contains("customData")) {
-            this.customData = tag.getCompound("customData");
+            // Merge into the existing customData object instead of replacing it.
+            // Replacing breaks evaluator lambdas that captured the old reference via
+            // n.getCustomData(), causing them to see stale data on the next tick.
+            net.minecraft.nbt.CompoundTag incoming = tag.getCompound("customData");
+            for (String key : incoming.getAllKeys()) {
+                this.customData.put(key, incoming.get(key));
+            }
         }
     }
 
