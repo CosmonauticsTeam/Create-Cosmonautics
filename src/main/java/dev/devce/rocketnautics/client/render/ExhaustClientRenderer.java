@@ -10,6 +10,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -397,8 +398,14 @@ public class ExhaustClientRenderer {
             return;
 
         if (be instanceof EngineNozzleBlockEntity nozzle) {
-            if (nozzle.smoothedHeat > 0.05f) {
-                Direction facing = nozzle.getBlockState()
+            BlockState state = nozzle.getBlockState();
+            int nozzleType = state.hasProperty(dev.devce.rocketnautics.content.blocks.EngineNozzleBlock.NOZZLE_TYPE)
+                    ? state.getValue(dev.devce.rocketnautics.content.blocks.EngineNozzleBlock.NOZZLE_TYPE)
+                    : 1;
+
+            // Only Copper Nozzle (type 1) displays the overheat reverse plume; Titanium Nozzle (type 2) does not overheat/explode
+            if (nozzleType == 1 && nozzle.smoothedHeat > 0.05f) {
+                Direction facing = state
                         .getValue(dev.devce.rocketnautics.content.blocks.EngineNozzleBlock.FACING);
                 // ThrusterMount stores the nozzle's FACING as the direction away from the
                 // mount.

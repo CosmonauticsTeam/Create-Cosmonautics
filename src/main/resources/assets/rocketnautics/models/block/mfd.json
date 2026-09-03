@@ -1,0 +1,26 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "rocketnautics:block/television_front",
+    "down": "rocketnautics:block/television_top",
+    "up": "rocketnautics:block/television_top",
+    "north": "rocketnautics:block/television_front",
+    "south": "rocketnautics:block/television_back",
+    "west": "rocketnautics:block/television_side",
+    "east": "rocketnautics:block/television_side"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "faces": {
+        "down":  { "texture": "#down", "cullface": "down", "rotation": 90 },
+        "up":    { "texture": "#up", "cullface": "up", "rotation": 270 },
+        "north": { "texture": "#north", "cullface": "north" },
+        "south": { "texture": "#south", "cullface": "south" },
+        "west":  { "texture": "#west", "cullface": "west", "uv": [16, 0, 0, 16] },
+        "east":  { "texture": "#east", "cullface": "east", "uv": [0, 0, 16, 16] }
+      }
+    }
+  ]
+}

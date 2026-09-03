@@ -69,6 +69,12 @@ public class RocketBlockEntities {
             .renderer(() -> HologramTableRenderer::new)
             .register();
 
+    public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.mfd.MFDBlockEntity> MFD = REGISTRATE
+            .blockEntity("mfd", dev.devce.rocketnautics.content.blocks.mfd.MFDBlockEntity::new)
+            .validBlocks(RocketBlocks.MFD)
+            .renderer(() -> dev.devce.rocketnautics.client.render.MFDRenderer::new)
+            .register();
+
     public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlockEntity> GYRODYNE = REGISTRATE
             .blockEntity("gyrodyne", dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlockEntity::new)
             .validBlocks(RocketBlocks.GYRODYNE)

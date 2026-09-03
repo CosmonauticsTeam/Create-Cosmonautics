@@ -56,6 +56,11 @@ public class RocketItems {
             .tag(ItemTags.HEAD_ARMOR)
             .register();
 
+    public static final ItemEntry<dev.devce.rocketnautics.content.blocks.mfd.cartridge.MFDCartridgeItem> MFD_CARTRIDGE = REGISTRATE
+            .item("mfd_cartridge", dev.devce.rocketnautics.content.blocks.mfd.cartridge.MFDCartridgeItem::new)
+            .properties(p -> p.stacksTo(1))
+            .register();
+
     static { REGISTRATE.setCreativeTab(RocketTabs.RESOURCE_TAB); }
 
     public static final ItemEntry<RocketItem> TITANIUM_INGOT = taggedIngredient("titanium_ingot", RocketTags.MetalTags.TITANIUM.ingots, Tags.Items.INGOTS);

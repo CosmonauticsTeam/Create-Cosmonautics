@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "rocketnautics:block/mfd",
+      "x": 90
+    },
+    "facing=east": {
+      "model": "rocketnautics:block/mfd",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "rocketnautics:block/mfd"
+    },
+    "facing=south": {
+      "model": "rocketnautics:block/mfd",
+      "y": 180
+    },
+    "facing=up": {
+      "model": "rocketnautics:block/mfd",
+      "x": 270
+    },
+    "facing=west": {
+      "model": "rocketnautics:block/mfd",
+      "y": 270
+    }
+  }
+}
