@@ -117,6 +117,8 @@ public class RocketTabs {
             "solar_panel",
             "ion_engine",
             "gyrodyne",
+            "mfd",
+            "mfd_cartridge",
             "copper_wire",
             "energy_tank",
             "combustion_engine_controller",

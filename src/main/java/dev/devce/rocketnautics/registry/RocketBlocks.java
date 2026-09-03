@@ -345,6 +345,15 @@ public class RocketBlocks {
             .build()
             .register();
 
+    public static final BlockEntry<MFDBlock> MFD = REGISTRATE.block("mfd", MFDBlock::new)
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .transform(pickaxeOnly())
+            .transform(existingDirectionalModel("mfd"))
+            .tag(RocketTags.BlockTags.LIGHT.tag)
+            .item(RocketBlockItem::new)
+            .build()
+            .register();
+
     public static final BlockEntry<dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlock> GYRODYNE = REGISTRATE.block("gyrodyne", dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlock::new)
             .initialProperties(() -> Blocks.IRON_BLOCK)
             .properties(BlockBehaviour.Properties::noOcclusion)
@@ -615,6 +624,10 @@ public class RocketBlocks {
 
     private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> existingSimpleModel(String name) {
         return b -> b.blockstate((ctx, prov) -> prov.simpleBlock(ctx.getEntry(), prov.models().getExistingFile(RocketNautics.path("block/" + name))));
+    }
+
+    private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> existingHorizontalModel(String name) {
+        return b -> b.blockstate((ctx, prov) -> prov.horizontalBlock(ctx.getEntry(), prov.models().getExistingFile(RocketNautics.path("block/" + name))));
     }
 
     private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, ItemBuilder<BlockItem, BlockBuilder<T, CreateRegistrate>>> crossModelAndFlatItem() {

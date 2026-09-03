@@ -23,6 +23,8 @@ public final class LuaSandbox {
 
         // 1. Load only safe standard libraries
         globals.load(new JseBaseLib());
+        // Bit32Lib registers itself in package.loaded during initialization.
+        globals.load(new PackageLib());
         globals.load(new Bit32Lib());
         globals.load(new TableLib());
         globals.load(new StringLib());

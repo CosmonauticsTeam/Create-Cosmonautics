@@ -131,6 +131,10 @@ tasks.register('extractInnerJar', Copy) {
 
 dependencies {
 
+    testImplementation(platform('org.junit:junit-bom:5.11.4'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
@@ -169,6 +173,10 @@ dependencies {
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
 
 // --- Fix for CreateMinecraftArtifacts missing manifest ---
 // Generates an empty manifest file expected by the NeoForge moddev plugin.

@@ -57,6 +57,8 @@ public class WNodeScreen extends Screen {
     private boolean isExiting = false;
     private Screen nextScreen = null;
     public boolean isReturning = false;
+    // Prevents removed() from sending graph to server when navigating to a child screen
+    private boolean suppressNextSave = false;
     // AI FIX/ADD STOP
     
     /**
@@ -131,7 +133,8 @@ public class WNodeScreen extends Screen {
 
     @Override
     public void removed() {
-        if (onSave != null) onSave.accept(graph.save());
+        if (onSave != null && !suppressNextSave) onSave.accept(graph.save());
+        suppressNextSave = false;
         super.removed();
     }
 
@@ -948,6 +951,7 @@ public class WNodeScreen extends Screen {
                         // AI FIX/ADD STOP
                         return true;
                     } else if (node.getTypeId().getPath().equals("function")) {
+                        suppressNextSave = true;
                         minecraft.setScreen(new WNodeScreen(Component.literal(node.getTitle()), node.getInternalGraph(), (tag) -> {
                             node.getInternalGraph().load(tag);
                             if (this.onSave != null) this.onSave.accept(this.graph.save());
@@ -957,6 +961,7 @@ public class WNodeScreen extends Screen {
                         if (!node.getCustomData().contains("code")) {
                             node.getCustomData().putString("code", "-- Write your Lua code here\n");
                         }
+                        suppressNextSave = true;
                         minecraft.setScreen(new WLuaEditorScreen(node, this));
                         return true;
                     }
@@ -1534,6 +1539,7 @@ public class WNodeScreen extends Screen {
                 WNode node = graph.getNodes().stream().filter(WNode::isSelected).findFirst().orElse(null);
                 if (node != null && node.getTypeId().getPath().equals("function")) {
                     currentActions.add(new ContextAction("§eOpen Graph", () -> {
+                        suppressNextSave = true;
                         minecraft.setScreen(new WNodeScreen(Component.literal(node.getTitle()), node.getInternalGraph(), (tag) -> {
                             node.getInternalGraph().load(tag);
                             // Important: Propagate save to parent screen/server

@@ -84,11 +84,26 @@ public final class CosmonauticsCommand {
 
         dispatcher.register(cosmo);
         dispatcher.register(rn);
+
+        dispatcher.register(Commands.literal("cartridge")
+            .then(Commands.argument("id", StringArgumentType.string())
+                .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                    dev.devce.rocketnautics.content.blocks.mfd.cartridge.CartridgeManager.listCartridges(), builder))
+                .executes(ctx -> executeGiveCartridge(ctx.getSource(), StringArgumentType.getString(ctx, "id"))))
+            .executes(ctx -> executeGiveCartridge(ctx.getSource(), "default")));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildTree(String rootLiteral) {
         return Commands.literal(rootLiteral)
             .requires(source -> source.hasPermission(2))
+
+            // 0. /cosmo cartridge <id>
+            .then(Commands.literal("cartridge")
+                .then(Commands.argument("id", StringArgumentType.string())
+                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                        dev.devce.rocketnautics.content.blocks.mfd.cartridge.CartridgeManager.listCartridges(), builder))
+                    .executes(ctx -> executeGiveCartridge(ctx.getSource(), StringArgumentType.getString(ctx, "id"))))
+                .executes(ctx -> executeGiveCartridge(ctx.getSource(), "default")))
 
             // 1. /cosmo orbit <planet> [altitude_above_surface] [speed] [angle]
             .then(Commands.literal("orbit")
@@ -572,6 +587,25 @@ public final class CosmonauticsCommand {
         newShip.updateLastPose();
 
         source.sendSuccess(() -> Component.literal("§6[Cosmonautics] §aShip successfully spawned into world."), true);
+        return 1;
+    }
+
+    private static int executeGiveCartridge(CommandSourceStack source, String id) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (id == null || id.isEmpty()) {
+            id = "default";
+        }
+        dev.devce.rocketnautics.content.blocks.mfd.cartridge.CartridgeManager.getCartridgeDir(id);
+
+        net.minecraft.world.item.ItemStack cartridge = new net.minecraft.world.item.ItemStack(dev.devce.rocketnautics.registry.RocketItems.MFD_CARTRIDGE.get());
+        dev.devce.rocketnautics.content.blocks.mfd.cartridge.MFDCartridgeItem.setCartridgeId(cartridge, id);
+
+        if (!player.getInventory().add(cartridge)) {
+            player.drop(cartridge, false);
+        }
+
+        final String finalId = id;
+        source.sendSuccess(() -> Component.literal("§b[MFD] Given cartridge: §e" + finalId), false);
         return 1;
     }
 

@@ -70,12 +70,27 @@ public class RocketExhaustParticle extends TextureSheetParticle {
         this.gCol = g;
         this.bCol = b;
 
-        // Scale: precomputed sizeVariance eliminates per-tick random call
-        float animScale = this.shrinking ? (1.0f - ageFactor * 0.9f) : (1.0f + ageFactor * 1.5f);
+        // Scale: expanding particles start very small (0.15x) and grow up to 5.5x over time
+        float animScale;
+        if (this.shrinking) {
+            animScale = 1.0f - ageFactor * 0.85f;
+        } else {
+            // Smooth root curve: starts tight/small, expands widely as it disperses
+            float growth = (float) Math.sqrt(ageFactor);
+            animScale = 0.15f + growth * 5.35f;
+        }
         this.quadSize = this.baseScale * animScale * this.sizeVariance;
 
-        // Alpha
-        this.alpha = this.maxAlpha >= 1.0F ? 1.0F : (1.0f - ageFactor) * this.maxAlpha;
+        // Alpha: keep full opacity then gently fade out in the final 20% of lifetime
+        if (this.maxAlpha >= 1.0F) {
+            if (ageFactor > 0.8f) {
+                this.alpha = (1.0f - ageFactor) / 0.2f;
+            } else {
+                this.alpha = 1.0F;
+            }
+        } else {
+            this.alpha = (1.0f - ageFactor) * this.maxAlpha;
+        }
 
         this.move(this.xd, this.yd, this.zd);
         this.xd *= this.friction;
@@ -212,18 +227,22 @@ public class RocketExhaustParticle extends TextureSheetParticle {
             
             double speed = Math.sqrt(xSpeed * xSpeed + ySpeed * ySpeed + zSpeed * zSpeed);
             if (speed > 0.1) {
-                // Ground impact smoke - short lived (1 second)
-                particle.setLifetime(15 + level.random.nextInt(10)); 
+                // Ground impact smoke - expands into billowing ground cloud
+                particle.setLifetime(35 + level.random.nextInt(20)); 
             } else {
-                // Contrail smoke - long lived (15 seconds)
-                particle.setLifetime(280 + level.random.nextInt(40)); 
+                // Contrail smoke - long lived atmospheric trail
+                particle.setLifetime(360 + level.random.nextInt(80)); 
             }
-            particle.scale(1.2f + level.random.nextFloat() * 0.8f);
+            particle.scale(1.6f + level.random.nextFloat() * 0.8f);
             particle.setShrinking(false); 
-            particle.friction = 0.98F; 
+            particle.friction = 0.975F; 
             particle.setMaxAlpha(1.0F);
             particle.setAlpha(1.0F);
             particle.gravity = 0.0F; // Stop it from falling
+            // Disable block-collision physics: the vanilla move() system treats Sable contraption
+            // blocks as solid, causing moving ships to capture and drag smoke clouds along.
+            // The "spreading from surface" effect is already baked into the spawn velocity.
+            particle.hasPhysics = false;
             
             particle.setColor(1.0F, 1.0F, 1.0F); // Pure white
             particle.setCoolingColor(1.0F, 1.0F, 1.0F); // Pure white throughout

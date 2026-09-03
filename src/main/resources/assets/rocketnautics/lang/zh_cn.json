@@ -1,4 +1,7 @@
 {
+  "block.rocketnautics.mfd": "多功能显示器 (MFD)",
+  "block.rocketnautics.mfd.funny": "实时显示_高度_、_速度_以及你的_绝望程度_。如果屏幕闪红光，拿_扳手_敲一下就好。",
+  "block.rocketnautics.mfd.summary": "多功能飞行显示器，用于监视飞船遥测数据、姿态及各子系统运行状态。",
   "block.rocketnautics.rocket_thruster": "火箭发动机",
   "block.rocketnautics.rocket_thruster.funny": "把燃料化作轰鸣与希望。性能拉满，生存堪忧。",
   "block.rocketnautics.rocket_thruster.summary": "液体燃料火箭的核心装置。需持续供给推进剂（熔岩）以产生推力，推力大小由泵的转速调控。警告：喷射尾焰温度极高！",

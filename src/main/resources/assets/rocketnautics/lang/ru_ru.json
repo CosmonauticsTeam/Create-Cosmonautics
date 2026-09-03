@@ -1,4 +1,7 @@
 {
+  "block.rocketnautics.mfd": "МФД",
+  "block.rocketnautics.mfd.funny": "Показывает _высоту_, _скорость_ и степень вашей _обреченности_. Если экран мигает красным — просто постучите _гаечным ключом_.",
+  "block.rocketnautics.mfd.summary": "Многофункциональный _бортовой дисплей_ для мониторинга телеметрии и состояния систем космического корабля.",
   "block.rocketnautics.ion_engine": "Ионный двигатель",
   "block.rocketnautics.ion_engine.funny": "Разгоняет заряженные частицы в открытый космос. Бесшумный, сверхэффективный и светится электрическим сиянием.",
   "block.rocketnautics.ion_engine.summary": "Высокоэффективный электрический двигатель, работающий на FE энергии. Тяга (до 180 Н) регулируется силой сигнала редстоуна. При максимальной тяге потребляет 160 FE/t (ровно столько вырабатывает 1 солнечная панель). Выходное сопло не должно быть перекрыто блоками.",
@@ -41,6 +44,7 @@
   "rocketnautics.simulated_section.rocketnautics": "Cosmonautics",
   "itemGroup.rocketnautics.tab.resource": "Ресурсы Cosmonautics",
   "itemGroup.rocketnautics.tab.world": "Мир Cosmonautics",
+  "item.rocketnautics.mfd_cartridge": "Картридж MFD",
 
 
   "block.rocketnautics.gyrodyne": "Гиродин",
