@@ -39,6 +39,7 @@ public class RocketConfig {
         public final ModConfigSpec.IntValue entitySpeedLimit;
         public final ModConfigSpec.BooleanValue enableEngineDebugLogging;
         public final ModConfigSpec.BooleanValue brokenBarrier;
+        public final ModConfigSpec.BooleanValue boomEnabled;
         public final ModConfigSpec.DoubleValue sonicBoomSpeedThreshold;
         public final ModConfigSpec.DoubleValue gyrodyneStrength;
 
@@ -64,6 +65,9 @@ public class RocketConfig {
             brokenBarrier = builder
                     .comment("Allow engine thrust to exceed standard limits (up to 5000N)")
                     .define("brokenBarrier", false);
+            boomEnabled = builder
+                    .comment("Enable or disable sonic boom effect and physics on breaking sound barrier velocity")
+                    .define("boomEnabled", true);
             sonicBoomSpeedThreshold = builder
                     .comment("Speed in blocks/second (m/s) at which a ship breaks the sound barrier and triggers a sonic boom")
                     .defineInRange("sonicBoomSpeedThreshold", 166.0, 1.0, 500.0);
