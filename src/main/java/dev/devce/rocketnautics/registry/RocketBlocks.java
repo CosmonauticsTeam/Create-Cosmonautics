@@ -11,7 +11,9 @@ import org.jspecify.annotations.NonNull;
 
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllItems;
+import com.simibubi.create.AllSpriteShifts;
 import com.simibubi.create.content.decoration.encasing.CasingBlock;
+import com.simibubi.create.content.decoration.encasing.EncasedCTBehaviour;
 import com.simibubi.create.content.decoration.encasing.EncasingRegistry;
 import com.simibubi.create.foundation.data.BuilderTransformers;
 import com.simibubi.create.foundation.data.CreateRegistrate;
@@ -117,6 +119,9 @@ public class RocketBlocks {
                         .initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
                         .transform(pickaxeOnly()).tag(RocketTags.BlockTags.THRUSTERS.tag, RocketTags.BlockTags.LIGHT.tag)
                         .transform(encasedDirectionalModel("rcs_thruster_encasement"))
+                        .onRegister(CreateRegistrate.connectedTextures(() -> new EncasedCTBehaviour(AllSpriteShifts.BRASS_CASING)))
+                        .onRegister(CreateRegistrate.casingConnectivity(
+                                        (block, connectivity) -> connectivity.make(block, AllSpriteShifts.BRASS_CASING)))
                         .loot((tables, block) -> tables.add(block, rcsEncasedLoot(AllBlocks.BRASS_CASING.get())))
                         .transform(EncasingRegistry.addVariantTo(RCS_THRUSTER)).register();
 
@@ -126,6 +131,9 @@ public class RocketBlocks {
                         .initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
                         .transform(pickaxeOnly()).tag(RocketTags.BlockTags.THRUSTERS.tag, RocketTags.BlockTags.LIGHT.tag)
                         .transform(encasedDirectionalModel("rcs_thruster_copper_encasement"))
+                        .onRegister(CreateRegistrate.connectedTextures(() -> new EncasedCTBehaviour(AllSpriteShifts.COPPER_CASING)))
+                        .onRegister(CreateRegistrate.casingConnectivity(
+                                        (block, connectivity) -> connectivity.make(block, AllSpriteShifts.COPPER_CASING)))
                         .loot((tables, block) -> tables.add(block, rcsEncasedLoot(AllBlocks.COPPER_CASING.get())))
                         .transform(EncasingRegistry.addVariantTo(RCS_THRUSTER)).register();
 
@@ -135,6 +143,9 @@ public class RocketBlocks {
                         .initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
                         .transform(pickaxeOnly()).tag(RocketTags.BlockTags.THRUSTERS.tag, RocketTags.BlockTags.LIGHT.tag)
                         .transform(encasedDirectionalModel("rcs_thruster_railway_encasement"))
+                        .onRegister(CreateRegistrate.connectedTextures(() -> new EncasedCTBehaviour(AllSpriteShifts.RAILWAY_CASING)))
+                        .onRegister(CreateRegistrate.casingConnectivity(
+                                        (block, connectivity) -> connectivity.make(block, AllSpriteShifts.RAILWAY_CASING_SIDE)))
                         .loot((tables, block) -> tables.add(block, rcsEncasedLoot(AllBlocks.RAILWAY_CASING.get())))
                         .transform(EncasingRegistry.addVariantTo(RCS_THRUSTER)).register();
 

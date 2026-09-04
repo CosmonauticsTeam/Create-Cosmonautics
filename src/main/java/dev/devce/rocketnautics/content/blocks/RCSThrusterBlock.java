@@ -5,6 +5,7 @@ import com.simibubi.create.content.decoration.encasing.EncasableBlock;
 import dev.devce.rocketnautics.registry.RocketBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -13,6 +14,7 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.DirectionalBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -39,6 +41,20 @@ public class RCSThrusterBlock extends AbstractRocketThrusterBlock<RCSThrusterBlo
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         return tryEncase(state, level, pos, stack, player, hand, hitResult);
+    }
+
+    public static void switchBlockPreservingData(Level level, BlockPos pos, BlockState targetState) {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        CompoundTag blockEntityData = blockEntity == null ? null : blockEntity.saveWithFullMetadata(level.registryAccess());
+        level.setBlock(pos, targetState, Block.UPDATE_ALL);
+        if (blockEntityData == null) {
+            return;
+        }
+
+        BlockEntity replacement = BlockEntity.loadStatic(pos, targetState, blockEntityData, level.registryAccess());
+        if (replacement != null) {
+            level.setBlockEntity(replacement);
+        }
     }
 
 

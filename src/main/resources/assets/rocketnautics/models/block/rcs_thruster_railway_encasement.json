@@ -2,6 +2,7 @@
   "parent": "rocketnautics:block/rcs_thruster_encasement",
   "textures": {
     "0": "create:block/railway_casing",
+    "ring": "create:block/brass_block",
     "particle": "create:block/railway_casing"
   }
 }

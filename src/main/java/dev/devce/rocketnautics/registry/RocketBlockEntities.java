@@ -48,8 +48,8 @@ public class RocketBlockEntities {
 
         public static final BlockEntityEntry<RCSThrusterBlockEntity> RCS_THRUSTER = REGISTRATE
                         .blockEntity("rcs_thruster", RCSThrusterBlockEntity::new)
-                        .validBlocks(RocketBlocks.RCS_THRUSTER, RocketBlocks.BRASS_ENCASED_RCS_THRUSTER,
-                                        RocketBlocks.COPPER_ENCASED_RCS_THRUSTER, RocketBlocks.RAILWAY_ENCASED_RCS_THRUSTER)
+            .validBlocks(RocketBlocks.RCS_THRUSTER, RocketBlocks.BRASS_ENCASED_RCS_THRUSTER,
+                    RocketBlocks.COPPER_ENCASED_RCS_THRUSTER, RocketBlocks.RAILWAY_ENCASED_RCS_THRUSTER)
                         .register();
 
         public static final BlockEntityEntry<KineticBlockEntity> SEPARATOR_SHAFT = REGISTRATE
