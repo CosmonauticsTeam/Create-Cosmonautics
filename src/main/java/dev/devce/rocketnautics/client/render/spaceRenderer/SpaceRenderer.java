@@ -68,7 +68,7 @@ public final class SpaceRenderer {
                 .findFirst()
                 .orElse(null);
 
-        if (dimension == RocketDimensions.DEEP_SPACE || Objects.requireNonNull(planet.linkedDimension()).renderUniverseInDimension() || RocketConfig.CLIENT.enableCustomSky.get()) {
+        if (dimension == RocketDimensions.DEEP_SPACE || (Objects.requireNonNull(planet.linkedDimension()).renderUniverseInDimension() && planet.linkedDimension().key() != Level.OVERWORLD) || RocketConfig.CLIENT.enableCustomSky.get()) {
             if (config.areShadersEnabled()) {
                 queuedShaderState = false;
                 shadersSuppressed = true;
