@@ -2,6 +2,7 @@ package dev.devce.rocketnautics.client;
 
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNauticsClient;
+import dev.devce.rocketnautics.client.MFDAudioEngine;
 import dev.devce.rocketnautics.content.physics.SpaceTransitionHandler;
 import dev.devce.rocketnautics.content.items.JetpackItem;
 import dev.devce.rocketnautics.content.items.LegThrustersItem;
@@ -32,6 +33,7 @@ public class RocketNauticsClientEvents {
      */
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
+        MFDAudioEngine.tick();
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
         if (mc.screen instanceof net.minecraft.client.gui.screens.ReceivingLevelScreen) return;
@@ -141,6 +143,35 @@ public class RocketNauticsClientEvents {
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
         RocketNauticsClient.onRenderLevelStage(event);
+    }
+
+    @SubscribeEvent
+    public static void onRenderGui(net.neoforged.neoforge.client.event.RenderGuiEvent.Post event) {
+        if (dev.devce.rocketnautics.client.ui.imgui.ImGuiManager.hasInstance()) {
+            dev.devce.rocketnautics.client.ui.imgui.ImGuiManager.getInstance().render();
+        }
+    }
+
+    @SubscribeEvent
+    public static void onKeyInput(net.neoforged.neoforge.client.event.InputEvent.Key event) {
+        if (event.getAction() == org.lwjgl.glfw.GLFW.GLFW_PRESS && event.getKey() == org.lwjgl.glfw.GLFW.GLFW_KEY_F8) {
+            dev.devce.rocketnautics.client.ui.imgui.ImGuiManager.getInstance().toggle();
+            return;
+        }
+
+        Minecraft mc = Minecraft.getInstance();
+        if (dev.devce.rocketnautics.client.ui.imgui.ImGuiManager.hasInstance() && dev.devce.rocketnautics.client.ui.imgui.ImGuiManager.getInstance().isOpen() && mc.getWindow() != null) {
+            dev.devce.rocketnautics.client.ui.imgui.ImGuiManager.getInstance().onKey(
+                    mc.getWindow().getWindow(), event.getKey(), event.getScanCode(), event.getAction(), event.getModifiers());
+        }
+    }
+
+    @SubscribeEvent
+    public static void onClientLoggingOut(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut event) {
+        MFDAudioEngine.stopAll();
+        if (dev.devce.rocketnautics.client.ui.imgui.ImGuiManager.hasInstance()) {
+            dev.devce.rocketnautics.client.ui.imgui.ImGuiManager.getInstance().setOpen(false);
+        }
     }
 
     private static void showWorldBorderWarning(net.minecraft.world.entity.player.Player player) {

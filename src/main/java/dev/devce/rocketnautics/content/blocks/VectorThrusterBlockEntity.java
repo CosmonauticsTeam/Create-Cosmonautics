@@ -18,9 +18,12 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
 
     @Override
     public double readValue(String key) {
-        if (key.equals("thrust")) return getFlow() * 100.0;
-        if (key.equals("gimbal_x")) return gimbalX;
-        if (key.equals("gimbal_z")) return gimbalZ;
+        if ("active".equals(key) || "ignition".equals(key)) return isActive() ? 1.0 : 0.0;
+        if ("thrust".equals(key)) return getFlow() * 100.0;
+        if ("throttle".equals(key)) return targetThrottle;
+        if ("gimbal_x".equals(key)) return gimbalX;
+        if ("gimbal_y".equals(key) || "pitch".equals(key)) return gimbalY;
+        if ("gimbal_z".equals(key) || "yaw".equals(key)) return gimbalZ;
         return 0;
     }
     private static final Direction[] DIRECTIONS = Direction.values();
@@ -87,7 +90,7 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
     }
 
     public void updateGimbalAngles() {
-        if (level == null)
+        if (level == null || level.isClientSide)
             return;
 
         if (ccGimbalTimeout > 0) {
@@ -145,9 +148,9 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
 
     @Override
     public void setGimbal(double val1, double val2) {
-        float xOffset = (float) (val1 / 180.0);
+        float yOffset = (float) (val1 / 180.0);
         float zOffset = (float) (val2 / 180.0);
-        setComputerGimbal(xOffset, 0, zOffset);
+        setComputerGimbal(0, yOffset, zOffset);
     }
 
     @Override
@@ -213,9 +216,26 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
     }
 
     @Override
+    public void writeValue(String key, double value) {
+        if ("pitch".equals(key) || "gimbal_y".equals(key)) {
+            setComputerGimbal(ccGimbalX, (float) value, ccGimbalZ);
+        } else if ("yaw".equals(key) || "gimbal_z".equals(key)) {
+            setComputerGimbal(ccGimbalX, ccGimbalY, (float) value);
+        } else if ("gimbal_x".equals(key)) {
+            setComputerGimbal((float) value, ccGimbalY, ccGimbalZ);
+        } else {
+            super.writeValue(key, value);
+        }
+    }
+
+    @Override
     public void writeValues(String key, double... values) {
-        if ("gimbal".equals(key) && values.length >= 2) {
-            setComputerGimbal((float) values[0], 0.0f, (float) values[1]);
+        if ("gimbal".equals(key)) {
+            if (values.length >= 3) {
+                setComputerGimbal((float) values[0], (float) values[1], (float) values[2]);
+            } else if (values.length >= 2) {
+                setComputerGimbal(0.0f, (float) values[0], (float) values[1]);
+            }
         }
     }
 

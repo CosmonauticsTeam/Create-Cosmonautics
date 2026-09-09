@@ -179,9 +179,16 @@ public class UniverseRenderData {
         return list.toArray(new CachedShadowVertex[0]);
     }
 
+    private static final double CUBE_SHADOW_INSET = 0.12;
+
     private static Vector3D getPointPrecompute(FaceDefinition face, int gu, int gv, int G, double shadowSize, boolean isSphere) {
         double u = -1.0 + 2.0 * gu / G;
         double v = -1.0 + 2.0 * gv / G;
+        // For cube faces: shrink UV coords inward so shadow doesn't cover the block edge rims
+        if (!isSphere) {
+            u = u * (1.0 - CUBE_SHADOW_INSET);
+            v = v * (1.0 - CUBE_SHADOW_INSET);
+        }
         Vector3D p = face.center.add(face.U.scalarMultiply(u)).add(face.V.scalarMultiply(v));
         if (isSphere) {
             return p.normalize().scalarMultiply(shadowSize);
@@ -196,40 +203,33 @@ public class UniverseRenderData {
     private static long computeColor(float nx, float ny, float nz, Vector3D L, int gx, int gy) {
         double d = nx * L.getX() + ny * L.getY() + nz * L.getZ();
 
-        int r = 4, g = 5, b = 18, a = 220;
+        // --- Pixelated shadow with Fresnel rim ---
+        final double DITHER_HALF = 0.065;
+        final double FRESNEL_WIDTH = 0.10;
 
-        if (d > 0.05) {
-            // Lit side: no dark shadow, but soft sunlight highlight on the bright side
-            r = 255; g = 245; b = 200;
-            if (d > 0.45) {
-                // Smooth highlight transition
-                double factor = Math.min(1.0, (d - 0.45) / 0.20);
-                factor = factor * factor * (3.0 - 2.0 * factor); // smoothstep
-                a = (int) (factor * 45);
+        int r, g, b, a;
+
+        if (d < -DITHER_HALF) {
+            // Full shadow: deep space blue-black
+            r = 3; g = 4; b = 16; a = 225;
+        } else if (d < DITHER_HALF) {
+            // Dither band: checkerboard for sub-pixel terminator sharpness
+            boolean ditherOn = ((gx + gy) % 2 == 0);
+            if (ditherOn) {
+                r = 3; g = 4; b = 16; a = 225;
             } else {
-                a = 0;
+                // Fresnel rim color in transition row
+                r = 255; g = 220; b = 140; a = 90;
             }
-        } else if (d > -0.12) {
-            // Smoothly transition shadow alpha and color in the terminator zone
-            double factor = (d - (-0.12)) / 0.17; // 0 at d=-0.12, 1 at d=0.05
-            factor = factor * factor * (3.0 - 2.0 * factor); // smoothstep
-
-            r = (int) net.minecraft.util.Mth.lerp(factor, 4, 0);
-            g = (int) net.minecraft.util.Mth.lerp(factor, 5, 0);
-            b = (int) net.minecraft.util.Mth.lerp(factor, 18, 0);
-            a = (int) net.minecraft.util.Mth.lerp(factor, 220, 0);
+        } else if (d < DITHER_HALF + FRESNEL_WIDTH) {
+            // Fresnel rim glow on the lit side, fades quickly
+            double fresnelFactor = 1.0 - (d - DITHER_HALF) / FRESNEL_WIDTH;
+            fresnelFactor = fresnelFactor * fresnelFactor;
+            r = 255; g = 220; b = 140;
+            a = (int) (fresnelFactor * 95);
         } else {
-            // Dark side: full shadow
-            r = 4; g = 5; b = 18; a = 220;
-        }
-
-        // Apply dither pattern to the transition zones to keep the retro shader look!
-        if (d > -0.12 && d < 0.05) {
-            int dither = ((gx + gy) % 2 == 0) ? 12 : -12;
-            a = Math.max(0, Math.min(220, a + dither));
-        } else if (d > 0.45 && d < 0.65) {
-            int dither = ((gx + gy) % 2 == 0) ? 8 : -8;
-            a = Math.max(0, Math.min(45, a + dither));
+            // Fully lit: transparent
+            r = 0; g = 0; b = 0; a = 0;
         }
 
         return ((long)r << 24) | ((long)g << 16) | ((long)b << 8) | a;

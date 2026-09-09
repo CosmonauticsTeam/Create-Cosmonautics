@@ -103,6 +103,26 @@ public class RCSThrusterBlockEntity extends AbstractThrusterBlockEntity {
         return isActive() ? 1.0f : 0.0f;
     }
 
+    @Override
+    public double readValue(String key) {
+        if ("active".equals(key) || "ignition".equals(key)) return isActive() ? 1.0 : 0.0;
+        if ("thrust".equals(key)) return calculateRcsThrust();
+        if ("throttle".equals(key)) return computerThrottle;
+        return 0;
+    }
+
+    @Override
+    public void writeValue(String key, double value) {
+        if ("ignition".equals(key) || "active".equals(key)) {
+            setActive(value > 0.5);
+        } else if ("throttle".equals(key)) {
+            setThrottle((float) value);
+        } else if ("thrust".equals(key)) {
+            setActive(value > 0);
+            setThrottle((float) value);
+        }
+    }
+
     private double calculateRcsThrust() {
         if (level == null) return 0;
 

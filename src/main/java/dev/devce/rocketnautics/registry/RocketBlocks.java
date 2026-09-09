@@ -1,5 +1,6 @@
 package dev.devce.rocketnautics.registry;
 
+import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.content.decoration.encasing.CasingBlock;
 import com.simibubi.create.foundation.data.BuilderTransformers;
@@ -15,6 +16,7 @@ import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.RocketSpriteShifts;
 import dev.devce.rocketnautics.content.RocketBlockItem;
 import dev.devce.rocketnautics.content.blocks.*;
+import dev.devce.rocketnautics.content.blocks.drain_valve.DrainValveBlock;
 import dev.devce.rocketnautics.content.blocks.hose.HoseAnchorBlock;
 import dev.devce.rocketnautics.content.blocks.separator.SeparatorBlock;
 import dev.devce.rocketnautics.content.blocks.separator.SeparatorChargeBlock;
@@ -143,6 +145,15 @@ public class RocketBlocks {
             .transform(RocketItems.noGeneratedModel())
             .build().register();
 
+    public static final BlockEntry<DrainValveBlock> DRAIN_VALVE = REGISTRATE.block("drain_valve", DrainValveBlock::new)
+            .initialProperties(() -> Blocks.COPPER_BLOCK)
+            .properties(BlockBehaviour.Properties::noOcclusion)
+            .transform(pickaxeOnly())
+            .transform(existingDirectionalModel("drain_valve"))
+            .item(RocketBlockItem::new)
+            .transform(RocketItems.noGeneratedModel())
+            .build().register();
+
     public static final BlockEntry<dev.devce.rocketnautics.content.blocks.solar.SolarPanelBlock> SOLAR_PANEL = REGISTRATE.block("solar_panel", dev.devce.rocketnautics.content.blocks.solar.SolarPanelBlock::new)
             .initialProperties(() -> Blocks.IRON_BLOCK)
             .properties(BlockBehaviour.Properties::noOcclusion)
@@ -177,6 +188,56 @@ public class RocketBlocks {
                     .define('N', RocketItems.COPPER_NOZZLE)
                     .define('C', CommonMetal.COPPER.plates)
                     .unlockedBy("has_electron_tube", prov.has(AllItems.ELECTRON_TUBE))
+                    .save(prov))
+            .build().register();
+
+    public static final BlockEntry<dev.devce.rocketnautics.content.blocks.wire.CopperWireBlock> COPPER_WIRE = REGISTRATE.block("copper_wire", dev.devce.rocketnautics.content.blocks.wire.CopperWireBlock::new)
+            .initialProperties(() -> Blocks.COPPER_BLOCK)
+            .properties(p -> p.noOcclusion().sound(SoundType.COPPER).strength(0.5f))
+            .transform(pickaxeOnly())
+            .blockstate((ctx, prov) -> {
+                prov.getMultipartBuilder(ctx.getEntry())
+                        .part().modelFile(prov.models().getExistingFile(RocketNautics.path("block/copper_wire_core"))).addModel().end()
+                        .part().modelFile(prov.models().getExistingFile(RocketNautics.path("block/copper_wire_north"))).addModel()
+                        .condition(dev.devce.rocketnautics.content.blocks.wire.CopperWireBlock.NORTH, true).end()
+                        .part().modelFile(prov.models().getExistingFile(RocketNautics.path("block/copper_wire_south"))).addModel()
+                        .condition(dev.devce.rocketnautics.content.blocks.wire.CopperWireBlock.SOUTH, true).end()
+                        .part().modelFile(prov.models().getExistingFile(RocketNautics.path("block/copper_wire_east"))).addModel()
+                        .condition(dev.devce.rocketnautics.content.blocks.wire.CopperWireBlock.EAST, true).end()
+                        .part().modelFile(prov.models().getExistingFile(RocketNautics.path("block/copper_wire_west"))).addModel()
+                        .condition(dev.devce.rocketnautics.content.blocks.wire.CopperWireBlock.WEST, true).end()
+                        .part().modelFile(prov.models().getExistingFile(RocketNautics.path("block/copper_wire_up"))).addModel()
+                        .condition(dev.devce.rocketnautics.content.blocks.wire.CopperWireBlock.UP, true).end()
+                        .part().modelFile(prov.models().getExistingFile(RocketNautics.path("block/copper_wire_down"))).addModel()
+                        .condition(dev.devce.rocketnautics.content.blocks.wire.CopperWireBlock.DOWN, true).end();
+            })
+            .tag(RocketTags.BlockTags.SUPER_LIGHT.tag)
+            .item(RocketBlockItem::new)
+            .transform(RocketItems.noGeneratedModel())
+            .recipe((ctx, prov) -> ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get(), 8)
+                    .pattern(" C ")
+                    .pattern("CRC")
+                    .pattern(" C ")
+                    .define('C', CommonMetal.COPPER.plates)
+                    .define('R', Items.REDSTONE)
+                    .unlockedBy("has_copper", prov.has(Items.COPPER_INGOT))
+                    .save(prov))
+            .build().register();
+
+    public static final BlockEntry<dev.devce.rocketnautics.content.blocks.energy_tank.EnergyTankBlock> ENERGY_TANK = REGISTRATE.block("energy_tank", dev.devce.rocketnautics.content.blocks.energy_tank.EnergyTankBlock::new)
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .properties(p -> p.sound(SoundType.COPPER).strength(1.5f).isRedstoneConductor((p1, p2, p3) -> true))
+            .transform(pickaxeOnly())
+            .blockstate((ctx, prov) -> prov.simpleBlock(ctx.getEntry(), prov.models().getExistingFile(RocketNautics.path("block/energy_tank"))))
+            .item(RocketBlockItem::new)
+            .transform(RocketItems.noGeneratedModel())
+            .recipe((ctx, prov) -> ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
+                    .pattern(" C ")
+                    .pattern("CBC")
+                    .pattern(" C ")
+                    .define('C', CommonMetal.COPPER.plates)
+                    .define('B', Items.REDSTONE_BLOCK)
+                    .unlockedBy("has_copper", prov.has(Items.COPPER_INGOT))
                     .save(prov))
             .build().register();
 
@@ -259,9 +320,10 @@ public class RocketBlocks {
             .initialProperties(() -> Blocks.IRON_BLOCK)
             .properties(BlockBehaviour.Properties::noOcclusion)
             .transform(pickaxeOnly())
-            .transform(existingSimpleModel("sputnik"))
+            .blockstate((ctx, prov) -> {})
             .tag(RocketTags.BlockTags.SUPER_HEAVY.tag)
             .item(RocketBlockItem::new)
+            .transform(RocketItems.noGeneratedModel())
             .recipe((ctx, prov) -> ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
                     .pattern("L L")
                     .pattern("IBI")
@@ -271,6 +333,17 @@ public class RocketBlocks {
                     .define('B', Items.IRON_BLOCK)
                     .unlockedBy("has_iron_block", prov.has(Items.IRON_BLOCK))
                     .save(prov))
+            .build()
+            .register();
+
+    public static final BlockEntry<dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlock> SPUTNIK_LINK = REGISTRATE.block("sputnik_link", dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlock::new)
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .properties(BlockBehaviour.Properties::noOcclusion)
+            .transform(pickaxeOnly())
+            .blockstate((ctx, prov) -> {})
+            .tag(RocketTags.BlockTags.LIGHT.tag)
+            .item(RocketBlockItem::new)
+            .transform(RocketItems.noGeneratedModel())
             .build()
             .register();
 
@@ -294,29 +367,15 @@ public class RocketBlocks {
             .build()
             .register();
 
-    public static final BlockEntry<MagneticStabilizerBlock> MAGNETIC_STABILIZER = REGISTRATE.block("magnetic_stabilizer", MagneticStabilizerBlock::new)
+    public static final BlockEntry<MFDBlock> MFD = REGISTRATE.block("mfd", MFDBlock::new)
             .initialProperties(() -> Blocks.IRON_BLOCK)
             .transform(pickaxeOnly())
-            .tag(RocketTags.BlockTags.SUPER_HEAVY.tag)
-            .blockstate((ctx, prov) -> prov.getVariantBuilder(ctx.getEntry())
-                    .partialState().with(MagneticStabilizerBlock.POWERED, true)
-                    .setModels(new ConfiguredModel(prov.models().getExistingFile(RocketNautics.path("block/magnetic_stabilizer_on"))))
-                    .partialState().with(MagneticStabilizerBlock.POWERED, false)
-                    .setModels(new ConfiguredModel(prov.models().getExistingFile(RocketNautics.path("block/magnetic_stabilizer")))))
-            .item()
-            .recipe((ctx, prov) -> ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
-                    .pattern(" E ")
-                    .pattern("CTC")
-                    .pattern("RBR")
-                    .define('C', CommonMetal.COPPER.plates)
-                    .define('B', Tags.Items.STORAGE_BLOCKS_IRON)
-                    .define('R', Tags.Items.STORAGE_BLOCKS_REDSTONE)
-                    .define('T', RocketBlocks.TITANIUM_CASING)
-                    .define('E', AllItems.ELECTRON_TUBE)
-                    .unlockedBy("has_iron_block", prov.has(Items.IRON_BLOCK))
-                    .save(prov))
+            .transform(existingDirectionalModel("mfd"))
+            .tag(RocketTags.BlockTags.LIGHT.tag)
+            .item(RocketBlockItem::new)
             .build()
             .register();
+
 
     public static final BlockEntry<dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlock> GYRODYNE = REGISTRATE.block("gyrodyne", dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlock::new)
             .initialProperties(() -> Blocks.IRON_BLOCK)
@@ -326,6 +385,16 @@ public class RocketBlocks {
             .transform(existingDirectionalModel("gyrodyne_base"))
             .item(RocketBlockItem::new)
             .transform(RocketItems.noGeneratedModel())
+            .recipe((ctx, prov) -> ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
+                    .pattern(" P ")
+                    .pattern("TFT")
+                    .pattern(" C ")
+                    .define('P', AllItems.PRECISION_MECHANISM)
+                    .define('T', RocketTags.MetalTags.TITANIUM.plates)
+                    .define('F', AllBlocks.FLYWHEEL)
+                    .define('C', RocketBlocks.TITANIUM_CASING)
+                    .unlockedBy("has_titanium_casing", prov.has(RocketBlocks.TITANIUM_CASING))
+                    .save(prov))
             .build()
             .register();
 
@@ -578,6 +647,10 @@ public class RocketBlocks {
 
     private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> existingSimpleModel(String name) {
         return b -> b.blockstate((ctx, prov) -> prov.simpleBlock(ctx.getEntry(), prov.models().getExistingFile(RocketNautics.path("block/" + name))));
+    }
+
+    private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> existingHorizontalModel(String name) {
+        return b -> b.blockstate((ctx, prov) -> prov.horizontalBlock(ctx.getEntry(), prov.models().getExistingFile(RocketNautics.path("block/" + name))));
     }
 
     private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, ItemBuilder<BlockItem, BlockBuilder<T, CreateRegistrate>>> crossModelAndFlatItem() {

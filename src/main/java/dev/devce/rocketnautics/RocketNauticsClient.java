@@ -132,6 +132,35 @@ public class RocketNauticsClient {
         seamlessTransitionTicks = 0;
     }
 
+    /**
+     * Automatically configures Flywheel backend to OFF/Batching for Sable SubLevel & DeepSpace
+     * compatibility, ensuring Create cogwheels, shafts, and kinetic blocks render permanently.
+     */
+    public static void ensureFlywheelCompatibility() {
+        try {
+            Class<?> flwConfigClass = Class.forName("dev.engine_room.flywheel.config.FlwConfig");
+            Object clientConfig = flwConfigClass.getField("CLIENT").get(null);
+            Object backendValue = clientConfig.getClass().getField("backend").get(clientConfig);
+            if (backendValue instanceof net.neoforged.neoforge.common.ModConfigSpec.ConfigValue<?> configValue) {
+                Object current = configValue.get();
+                if (current != null && current.toString().equalsIgnoreCase("DEFAULT")) {
+                    for (Object enumConstant : current.getClass().getEnumConstants()) {
+                        if (enumConstant.toString().equalsIgnoreCase("OFF")) {
+                            @SuppressWarnings("unchecked")
+                            net.neoforged.neoforge.common.ModConfigSpec.ConfigValue<Object> typedValue =
+                                    (net.neoforged.neoforge.common.ModConfigSpec.ConfigValue<Object>) configValue;
+                            typedValue.set(enumConstant);
+                            typedValue.save();
+                            RocketNautics.LOGGER.info("[Cosmonautics] Auto-configured Flywheel backend to OFF for SubLevel & DeepSpace rendering compatibility.");
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            RocketNautics.LOGGER.debug("[Cosmonautics] Could not automatically tune Flywheel config: {}", t.getMessage());
+        }
+    }
 
     @SubscribeEvent
     public static void registerGuiLayers(RegisterGuiLayersEvent event) {
@@ -303,6 +332,9 @@ public class RocketNauticsClient {
         event.registerSpriteSet(RocketParticles.JET_SMOKE.get(), RocketExhaustParticle.SmokeProvider::new);
         event.registerSpriteSet(RocketParticles.BLUE_FLAME.get(), RocketExhaustParticle.FlameProvider::new);
         event.registerSpriteSet(RocketParticles.RCS_GAS.get(), RocketExhaustParticle.RCSGasProvider::new);
+        event.registerSpriteSet(RocketParticles.VENT_STEAM.get(), RocketExhaustParticle.VentSteamProvider::new);
+        event.registerSpriteSet(RocketParticles.EXPLOSION_SMOKE.get(), dev.devce.rocketnautics.content.particles.ExplosionSmokeParticle.Provider::new);
+        event.registerSpecial(RocketParticles.TANK_EXPLOSION_CLOUD.get(), new dev.devce.rocketnautics.content.particles.TankExplosionCloudParticle.Provider());
         event.registerSpriteSet(RocketParticles.JETPACK_FLAME.get(), JetpackFlameParticle.JetpackFlameProvider::new);
     }
 
@@ -317,8 +349,17 @@ public class RocketNauticsClient {
 
         net.neoforged.fml.ModLoadingContext.get().registerExtensionPoint(net.neoforged.neoforge.client.gui.IConfigScreenFactory.class,
             () -> (client, parent) -> new RocketSettingsScreen(parent));
+
+        net.createmod.catnip.config.ui.BaseConfigScreen.setDefaultActionFor(
+            RocketNautics.MODID,
+            base -> base
+                .withButtonLabels("Client Settings", null, "Server Settings")
+                .withSpecs(RocketConfig.CLIENT_SPEC, null, RocketConfig.SERVER_SPEC)
+        );
+
         event.enqueueWork(() -> {
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.devce.rocketnautics.registry.RocketBlocks.SEPARATOR.get(), net.minecraft.client.renderer.RenderType.cutout());
+            net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.devce.rocketnautics.registry.RocketBlocks.SPUTNIK.get(), net.minecraft.client.renderer.RenderType.cutoutMipped());
         });
     }
 

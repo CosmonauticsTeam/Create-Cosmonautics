@@ -52,17 +52,14 @@ void main() {
     } 
     // 2. Calculate Outer Plume Shell (Gradients from Hot Orange to Cosmic Violet)
     else if (v < outerBoundary) {
-        // Relative position inside the outer shell region
         float shellFactor = (v - coreBoundary) / (outerBoundary - coreBoundary);
         
-        // Colors mapping: base (0.0) is fiery orange/yellow, middle is red, tail (1.0) is violet/magenta
-        vec3 fieryBase = vec3(1.0, 0.5, 0.1);    // Bright orange
-        vec3 violetTip = vec3(0.5, 0.1, 0.9);    // Deep violet
+        vec3 fieryBase = vec3(1.0, 0.5, 0.1);
+        vec3 violetTip = vec3(0.95, 0.22, 0.65);
         
         vec3 outerColor = mix(fieryBase, violetTip, shellFactor);
         
-        // Soft edge fadeout at the tail of the plume
-        float alpha = (1.0 - shellFactor) * 0.75 * vertexColor.a;
+        float alpha = (1.0 - shellFactor) * 0.85 * vertexColor.a;
         
         finalColor = vec4(outerColor, alpha);
     } 

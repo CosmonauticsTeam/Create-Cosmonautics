@@ -1,0 +1,56 @@
+{
+  "variants": {
+    "facing=down,receiver=false": {
+      "model": "rocketnautics:block/sputnik_link_transmitter",
+      "x": 180
+    },
+    "facing=down,receiver=true": {
+      "model": "rocketnautics:block/sputnik_link_receiver",
+      "x": 180
+    },
+    "facing=up,receiver=false": {
+      "model": "rocketnautics:block/sputnik_link_transmitter"
+    },
+    "facing=up,receiver=true": {
+      "model": "rocketnautics:block/sputnik_link_receiver"
+    },
+    "facing=north,receiver=false": {
+      "model": "rocketnautics:block/sputnik_link_transmitter",
+      "x": 90
+    },
+    "facing=north,receiver=true": {
+      "model": "rocketnautics:block/sputnik_link_receiver",
+      "x": 90
+    },
+    "facing=south,receiver=false": {
+      "model": "rocketnautics:block/sputnik_link_transmitter",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,receiver=true": {
+      "model": "rocketnautics:block/sputnik_link_receiver",
+      "x": 90,
+      "y": 180
+    },
+    "facing=west,receiver=false": {
+      "model": "rocketnautics:block/sputnik_link_transmitter",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,receiver=true": {
+      "model": "rocketnautics:block/sputnik_link_receiver",
+      "x": 90,
+      "y": 270
+    },
+    "facing=east,receiver=false": {
+      "model": "rocketnautics:block/sputnik_link_transmitter",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,receiver=true": {
+      "model": "rocketnautics:block/sputnik_link_receiver",
+      "x": 90,
+      "y": 90
+    }
+  }
+}

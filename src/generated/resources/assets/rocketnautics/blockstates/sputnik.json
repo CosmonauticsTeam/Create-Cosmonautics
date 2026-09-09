@@ -1,7 +1,10 @@
 {
   "variants": {
-    "": {
+    "legs=false": {
       "model": "rocketnautics:block/sputnik"
+    },
+    "legs=true": {
+      "model": "rocketnautics:block/sputnik_with_legs"
     }
   }
 }

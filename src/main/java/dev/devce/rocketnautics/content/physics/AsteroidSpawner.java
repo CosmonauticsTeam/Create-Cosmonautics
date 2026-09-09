@@ -2,7 +2,6 @@ package dev.devce.rocketnautics.content.physics;
 
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.registry.RocketBlocks;
-import dev.devce.rocketnautics.content.commands.ShipCopyPasteCommand;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;

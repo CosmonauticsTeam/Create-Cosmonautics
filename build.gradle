@@ -138,6 +138,11 @@ tasks.register('extractInnerJar', Copy) {
 }
 
 dependencies {
+
+    testImplementation(platform('org.junit:junit-bom:5.11.4'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
@@ -181,9 +186,20 @@ dependencies {
 
     runtimeOnly("maven.modrinth:iris:${iris_version}")
     compileOnly("maven.modrinth:iris:${iris_version}")
+    shade "io.github.spair:imgui-java-binding:1.87.5"
+    shade("io.github.spair:imgui-java-lwjgl3:1.87.5") {
+        exclude group: "org.lwjgl"
+    }
+    shade "io.github.spair:imgui-java-natives-windows:1.87.5"
+    shade "io.github.spair:imgui-java-natives-linux:1.87.5"
+    shade "io.github.spair:imgui-java-natives-macos:1.87.5"
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
 
 // --- Fix for CreateMinecraftArtifacts missing manifest ---
 // Generates an empty manifest file expected by the NeoForge moddev plugin.
@@ -209,7 +225,8 @@ shadowJar {
     relocate 'org.hipparchus', 'dev.devce.rocketnautics.shaded.hipparchus'
     mergeServiceFiles()
     minimize {
-        exclude("org.luaj")
+        exclude(dependency('org.luaj:.*:.*'))
+        exclude(dependency('io.github.spair:.*:.*'))
     }
 }
 

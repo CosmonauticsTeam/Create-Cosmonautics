@@ -4,66 +4,131 @@ import dev.devce.rocketnautics.api.orbit.AtmosphereFlags;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceInstance;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
-import dev.devce.rocketnautics.content.orbit.universe.PointGravitySource;
+import dev.devce.rocketnautics.content.sputnik.model.SputnikGraph;
+import dev.devce.rocketnautics.content.sputnik.storage.SputnikStorageManager;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import org.hipparchus.geometry.euclidean.threed.Vector3D;
+import org.joml.Quaterniond;
 import org.joml.Vector3d;
-import dev.devce.websnodelib.api.WGraph;
+
+import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
+import dev.devce.rocketnautics.content.energy.CustomEnergyStorage;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.neoforged.neoforge.energy.IEnergyStorage;
+import org.jetbrains.annotations.Nullable;
+import net.minecraft.core.Direction;
 
 import java.util.EnumSet;
+import java.util.List;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
-/**
- * Sputnik Block Entity acts as the core central computer of a spacecraft.
- * It ticks the Lua script graph and provides vector telemetry (velocity, rotation, position).
- */
-public class SputnikBlockEntity extends BlockEntity {
-    public final WGraph graph = new WGraph();
-    private final java.util.Map<String, String> displayBridge = new java.util.concurrent.ConcurrentHashMap<>();
-    private final java.util.Map<String, Double> lastWirelessRedstone = new java.util.concurrent.ConcurrentHashMap<>();
-    private final java.util.Map<String, Double> lastRadioPackets = new java.util.concurrent.ConcurrentHashMap<>();
+public class SputnikBlockEntity extends BlockEntity implements IHaveGoggleInformation {
+    public static final int ENERGY_CONSUMPTION_RATE = 0;
+    public static final int ENERGY_CAPACITY = 5000;
+
+    private int sputnikId = 0;
+    private SputnikGraph graph;
+    private final Map<String, String> displayBridge = new ConcurrentHashMap<>();
+    private final Map<String, Double> lastWirelessRedstone = new ConcurrentHashMap<>();
+    private final Map<String, Double> lastRadioPackets = new ConcurrentHashMap<>();
+    private final CustomEnergyStorage energyStorage = new CustomEnergyStorage(ENERGY_CAPACITY, 500);
     private int syncCooldown = 0;
-
-    public java.util.Map<String, String> getDisplayBridge() {
-        return displayBridge;
-    }
-
-    public java.util.Map<String, Double> getLastWirelessRedstone() {
-        return lastWirelessRedstone;
-    }
-
-    public java.util.Map<String, Double> getLastRadioPackets() {
-        return lastRadioPackets;
-    }
+    private int lastSyncedEnergy = 0;
 
     public SputnikBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
-        graph.setContext(this);
-        if (level != null) graph.setRegistries(level.registryAccess());
     }
 
-    @Override
-    public void setLevel(Level level) {
-        super.setLevel(level);
-        if (level != null) {
-            graph.setRegistries(level.registryAccess());
-            graph.setContext(this);
+    public int getSputnikId() {
+        return sputnikId;
+    }
+
+    public void setSputnikId(int sputnikId) {
+        this.sputnikId = sputnikId;
+    }
+
+    public SputnikGraph getGraph() {
+        if (graph == null) {
+            if (level != null && !level.isClientSide() && level.getServer() != null && sputnikId > 0) {
+                graph = SputnikStorageManager.loadGraph(level.getServer(), sputnikId);
+            }
         }
+        return graph != null ? graph : SputnikGraph.createDefault();
+    }
+
+    public void setGraph(SputnikGraph graph) {
+        this.graph = graph;
+    }
+
+    public IEnergyStorage getEnergyStorage(@Nullable Direction side) {
+        return energyStorage;
+    }
+
+    public boolean isPowered() {
+        return true;
+    }
+
+    public Map<String, String> getDisplayBridge() {
+        return displayBridge;
+    }
+
+    public Map<String, Double> getLastWirelessRedstone() {
+        return lastWirelessRedstone;
+    }
+
+    public Map<String, Double> getLastRadioPackets() {
+        return lastRadioPackets;
+    }
+
+    public void sendRadioPacket(String channel, double data) {
+        if (channel != null && !channel.isEmpty()) {
+            lastRadioPackets.put(channel, data);
+        }
+    }
+
+    public double getRadioPacket(String channel) {
+        return lastRadioPackets.getOrDefault(channel, 0.0);
+    }
+
+    public void setGlobalThrottle(double val) {
+    }
+
+    public void applyTorque(double pitch, double yaw, double roll) {
+    }
+
+    public void setDrainValveOpen(boolean open) {
+    }
+
+    public double getTotalFuelAmount() {
+        return 0.0;
+    }
+
+    public double getTotalFuelCapacity() {
+        return 0.0;
+    }
+
+    public int getEnergyStored() {
+        return energyStorage.getEnergyStored();
     }
 
     private SubLevel getSubLevel() {
         if (level == null) return null;
         Object lvlObj = level;
         if (lvlObj instanceof SubLevel sl) return sl;
+        if (level.isClientSide()) {
+            var csl = dev.ryanhcode.sable.Sable.HELPER.getContainingClient(this);
+            if (csl != null) return csl;
+        }
         Object obj = dev.ryanhcode.sable.Sable.HELPER.getContaining(level, worldPosition);
         if (obj instanceof SubLevel sl) return sl;
         return null;
@@ -71,18 +136,24 @@ public class SputnikBlockEntity extends BlockEntity {
 
     public static void tick(Level level, BlockPos pos, BlockState state, SputnikBlockEntity blockEntity) {
         if (!level.isClientSide) {
+            if (blockEntity.sputnikId <= 0 && level.getServer() != null) {
+                blockEntity.sputnikId = SputnikStorageManager.allocateId(level.getServer());
+                blockEntity.setChanged();
+            }
+
             blockEntity.tickNodes();
-            if (blockEntity.syncCooldown++ >= 10) {
+            blockEntity.syncCooldown++;
+            boolean energyChanged = Math.abs(blockEntity.energyStorage.getEnergyStored() - blockEntity.lastSyncedEnergy) >= 50;
+            if (blockEntity.syncCooldown >= 10 || energyChanged) {
                 blockEntity.syncCooldown = 0;
+                blockEntity.lastSyncedEnergy = blockEntity.energyStorage.getEnergyStored();
                 level.sendBlockUpdated(pos, state, state, 2);
             }
         }
     }
 
     private void tickNodes() {
-        // NOTE: LinkedSignalHandler.tick() is called once per server tick from
-        // RocketNautics.onLevelTick() to avoid double-ticking when multiple Sputniks exist.
-        graph.tick();
+        getGraph().evaluate(this);
     }
 
     public double getX() { return getGlobalPos().x; }
@@ -138,31 +209,51 @@ public class SputnikBlockEntity extends BlockEntity {
         return angle;
     }
 
-    public double getPitch() {
+    public Quaterniond getOrientation() {
         SubLevel subLevel = getSubLevel();
         if (subLevel != null) {
-            Vector3d euler = subLevel.logicalPose().orientation().getEulerAnglesYXZ(new Vector3d());
-            return Math.toDegrees(euler.x);
+            if (subLevel instanceof dev.ryanhcode.sable.sublevel.ClientSubLevel csl) {
+                return new Quaterniond(csl.renderPose().orientation());
+            }
+            return new Quaterniond(subLevel.logicalPose().orientation());
         }
-        return 0;
+        return new Quaterniond();
+    }
+
+    public Vector3d getForwardVector() {
+        Quaterniond rot = getOrientation();
+        Vector3d fwd = new Vector3d(0, 0, 1);
+        rot.transform(fwd);
+        return fwd;
+    }
+
+    public double getAttitudePitch() {
+        Vector3d fwd = getForwardVector();
+        return Math.toDegrees(Math.asin(Math.max(-1.0, Math.min(1.0, fwd.y))));
+    }
+
+    public double getAttitudeYaw() {
+        Vector3d fwd = getForwardVector();
+        return (Math.toDegrees(Math.atan2(fwd.x, fwd.z)) + 360.0) % 360.0;
+    }
+
+    public double getAttitudeRoll() {
+        Quaterniond rot = getOrientation();
+        Vector3d camUp = new Vector3d(0, 1, 0);
+        rot.transformInverse(camUp);
+        return Math.toDegrees(Math.atan2(camUp.x, camUp.y));
+    }
+
+    public double getPitch() {
+        return getAttitudePitch();
     }
 
     public double getYaw() {
-        SubLevel subLevel = getSubLevel();
-        if (subLevel != null) {
-            Vector3d euler = subLevel.logicalPose().orientation().getEulerAnglesYXZ(new Vector3d());
-            return Math.toDegrees(euler.y);
-        }
-        return 0;
+        return getAttitudeYaw();
     }
 
     public double getRoll() {
-        SubLevel subLevel = getSubLevel();
-        if (subLevel != null) {
-            Vector3d euler = subLevel.logicalPose().orientation().getEulerAnglesYXZ(new Vector3d());
-            return Math.toDegrees(euler.z);
-        }
-        return 0;
+        return getAttitudeRoll();
     }
 
     public double getShipMass() {
@@ -176,18 +267,18 @@ public class SputnikBlockEntity extends BlockEntity {
         return 0.0;
     }
 
-    public org.joml.Vector3d getInertiaTensorDiagonal() {
+    public Vector3d getInertiaTensorDiagonal() {
         SubLevel subLevel = getSubLevel();
         if (subLevel instanceof dev.ryanhcode.sable.sublevel.ServerSubLevel ssl) {
             var tracker = ssl.getMassTracker();
             if (tracker != null) {
                 var matrix = tracker.getInertiaTensor();
                 if (matrix != null) {
-                    return new org.joml.Vector3d(matrix.m00(), matrix.m11(), matrix.m22());
+                    return new Vector3d(matrix.m00(), matrix.m11(), matrix.m22());
                 }
             }
         }
-        return new org.joml.Vector3d(0, 0, 0);
+        return new Vector3d(0, 0, 0);
     }
 
     public int getBiomeColor() {
@@ -242,10 +333,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return b != null ? level.getBiome(worldPosition).getRegisteredName() : getBiomeName();
     }
 
-    // -----------------------------------------------------------------------
-    // New World Telemetry
-    // -----------------------------------------------------------------------
-
     public int getLightLevel() {
         if (level == null) return 0;
         return level.getMaxLocalRawBrightness(worldPosition);
@@ -269,10 +356,6 @@ public class SputnikBlockEntity extends BlockEntity {
     public double getSpeed() {
         return getVelocityVector().length();
     }
-
-    // -----------------------------------------------------------------------
-    // DeepSpace API helpers
-    // -----------------------------------------------------------------------
 
     public boolean isInDeepSpace() {
         if (level == null) return false;
@@ -300,7 +383,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return false;
     }
 
-    /** Returns the DeepSpaceInstance this sputnik is part of, or null. */
     public DeepSpaceInstance getDeepSpaceInstance() {
         if (!isInDeepSpace()) return null;
         if (level == null || level.isClientSide() || level.getServer() == null) return null;
@@ -309,7 +391,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return data.getInstanceForPos((int) pos.x, (int) pos.z);
     }
 
-    /** Orbital semi-major axis in metres, or NaN if not in DeepSpace. */
     public double getOrbitalSemiMajorAxis() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
@@ -322,7 +403,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return inst.getPosition().getCurrentOrbit().getA();
     }
 
-    /** Orbital eccentricity (0 = circular). */
     public double getOrbitalEccentricity() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
@@ -335,7 +415,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return inst.getPosition().getCurrentOrbit().getE();
     }
 
-    /** Orbital inclination in degrees. */
     public double getOrbitalInclination() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
@@ -348,7 +427,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return Math.toDegrees(inst.getPosition().getCurrentOrbit().getI());
     }
 
-    /** Orbital period in seconds, or NaN if orbit is hyperbolic. */
     public double getOrbitalPeriod() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
@@ -369,7 +447,6 @@ public class SputnikBlockEntity extends BlockEntity {
         }
     }
 
-    /** Current orbital speed in m/s. */
     public double getOrbitalSpeed() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
@@ -382,7 +459,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return inst.getPosition().getCurrentPVCoords().getVelocity().getNorm();
     }
 
-    /** Gravitational acceleration at current position (m/s²). */
     public double getGravityAcceleration() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
@@ -402,7 +478,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return mu / (r * r);
     }
 
-    /** Name of the current orbital frame (parent body). */
     public String getParentBodyName() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
@@ -415,7 +490,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return inst.getPosition().getFrame().getName();
     }
 
-    /** Radius of the parent body in metres, or 0 if unknown. */
     public double getParentBodyRadius() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get() && SputnikClientHelper.getUniverse.get() != null) {
@@ -437,7 +511,6 @@ public class SputnikBlockEntity extends BlockEntity {
                 .findFirst().orElse(0);
     }
 
-    /** Distance from current position to the nearest planet surface in metres. */
     public double getDistanceToPlanet() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get()) {
@@ -454,7 +527,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return Math.max(0, r - radius);
     }
 
-    /** Returns true if the sputnik is within the transition height of the nearest planet's atmosphere. */
     public boolean isInAtmosphere() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get() && SputnikClientHelper.getUniverse.get() != null) {
@@ -482,7 +554,17 @@ public class SputnikBlockEntity extends BlockEntity {
         return dist <= orbiting.linkedDimension().transitionHeight();
     }
 
-    /** Comma-separated AtmosphereFlags at current altitude, or empty string. */
+    public boolean hasAtmosphere() {
+        return !isInDeepSpace() || isInAtmosphere();
+    }
+
+    public boolean isAtmosphereBreathable() {
+        if (!isInDeepSpace()) {
+            return level != null && level.dimension() == Level.OVERWORLD;
+        }
+        return getAtmosphereFlags().contains("breathable");
+    }
+
     public String getAtmosphereFlags() {
         if (level != null && level.isClientSide()) {
             if (isInDeepSpace() && SputnikClientHelper.hasReceivedPosition.get() && SputnikClientHelper.getUniverse.get() != null) {
@@ -526,7 +608,6 @@ public class SputnikBlockEntity extends BlockEntity {
         return sj.toString();
     }
 
-    /** Universe tick count from DeepSpaceData. */
     public long getUniverseTime() {
         if (level == null) return 0L;
         if (level.isClientSide()) {
@@ -552,10 +633,19 @@ public class SputnikBlockEntity extends BlockEntity {
     }
 
     @Override
+    public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
+        tooltip.add(Component.literal("    ").append(Component.translatable("block.rocketnautics.sputnik").withStyle(ChatFormatting.GOLD)));
+        tooltip.add(Component.literal("  ").append(Component.translatable("rocketnautics.goggles.status")).append(": ")
+                .append(Component.translatable("rocketnautics.goggles.active").withStyle(ChatFormatting.GREEN)));
+        return true;
+    }
+
+    @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        tag.put("NodeGraph", graph.save());
-        
+        tag.putInt("SputnikId", sputnikId);
+        tag.putInt("Energy", energyStorage.getEnergyStored());
+
         CompoundTag redstoneTag = new CompoundTag();
         for (var entry : lastWirelessRedstone.entrySet()) {
             redstoneTag.putDouble(entry.getKey(), entry.getValue());
@@ -572,13 +662,14 @@ public class SputnikBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        if (tag.contains("NodeGraph")) {
-            CompoundTag graphTag = tag.getCompound("NodeGraph");
-            graph.setRegistries(registries);
-            graph.load(graphTag);
-            graph.setContext(this);
+        if (tag.contains("SputnikId")) {
+            this.sputnikId = tag.getInt("SputnikId");
+            this.graph = null;
         }
-        
+        if (tag.contains("Energy")) {
+            energyStorage.setEnergy(tag.getInt("Energy"));
+        }
+
         lastWirelessRedstone.clear();
         if (tag.contains("WirelessRedstoneCache")) {
             CompoundTag redstoneTag = tag.getCompound("WirelessRedstoneCache");
@@ -593,6 +684,15 @@ public class SputnikBlockEntity extends BlockEntity {
             for (String key : radioTag.getAllKeys()) {
                 lastRadioPackets.put(key, radioTag.getDouble(key));
             }
+        }
+    }
+
+    @Override
+    public void setRemoved() {
+        super.setRemoved();
+        if (level != null && !level.isClientSide()) {
+            dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkManager.onSputnikRemoved(this.sputnikId);
+            dev.devce.rocketnautics.content.sputnik.comms.SputnikCommsManager.onSputnikRemoved(this.sputnikId);
         }
     }
 }

@@ -18,15 +18,18 @@ public interface IThruster extends IPeripheral {
     float getFlow();
 
     default double readValue(String key) {
-        if (key.equals("thrust")) return getFlow() * 100.0;
+        if ("active".equals(key) || "ignition".equals(key)) return isActive() ? 1.0 : 0.0;
+        if ("thrust".equals(key)) return getFlow() * 100.0;
+        if ("throttle".equals(key)) return getFlow();
         return 0;
     }
 
     default void writeValue(String key, double value) {
-        if (key.equals("throttle")) {
-            setActive(value > 0);
+        if ("ignition".equals(key) || "active".equals(key)) {
+            setActive(value > 0.5);
+        } else if ("throttle".equals(key)) {
             setThrottle((float) value);
-        } else if (key.equals("thrust")) {
+        } else if ("thrust".equals(key)) {
             setActive(value > 0);
             var behavior = getThrustPower();
             if (behavior != null) {

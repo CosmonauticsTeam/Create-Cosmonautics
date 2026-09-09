@@ -13,7 +13,6 @@ import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.devce.rocketnautics.data.RocketDatagen;
 import dev.devce.rocketnautics.network.NetworkHandler;
 import dev.devce.rocketnautics.registry.*;
-import dev.devce.websnodelib.internal.InternalNodes;
 import dev.simulated_team.simulated.util.SimColors;
 import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.resources.ResourceKey;
@@ -81,11 +80,6 @@ public class RocketNautics {
         RocketBlockEntities.register(modEventBus);
         RocketParticles.register(modEventBus);
         RocketSounds.register(modEventBus);
-        InternalNodes.register();
-        dev.devce.rocketnautics.registry.RocketNodes.register();
-        // Load data-driven nodes from jar resources + gamedir/nodes/ folder
-        dev.devce.rocketnautics.registry.NodeDefinitionLoader.load();
-
         RocketDataComponents.register(modEventBus);
 
         // Register mod-bus event subscribers manually to avoid deprecated bus() parameter
@@ -94,6 +88,10 @@ public class RocketNautics {
             modEventBus.register(dev.devce.rocketnautics.client.ClientModEvents.class);
             modEventBus.register(RocketNauticsClient.class);
             NeoForge.EVENT_BUS.register(dev.devce.rocketnautics.client.RocketNauticsClientEvents.class);
+            net.createmod.ponder.foundation.PonderIndex.addPlugin(new dev.devce.rocketnautics.ponder.RocketPonderPlugin());
+
+            // Auto-configure Flywheel backend to OFF for SubLevel & DeepSpace rendering compatibility
+            dev.devce.rocketnautics.RocketNauticsClient.ensureFlywheelCompatibility();
 
             // Enable Sable's shadow maps for sublevels
             dev.ryanhcode.sable.render.sky_light_shadow.SableSkyLightShadows.setIsEnabled(true);
@@ -155,15 +153,7 @@ public class RocketNautics {
      */
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
-        GravityCommand.register(event.getDispatcher());
-        OrbitCommand.register(event.getDispatcher());
-        ShipCopyPasteCommand.register(event.getDispatcher());
-        JetpackCommand.register(event.getDispatcher());
-        dev.devce.rocketnautics.content.commands.AsteroidCommand.register(event.getDispatcher());
-        dev.devce.rocketnautics.content.commands.BreakBarrierCommand.register(event.getDispatcher());
-        dev.devce.rocketnautics.content.commands.ReentryCommand.register(event.getDispatcher());
-        TimescaleCommand.register(event.getDispatcher());
-        dev.devce.rocketnautics.content.commands.NodesReloadCommand.register(event.getDispatcher());
+        dev.devce.rocketnautics.content.commands.CosmonauticsCommand.register(event.getDispatcher());
     }
 
     @SubscribeEvent
@@ -198,10 +188,12 @@ public class RocketNautics {
     @SubscribeEvent
     public void onServerStarting(net.neoforged.neoforge.event.server.ServerStartingEvent event) {
         dev.devce.rocketnautics.api.radio.RadioNetworkManager.setServer(event.getServer());
+        dev.devce.rocketnautics.server.telemetry.TelemetryServer.INSTANCE.start(event.getServer());
     }
 
     @SubscribeEvent
     public void onServerStopping(net.neoforged.neoforge.event.server.ServerStoppingEvent event) {
+        dev.devce.rocketnautics.server.telemetry.TelemetryServer.INSTANCE.stop();
         dev.devce.rocketnautics.api.radio.RadioNetworkManager.setServer(null);
     }
 

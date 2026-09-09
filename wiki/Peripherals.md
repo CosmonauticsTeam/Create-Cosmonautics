@@ -77,6 +77,27 @@ Returns comprehensive Keplerian orbital telemetry and local space environment pa
   - `velocity`: `table` containing `{x, y, z}` (Absolute orbital velocity vector)
   - `velocityDir`: `table` containing `{x, y, z}` (Normalized unit vector of orbital velocity)
 
+#### `getGyrodynes()`
+Returns a list of all active Gyrodynes (reaction wheels) on the ship/level.
+- **Returns**: `table` of `table`:
+  - `id`: `number` (Integer peripheral ID)
+  - `uuid`: `string` (Unique UUID)
+  - `mode`: `string` (Current attitude mode, e.g. `"prograde"`, `"sas"`, `"off"`)
+  - `active`: `boolean` (True if running and powered)
+  - `rotorSpeed`: `number` (Current flywheel rotation speed)
+  - `x`, `y`, `z`: `number` (Block coordinates)
+
+#### `setGyrodyneMode([id], mode)`
+Changes the flight/attitude mode of gyrodynes. If `id` is omitted, sets the mode for **all** gyrodynes on the ship.
+- **Arguments**:
+  - `id` (`number`, optional): Target gyrodyne peripheral ID.
+  - `mode` (`string`): Target mode name (`"off"`, `"sas"`, `"hold"`, `"prograde"`, `"retrograde"`, `"normal"`, `"antinormal"`, `"radial_in"`, `"radial_out"`, `"horizon"`, `"sun"`).
+- **Returns**: `boolean` (True if at least one gyrodyne was updated).
+
+#### `getAvailableGyrodyneModes()`
+Returns a list of all valid gyrodyne mode names.
+- **Returns**: `table` of `string`
+
 ---
 
 ## 2. Sputnik Local Lua API (Visual Programming & Scripts)
@@ -132,3 +153,66 @@ All thruster engines implement the `IThruster` interface, allowing direct contro
 | **Write** | `"throttle"` | `value` (`0.0` - `1.0`) | Directly sets the thruster's throttle percentage. Sets active state to `false` if `value <= 0.0`. |
 | **Write** | `"thrust"` | `value` (in Newtons) | Calculates and sets throttle value relative to the engine's configured maximum thrust capacity. |
 | **Write Mult.** | `"gimbal"` | `pitch`, `yaw` (degrees) | Adjusts the thruster nozzle tilt angles (applicable to Vector Engines and gimbal mounts). |
+
+---
+
+### Gyrodyne (`"gyrodyne"`)
+
+Gyrodynes (Control Moment Gyroscopes / CMG) provide active 3D attitude stabilization and orientation control.
+
+#### ComputerCraft API:
+- `gyrodyne.getMode()` — Returns current mode string (`"off"`, `"sas"`, `"hold"`, `"prograde"`, `"retrograde"`, `"normal"`, `"antinormal"`, `"radial_in"`, `"radial_out"`, `"horizon"`, `"sun"`).
+- `gyrodyne.setMode(modeName)` — Sets active flight/attitude mode.
+- `gyrodyne.isActive()` — Returns true if gyrodyne is active and unpowered by redstone.
+- `gyrodyne.getId()` — Returns integer peripheral ID.
+- `gyrodyne.getGimbalTilt()` — Returns table with `{ x, z }` gimbal tilt angles in degrees.
+- `gyrodyne.getRotorSpeed()` — Returns current flywheel rotor speed.
+- `gyrodyne.getAvailableModes()` — Returns list of all available mode names.
+
+#### Sputnik Peripheral Keys:
+| Action | Key | Arguments / Return | Description |
+|---|---|---|---|
+| **Read** | `"mode"` | Returns `number` | Returns the current mode index (`0`..`10`). |
+| **Read** | `"active"` | Returns `number` | `1.0` if running, `0.0` if inactive. |
+| **Read** | `"tilt_x"` | Returns `number` | Gimbal deflection on X axis (degrees). |
+| **Read** | `"tilt_z"` | Returns `number` | Gimbal deflection on Z axis (degrees). |
+| **Read** | `"rotor_speed"` | Returns `number` | Rotor spin speed. |
+| **Read** | `"id"` | Returns `number` | Peripheral ID. |
+| **Write** | `"mode"` | `value` (`0`..`10`) | Directly sets the mode by ordinal. |
+| **Write** | `"sas"`, `"hold"`, `"prograde"`, etc. | `1.0` / `0.0` | Activates or deactivates the specific mode. |
+
+---
+
+### MFD Monitor (`"mfd"`)
+
+Multi-Function Displays provide a 64x64 pixel CRT display supporting built-in flight programs, cartridges, and raw video/graphics streaming directly from ComputerCraft.
+
+#### ComputerCraft API:
+
+##### Mode / Program Selection:
+- `mfd.getProgram()` / `mfd.getMode()` — Returns name of active program (e.g. `"FDAI"`, `"HORIZON"`, `"ALT_SPEED"`, `"VIDEO"`, `"GIF"`, or `"Cartridge: <id>"`).
+- `mfd.getProgramIndex()` / `mfd.getModeIndex()` — Returns integer program index (0-based).
+- `mfd.setProgram(nameOrIndex)` / `mfd.setMode(nameOrIndex)` — Switches to the specified program by name (case-insensitive) or index.
+- `mfd.getAvailablePrograms()` / `mfd.getAvailableModes()` — Returns list of all available programs.
+- `mfd.cycleProgram([delta])` / `mfd.cycleMode([delta])` — Cycles to next/previous program.
+- Shortcuts: `mfd.setFdai()`, `mfd.setHorizon()`, `mfd.setAltSpeed()`, `mfd.setVideo()`, `mfd.setGif()`.
+- Cartridge control: `mfd.hasCartridge()`, `mfd.getCartridgeId()`, `mfd.ejectCartridge()`.
+
+##### Video & Graphics Streaming (External Video Mode):
+- `mfd.setExternalVideoMode()` / `mfd.setVideo()` — Switches MFD into external video mode.
+- `mfd.isExternalVideoMode()` — Returns true if MFD is currently displaying external video.
+- `mfd.getWidth()` / `mfd.getHeight()` — Returns 64.
+- `mfd.getSize()` — Returns `{ width = 64, height = 64 }`.
+- `mfd.clear([color])` — Clears external video buffer with specified ARGB/RGB color (default black).
+- `mfd.setPixel(x, y, color)` — Sets pixel color at (x, y) coordinates (0..63).
+- `mfd.getPixel(x, y)` — Returns pixel color integer at (x, y).
+- `mfd.drawLine(x0, y0, x1, y1, color)` — Draws a line.
+- `mfd.drawRect(x, y, w, h, color)` — Draws a rectangle outline.
+- `mfd.fillRect(x, y, w, h, color)` — Fills a rectangular area.
+- `mfd.drawCircle(cx, cy, radius, color, [filled])` — Draws or fills a circle.
+- `mfd.drawString(text, x, y, color)` — Renders 3x5 bitmap text onto the screen.
+- `mfd.drawPixels(x, y, w, h, table)` — Blits a rectangle of pixels from a table.
+- `mfd.drawFrame(table)` — Pushes a full 64x64 frame (flat array of 4096 colors or 64 arrays of 64 colors) and immediately refreshes screen.
+- `mfd.drawFrameHex(hexString)` — Pushes a full frame encoded as a hex string (`RRGGBB` or `AARRGGBB`) and refreshes screen.
+- `mfd.flush()` / `mfd.update()` — Commits any pending drawing operations to the client display.
+

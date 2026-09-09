@@ -321,6 +321,9 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
                     || be.tank2.getFluid().is(RocketTags.FluidTags.ROCKET_FUEL.tag);
             boolean hasOxidizer = be.tank1.getFluid().is(RocketTags.FluidTags.OXIDIZER.tag)
                     || be.tank2.getFluid().is(RocketTags.FluidTags.OXIDIZER.tag);
+            FluidStack fuel = be.tank1.getFluid().is(RocketTags.FluidTags.ROCKET_FUEL.tag)
+                    ? be.tank1.getFluid()
+                    : be.tank2.getFluid();
 
             int targetMax = (int) (200 * be.getThrustModifier());
             if (be.thrustLimit != null) {
@@ -336,7 +339,8 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
                 float baseConsumption = 200.0f;
                 float maxLimit = 200 * be.getThrustModifier();
                 float throttle = maxLimit > 0 ? (be.thrustLimit.getValue() / maxLimit) : 0f;
-                int consumption = (int) Math.ceil(baseConsumption * be.getEfficiencyModifier() * throttle);
+                float fuelEfficiency = RocketFuelProperties.forFuel(fuel).consumptionMultiplier();
+                int consumption = (int) Math.ceil(baseConsumption * be.getEfficiencyModifier() * fuelEfficiency * throttle);
                 if (consumption < 1)
                     consumption = 1;
 
@@ -447,10 +451,12 @@ public class ThrusterMountBlockEntity extends SmartBlockEntity
 
         if (isThrusting) {
             float totalThrust = thrustLimit != null ? (thrustLimit.getValue() * 0.05f) : (10.0f * getThrustModifier());
+            FluidStack fuel = tank1.getFluid().is(RocketTags.FluidTags.ROCKET_FUEL.tag) ? tank1.getFluid() : tank2.getFluid();
+            float consumptionMultiplier = getEfficiencyModifier() * RocketFuelProperties.forFuel(fuel).consumptionMultiplier();
             tooltip.add(Component.literal("  Thrust: ").append(Component.literal(String.format("%.1f kN", totalThrust))
                     .withStyle(net.minecraft.ChatFormatting.YELLOW)));
             tooltip.add(Component.literal("  Efficiency: ")
-                    .append(Component.literal(String.format("%.1f%%", 100.0f / getEfficiencyModifier()))
+                    .append(Component.literal(String.format("%.1f%%", 100.0f / consumptionMultiplier))
                             .withStyle(net.minecraft.ChatFormatting.AQUA)));
         }
 

@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "rocketnautics:block/energy_tank_top",
+    "bottom": "rocketnautics:block/energy_tank_top",
+    "side": "rocketnautics:block/energy_tank",
+    "particle": "rocketnautics:block/energy_tank"
+  }
+}

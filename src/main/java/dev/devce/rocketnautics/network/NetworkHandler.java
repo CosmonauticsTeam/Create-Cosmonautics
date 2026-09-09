@@ -24,6 +24,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class NetworkHandler {
@@ -108,6 +109,24 @@ public class NetworkHandler {
                 SputnikNodeSyncPayload.TYPE,
                 SputnikNodeSyncPayload.CODEC,
                 (payload, context) -> context.enqueueWork(() -> handleSputnikSync(context.player(), payload.pos(), payload.graphData()))
+        );
+
+        registrar.playToServer(
+                dev.devce.rocketnautics.content.sputnik.network.SputnikOpenRequestPayload.TYPE,
+                dev.devce.rocketnautics.content.sputnik.network.SputnikOpenRequestPayload.CODEC,
+                (payload, context) -> context.enqueueWork(() -> handleSputnikOpenRequest(context.player(), payload.pos()))
+        );
+
+        registrar.playToClient(
+                dev.devce.rocketnautics.content.sputnik.network.SputnikOpenClientPayload.TYPE,
+                dev.devce.rocketnautics.content.sputnik.network.SputnikOpenClientPayload.CODEC,
+                (payload, context) -> context.enqueueWork(() -> handleSputnikOpenClient(payload))
+        );
+
+        registrar.playToServer(
+                dev.devce.rocketnautics.content.sputnik.network.SputnikSaveGraphPayload.TYPE,
+                dev.devce.rocketnautics.content.sputnik.network.SputnikSaveGraphPayload.CODEC,
+                (payload, context) -> context.enqueueWork(() -> handleSputnikSaveGraph(context.player(), payload.pos(), payload.sputnikId(), payload.graphBytes()))
         );
 
         registrar.playToServer(
@@ -221,34 +240,63 @@ public class NetworkHandler {
     }
 
     private static void handleSputnikSync(net.minecraft.world.entity.player.Player player, net.minecraft.core.BlockPos pos, net.minecraft.nbt.CompoundTag graphData) {
-        net.minecraft.world.level.Level foundLevel = null;
+        net.minecraft.world.level.Level foundLevel = findSputnikLevel(player, pos);
+        if (foundLevel != null && foundLevel.getBlockEntity(pos) instanceof dev.devce.rocketnautics.content.blocks.SputnikBlockEntity sputnik) {
+            sputnik.setChanged();
+            foundLevel.sendBlockUpdated(pos, sputnik.getBlockState(), sputnik.getBlockState(), 3);
+        }
+    }
+
+    private static void handleSputnikOpenRequest(net.minecraft.world.entity.player.Player player, net.minecraft.core.BlockPos pos) {
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+        net.minecraft.world.level.Level foundLevel = findSputnikLevel(player, pos);
+        if (foundLevel != null && foundLevel.getBlockEntity(pos) instanceof dev.devce.rocketnautics.content.blocks.SputnikBlockEntity sputnik) {
+            int spId = sputnik.getSputnikId();
+            if (spId <= 0) {
+                spId = dev.devce.rocketnautics.content.sputnik.storage.SputnikStorageManager.allocateId(serverPlayer.getServer());
+                sputnik.setSputnikId(spId);
+                sputnik.setChanged();
+            }
+            dev.devce.rocketnautics.content.sputnik.model.SputnikGraph graph = sputnik.getGraph();
+            byte[] bytes = dev.devce.rocketnautics.content.sputnik.storage.SputnikStorageManager.serializeToGzip(graph);
+            PacketDistributor.sendToPlayer(serverPlayer, new dev.devce.rocketnautics.content.sputnik.network.SputnikOpenClientPayload(pos, spId, bytes));
+        }
+    }
+
+    @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
+    private static void handleSputnikOpenClient(dev.devce.rocketnautics.content.sputnik.network.SputnikOpenClientPayload payload) {
+        dev.devce.rocketnautics.content.sputnik.model.SputnikGraph graph =
+                dev.devce.rocketnautics.content.sputnik.storage.SputnikStorageManager.deserializeFromGzip(payload.graphBytes());
+        net.minecraft.client.Minecraft.getInstance().setScreen(
+                new dev.devce.rocketnautics.client.ui.imgui.SputnikImGuiScreen(payload.pos(), payload.sputnikId(), graph));
+    }
+
+    private static void handleSputnikSaveGraph(net.minecraft.world.entity.player.Player player, net.minecraft.core.BlockPos pos, int sputnikId, byte[] graphBytes) {
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+        dev.devce.rocketnautics.content.sputnik.model.SputnikGraph graph =
+                dev.devce.rocketnautics.content.sputnik.storage.SputnikStorageManager.deserializeFromGzip(graphBytes);
+        dev.devce.rocketnautics.content.sputnik.storage.SputnikStorageManager.saveGraph(serverPlayer.getServer(), sputnikId, graph);
+
+        net.minecraft.world.level.Level foundLevel = findSputnikLevel(player, pos);
+        if (foundLevel != null && foundLevel.getBlockEntity(pos) instanceof dev.devce.rocketnautics.content.blocks.SputnikBlockEntity sputnik) {
+            sputnik.setSputnikId(sputnikId);
+            sputnik.setGraph(graph);
+            sputnik.setChanged();
+        }
+    }
+
+    private static net.minecraft.world.level.Level findSputnikLevel(net.minecraft.world.entity.player.Player player, net.minecraft.core.BlockPos pos) {
         if (player.level().getBlockEntity(pos) instanceof dev.devce.rocketnautics.content.blocks.SputnikBlockEntity) {
-            foundLevel = player.level();
-        } else {
-            // Check all levels if not in current player level (e.g. ship in space)
+            return player.level();
+        }
+        if (player.getServer() != null) {
             for (net.minecraft.server.level.ServerLevel serverLevel : player.getServer().getAllLevels()) {
                 if (serverLevel.getBlockEntity(pos) instanceof dev.devce.rocketnautics.content.blocks.SputnikBlockEntity) {
-                    foundLevel = serverLevel;
-                    break;
+                    return serverLevel;
                 }
             }
         }
-
-        if (foundLevel != null && foundLevel.getBlockEntity(pos) instanceof dev.devce.rocketnautics.content.blocks.SputnikBlockEntity sputnik) {
-            sputnik.graph.load(graphData);
-            sputnik.graph.setContext(sputnik);
-
-            sputnik.setChanged();
-            foundLevel.sendBlockUpdated(pos, sputnik.getBlockState(), sputnik.getBlockState(), 3);
-/*
-            if (dev.devce.rocketnautics.RocketConfig.SERVER.enableEngineDebugLogging.get()) {
-                dev.devce.rocketnautics.RocketNautics.LOGGER.info("Sputnik at {} (level {}) SYNCED. Nodes: {}, Connections: {}, Engines Found: {}",
-                        pos, foundLevel.dimension().location(), sputnik.graph.getNodes().size(), sputnik.graph.getConnections().size(), sputnik.getEngineCount());
-            }
-            */
-        } else {
-            // dev.devce.rocketnautics.RocketNautics.LOGGER.warn("Failed to find Sputnik at {} for sync from player {}", pos, player.getName().getString());
-        }
+        return null;
     }
 
     @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
@@ -340,4 +388,5 @@ public class NetworkHandler {
             PacketDistributor.sendToPlayersNear(serverLevel, null, pos.getX(), pos.getY(), pos.getZ(), 64.0, payload);
         }
     }
+
 }

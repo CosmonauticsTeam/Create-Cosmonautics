@@ -1,0 +1,4 @@
+{
+  "parent": "rocketnautics:block/sputnik",
+  "render_type": "minecraft:cutout_mipped"
+}

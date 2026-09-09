@@ -9,5 +9,8 @@ The pages below detail how to customize the universe components currently suppor
 - [Cube Planets](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Cube-Planets)
 - [Texture Definition](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Texture-Definition)
 
+## External APIs & Telemetry
+- [Telemetry & Ephemeris HTTP API](Telemetry-API.md) — Built-in HTTP REST API streaming real-time planetary ephemerides, celestial mechanics, orbits, and spacecraft telemetry as JSON.
+
 ## Peripherals and Programming
 - [Peripherals](Peripherals.md) — Sputnik block telemetry, ComputerCraft integration, and local Lua script API.

@@ -39,12 +39,30 @@ public class GyrodyneMethods implements GenericPeripheral {
                 return;
             }
         }
-        throw new LuaException("Invalid gyrodyne mode: " + modeName + ". Valid modes: off, sas, prograde, retrograde");
+        throw new LuaException("Invalid gyrodyne mode: " + modeName + ". Valid modes: " + String.join(", ", getAvailableModes(gyrodyne)));
     }
 
     @LuaFunction(mainThread = true)
     public final boolean isActive(GyrodyneBlockEntity gyrodyne) {
         return gyrodyne.isActive();
+    }
+
+    @LuaFunction(mainThread = true)
+    public final int getId(GyrodyneBlockEntity gyrodyne) {
+        return gyrodyne.getPeripheralId();
+    }
+
+    @LuaFunction(mainThread = true)
+    public final java.util.Map<String, Float> getGimbalTilt(GyrodyneBlockEntity gyrodyne) {
+        java.util.Map<String, Float> map = new java.util.HashMap<>();
+        map.put("x", gyrodyne.getGimbalTiltX(1.0f));
+        map.put("z", gyrodyne.getGimbalTiltZ(1.0f));
+        return map;
+    }
+
+    @LuaFunction(mainThread = true)
+    public final float getRotorSpeed(GyrodyneBlockEntity gyrodyne) {
+        return gyrodyne.getRotorSpeed();
     }
 
     @LuaFunction(mainThread = true)
