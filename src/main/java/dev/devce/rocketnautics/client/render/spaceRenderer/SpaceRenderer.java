@@ -1,5 +1,6 @@
 package dev.devce.rocketnautics.client.render.spaceRenderer;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
@@ -19,6 +20,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.orekit.time.AbsoluteDate;
+
+import java.util.Objects;
 
 @EventBusSubscriber(modid = RocketNautics.MODID, value = Dist.CLIENT)
 public final class SpaceRenderer {
@@ -44,15 +47,28 @@ public final class SpaceRenderer {
         boolean isModern = dev.devce.rocketnautics.RocketConfig.CLIENT.skyRenderingSystem.get() == dev.devce.rocketnautics.RocketConfig.SkyRenderingSystem.MODERN;
         if (!isModern) return;
 
+        if (e.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+            LensFlareRenderer.renderQueue(e.getCamera());
+            return;
+        }
+
         if (e.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) return;
-        if (UniverseHelper.receivedPositionTick == -1 || UniverseHelper.UNIVERSE == null) return;
+        if (/*UniverseHelper.receivedPositionTick == -1 ||*/ UniverseHelper.UNIVERSE == null) return;
 
         Minecraft mc = Minecraft.getInstance();
 
         if (mc.level == null) return;
         ResourceKey<Level> dimension = mc.level.dimension();
 
-        if (dimension == RocketDimensions.DEEP_SPACE || RocketConfig.CLIENT.enableCustomSky.get()) {
+        CubePlanet planet = UniverseHelper.UNIVERSE.getPlanets().stream()
+                .filter(p -> {
+                    if (p.linkedDimension() == null) return false;
+                    return p.linkedDimension().key() == dimension;
+                })
+                .findFirst()
+                .orElse(null);
+
+        if (dimension == RocketDimensions.DEEP_SPACE || Objects.requireNonNull(planet.linkedDimension()).renderUniverseInDimension() || RocketConfig.CLIENT.enableCustomSky.get()) {
             if (config.areShadersEnabled()) {
                 queuedShaderState = false;
                 shadersSuppressed = true;
@@ -81,23 +97,14 @@ public final class SpaceRenderer {
                 IBRenderer.render(ps, pos);
                 ps.popPose();
             } else {
-                // temporary block until universe data sync is fixed on planet surfaces
-                if (true) return;
-
-                CubePlanet planet = UniverseHelper.UNIVERSE.getPlanets().stream()
-                        .filter(p -> {
-                            if (p.linkedDimension() == null) return false;
-                            return p.linkedDimension().key() == dimension;
-                        })
-                        .findFirst()
-                        .orElse(null);
-
                 UniverseRenderer.render(planet, ps,
                         e.getPartialTick().getGameTimeDeltaTicks(), partial,
                         UniverseHelper.receivedPosition.getPosition(date),
                         UniverseHelper.receivedPosition.getFrame(),
                         date, e.getCamera());
             }
+
+            RenderSystem.clearDepth(0.0);
 
             ps.popPose();
         } else {

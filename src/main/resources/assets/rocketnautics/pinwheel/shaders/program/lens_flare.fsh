@@ -4,7 +4,8 @@
 #include veil:space_helper
 
 uniform sampler2D sDiffuse;
-uniform sampler2D sDiffuseDepth;
+uniform sampler2D sDiffuseDepthSkybox;
+uniform sampler2D sDiffuseDepthDefault;
 
 uniform vec2 uResolution;
 uniform float uThreshold;
@@ -177,7 +178,7 @@ vec3 halo(vec2 uv, float rMin, float width, float intensity) {
 void main() {
     vec4 col = texture(sDiffuse, texCoord);
 
-    float depth = texture(sDiffuseDepth, lightScreenPos).r;
+    float depth = min(texture(sDiffuseDepthSkybox, lightScreenPos).r, texture(sDiffuseDepthDefault, lightScreenPos).r);
     if (depth < 1.0) return;
 
     vec3 ghosts = lensGhosts(texCoord);

@@ -27,6 +27,7 @@ import org.joml.Vector3f;
 import java.util.HashMap;
 import java.util.Map;
 
+import static dev.devce.rocketnautics.content.RocketDimensions.DEEP_SPACE;
 import static net.minecraft.util.Mth.approach;
 
 @EventBusSubscriber(modid = RocketNautics.MODID, value = Dist.CLIENT)
@@ -218,7 +219,7 @@ public class FreeMotionHandler {
         if (p.onClimbable()) return false;
 
         if (!(e instanceof FreeMotionEntity fme)) return false;
-        if (!fme.is6DOFEnabled()) return false;
+        if (!fme.is6DOFEnabled() && e.level().dimension() != DEEP_SPACE) return false;
 
         Level l = p.level();
         if (!l.getFluidState(p.blockPosition()).isEmpty()) {

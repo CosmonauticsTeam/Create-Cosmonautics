@@ -14,6 +14,7 @@ import org.orekit.time.AbsoluteDate;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 public class UniverseRenderer {
     public static void render(@Nullable CubePlanet exclude,
@@ -62,27 +63,30 @@ public class UniverseRenderer {
 
         boolean isDeepSpace = DeepSpaceHelper.isDeepSpace(mc.level);
 
-        for (Planet pl : planets) {
-            if (exclude != null && pl.planet.id() == exclude.id()) continue;
-            if (!isDeepSpace && !RocketConfig.CLIENT.enableCustomSky.get()) continue;
+        // TODO: fix planet position and remove temporary check
+        if (isDeepSpace) {
+            for (Planet pl : planets) {
+                if (exclude != null) {
+                    if (pl.planet.id() == exclude.id()) continue;
+                    if (!isDeepSpace && !RocketConfig.CLIENT.enableCustomSky.get() && !Objects.requireNonNull(exclude.linkedDimension()).renderUniverseInDimension()) continue;
+                }
 
-            Vector3f p = new Vector3f((float)pl.pos.getX(), (float)pl.pos.getY(), (float)pl.pos.getZ());
-            Vector3f toTarget = camera.getPosition().toVector3f().sub(p).normalize();
-            Vector3f forward = new Vector3f(0, 0, -1)
-                    .rotate(camera.rotation())
-                    .normalize();
+                Vector3f p = new Vector3f((float)pl.pos.getX(), (float)pl.pos.getY(), (float)pl.pos.getZ());
+                Vector3f toTarget = camera.getPosition().toVector3f().sub(p).normalize();
+                Vector3f forward = new Vector3f(0, 0, -1)
+                        .rotate(camera.rotation())
+                        .normalize();
 
-            float alignment = Math.clamp((forward.dot(toTarget) + 1.0f) * 0.5f, 0.0f, 1.0f);
-            float fov = mc.options.fov().get() / 180.0f;
+                float alignment = Math.clamp((forward.dot(toTarget) + 1.0f) * 0.5f, 0.0f, 1.0f);
+                float fov = mc.options.fov().get() / 180.0f;
 
-            if (alignment < 1 - fov && pl.distSq > 5*10e13f) continue;
+                if (alignment < 1 - fov && pl.distSq > 5*10e13f) continue;
 
-            ps.pushPose();
-            PlanetRenderer.render(pl.planet, ps, camera, pl.pos, date, frame, angle, pTick);
-            ps.popPose();
+                ps.pushPose();
+                PlanetRenderer.render(pl.planet, ps, camera, pl.pos, date, frame, angle, pTick);
+                ps.popPose();
+            }
         }
-
-        LensFlareRenderer.renderQueue(camera);
 
         ps.popPose();
     }

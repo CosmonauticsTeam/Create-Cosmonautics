@@ -24,6 +24,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.*;
 import org.orekit.frames.Frame;
@@ -38,6 +39,8 @@ import static dev.devce.rocketnautics.client.render.spaceRenderer.UniverseRender
 public class PlanetRenderer {
     public static void render(CubePlanet planet, PoseStack ps, Camera camera, Vector3D pos, AbsoluteDate date, Frame frame, float celestialAngle, float pTick) {
         assert UniverseHelper.UNIVERSE != null;
+
+        RenderTarget renderTarget = Minecraft.getInstance().getMainRenderTarget();
 
         if (planetTextures.get(planet.id()) == null) {
             ResourceLocation bakedTex = loadBakedPlanetTexture(planet.frame().getName(), planet.id());
@@ -124,10 +127,38 @@ public class PlanetRenderer {
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(true);
 
+        ResourceLocation planetFboId = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "planet_fbo");
+        AdvancedFbo planetFBO = VeilRenderSystem.renderer().getFramebufferManager().getFramebuffer(planetFboId);
+        planetFBO.bind(true);
+
         drawVBO(VBO, scaledMatrix, activeShader, false);
+
+        renderTarget.bindWrite(true);
+        RenderSystem.viewport(0, 0, renderTarget.width, renderTarget.height);
 
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+
+        ResourceLocation compositeId = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "composite");
+        ShaderProgram composite = VeilRenderSystem.setShader(compositeId);
+        if (composite != null && composite.isValid()) {
+            composite.bind();
+
+            RenderSystem.activeTexture(GL13.GL_TEXTURE0);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, planetFBO.getColorTextureAttachment(0).getId());
+            composite.getUniformSafe("sComposite").setInt(0);
+
+            composite.getUniformSafe("uResolution").setVector(new Vector2f(renderTarget.width, renderTarget.height));
+
+            GL30.glBindVertexArray(FULLSCREEN_VAO);
+            GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+            GL30.glBindVertexArray(0);
+
+            ShaderProgram.unbind();
+        }
+
+        RenderSystem.defaultBlendFunc();
 
         if (planet.extras().clouds()) {
             ResourceLocation cloudTexture = SkyHandler.getCloudTextureId();
@@ -213,8 +244,6 @@ public class PlanetRenderer {
                 }
             }
 
-            RenderTarget target = Minecraft.getInstance().getMainRenderTarget();
-
             ResourceLocation shaderId = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "atmosphere");
             ResourceLocation fboId = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "atmosphere_fbo");
 
@@ -230,11 +259,11 @@ public class PlanetRenderer {
                     shader.bind();
 
                     RenderSystem.activeTexture(GL13.GL_TEXTURE0);
-                    GL11.glBindTexture(GL11.GL_TEXTURE_2D, target.getColorTextureId());
+                    GL11.glBindTexture(GL11.GL_TEXTURE_2D, renderTarget.getColorTextureId());
                     shader.getUniformSafe("sDiffuse").setInt(0);
 
                     RenderSystem.activeTexture(GL13.GL_TEXTURE1);
-                    GL11.glBindTexture(GL11.GL_TEXTURE_2D, target.getDepthTextureId());
+                    GL11.glBindTexture(GL11.GL_TEXTURE_2D, renderTarget.getDepthTextureId());
                     shader.getUniformSafe("sDiffuseDepth").setInt(1);
 
                     RenderSystem.activeTexture(GL13.GL_TEXTURE2);
@@ -284,18 +313,18 @@ public class PlanetRenderer {
                     ShaderProgram.unbind();
 
                     GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, atmosphereFBO.getId());
-                    GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, target.frameBufferId);
+                    GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, renderTarget.frameBufferId);
 
                     GL30.glBlitFramebuffer(
                             0, 0,
                             atmosphereFBO.getWidth(), atmosphereFBO.getHeight(),
                             0, 0,
-                            target.width, target.height,
+                            renderTarget.width, renderTarget.height,
                             GL11.GL_COLOR_BUFFER_BIT,
                             GL11.GL_NEAREST
                     );
 
-                    GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, target.frameBufferId);
+                    GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, renderTarget.frameBufferId);
                 }
             }
         }
