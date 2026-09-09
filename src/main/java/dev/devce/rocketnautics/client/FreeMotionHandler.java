@@ -1,6 +1,5 @@
 package dev.devce.rocketnautics.client;
 
-import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.RocketNauticsClient;
 import dev.devce.rocketnautics.api.FreeMotionEntity;
@@ -219,7 +218,10 @@ public class FreeMotionHandler {
         if (p.onClimbable()) return false;
 
         if (!(e instanceof FreeMotionEntity fme)) return false;
-        if (!fme.is6DOFEnabled() && e.level().dimension() != DEEP_SPACE) return false;
+        if (!fme.is6DOFEnabled()) {
+            if (e.level().dimension() != DEEP_SPACE) return false;
+            if (p.getAbilities().flying) return false;
+        }
 
         Level l = p.level();
         if (!l.getFluidState(p.blockPosition()).isEmpty()) {
@@ -237,8 +239,6 @@ public class FreeMotionHandler {
         Vector3f environmentalForceMultiplier;
 
         // drag
-
-        int speedLimit = RocketConfig.SERVER.entitySpeedLimit.get();
 
         float pressure;
 
