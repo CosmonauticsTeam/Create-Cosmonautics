@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
+import dev.devce.rocketnautics.content.orbit.universe.PlanetDimensionData;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
@@ -14,7 +15,6 @@ import org.orekit.time.AbsoluteDate;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 
 public class UniverseRenderer {
     public static void render(@Nullable CubePlanet exclude,
@@ -63,29 +63,27 @@ public class UniverseRenderer {
 
         boolean isDeepSpace = DeepSpaceHelper.isDeepSpace(mc.level);
 
-        // TODO: fix planet position and remove temporary check
-        if (isDeepSpace) {
-            for (Planet pl : planets) {
-                if (exclude != null) {
-                    if (pl.planet.id() == exclude.id()) continue;
-                    if (!isDeepSpace && !RocketConfig.CLIENT.enableCustomSky.get() && !Objects.requireNonNull(exclude.linkedDimension()).renderUniverseInDimension()) continue;
-                }
-
-                Vector3f p = new Vector3f((float)pl.pos.getX(), (float)pl.pos.getY(), (float)pl.pos.getZ());
-                Vector3f toTarget = camera.getPosition().toVector3f().sub(p).normalize();
-                Vector3f forward = new Vector3f(0, 0, -1)
-                        .rotate(camera.rotation())
-                        .normalize();
-
-                float alignment = Math.clamp((forward.dot(toTarget) + 1.0f) * 0.5f, 0.0f, 1.0f);
-                float fov = mc.options.fov().get() / 180.0f;
-
-                if (alignment < 1 - fov && pl.distSq > 5*10e13f) continue;
-
-                ps.pushPose();
-                PlanetRenderer.render(pl.planet, ps, camera, pl.pos, date, frame, angle, pTick);
-                ps.popPose();
+        for (Planet pl : planets) {
+            if (exclude != null) {
+                if (pl.planet.id() == exclude.id()) continue;
+                PlanetDimensionData linkedDimension = exclude.linkedDimension();
+                if (!isDeepSpace && !RocketConfig.CLIENT.enableCustomSky.get() && linkedDimension != null && linkedDimension.renderUniverseInDimension()) continue;
             }
+
+            Vector3f p = new Vector3f((float)pl.pos.getX(), (float)pl.pos.getY(), (float)pl.pos.getZ());
+            Vector3f toTarget = camera.getPosition().toVector3f().sub(p).normalize();
+            Vector3f forward = new Vector3f(0, 0, -1)
+                    .rotate(camera.rotation())
+                    .normalize();
+
+            float alignment = Math.clamp((forward.dot(toTarget) + 1.0f) * 0.5f, 0.0f, 1.0f);
+            float fov = mc.options.fov().get() / 180.0f;
+
+            if (alignment < 1 - fov && pl.distSq > 5*10e13f) continue;
+
+            ps.pushPose();
+            PlanetRenderer.render(pl.planet, ps, camera, pl.pos, date, frame, angle, pTick);
+            ps.popPose();
         }
 
         ps.popPose();

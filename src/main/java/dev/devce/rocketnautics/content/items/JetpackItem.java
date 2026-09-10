@@ -13,7 +13,6 @@ import dev.devce.rocketnautics.registry.RocketDataComponents;
 import dev.devce.rocketnautics.registry.RocketItems;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3d;
-import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
@@ -42,7 +41,6 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -175,10 +173,7 @@ public class JetpackItem extends BaseArmorItem implements IBacktank {
                 fme.set6DOFEnabled(is6DOFenabled);
             } else if (!nowActive && player.level().dimension() == DEEP_SPACE) {
                 SubLevelContainer c = SubLevelContainer.getContainer(player.level());
-                List<SubLevel> subLevels = new ArrayList<>();
-                c.queryIntersecting(new BoundingBox3d(player.getBoundingBox().inflate(1.5))).iterator().forEachRemaining(subLevels::add);
-
-                is6DOFenabled = subLevels.isEmpty();
+                if (c != null) is6DOFenabled = c.queryIntersecting(new BoundingBox3d(player.getBoundingBox().inflate(1.5))).iterator().hasNext();
 
                 fme.setAmbulant(nowActive);
                 fme.set6DOFEnabled(is6DOFenabled);

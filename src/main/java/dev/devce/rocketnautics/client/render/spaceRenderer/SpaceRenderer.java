@@ -21,8 +21,6 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.orekit.time.AbsoluteDate;
 
-import java.util.Objects;
-
 @EventBusSubscriber(modid = RocketNautics.MODID, value = Dist.CLIENT)
 public final class SpaceRenderer {
 
@@ -60,15 +58,16 @@ public final class SpaceRenderer {
         if (mc.level == null) return;
         ResourceKey<Level> dimension = mc.level.dimension();
 
-        CubePlanet planet = UniverseHelper.UNIVERSE.getPlanets().stream()
-                .filter(p -> {
-                    if (p.linkedDimension() == null) return false;
-                    return p.linkedDimension().key() == dimension;
-                })
-                .findFirst()
-                .orElse(null);
+        CubePlanet planet = UniverseHelper.UNIVERSE.getPlanetByDimension(dimension);
 
-        if (dimension == RocketDimensions.DEEP_SPACE || (Objects.requireNonNull(planet.linkedDimension()).renderUniverseInDimension() && planet.linkedDimension().key() != Level.OVERWORLD) || RocketConfig.CLIENT.enableCustomSky.get()) {
+        boolean renderUniverseInDimension = false;
+        if (planet != null) {
+            if (planet.linkedDimension() != null) {
+                renderUniverseInDimension = planet.linkedDimension().renderUniverseInDimension();
+            }
+        }
+
+        if (dimension == RocketDimensions.DEEP_SPACE || (renderUniverseInDimension && planet.linkedDimension().key() != Level.OVERWORLD) || RocketConfig.CLIENT.enableCustomSky.get()) {
             if (config.areShadersEnabled()) {
                 queuedShaderState = false;
                 shadersSuppressed = true;
