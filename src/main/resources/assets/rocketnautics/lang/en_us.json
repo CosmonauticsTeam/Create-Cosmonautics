@@ -304,6 +304,7 @@
   "chat.rocketnautics.world_border_warning.text2": "Limit to recommended values?",
   "chat.rocketnautics.world_border_warning.yes": "[ Yes ]",
   "chat.rocketnautics.world_border_warning.no": "[ No ]",
+  "chat.rocketnautics.world_border_warning.success": "World border size successfully reduced.",
   "rocketnautics.tooltip.creative_thruster.extra": "Requires a Redstone signal. Active thrust depends on signal strength.",
   "block.rocketnautics.copper_wire": "Copper Wire",
   "block.rocketnautics.copper_wire.funny": "The copper nervous system of your spacecraft. Transmits electrical power without arguing with physics.",

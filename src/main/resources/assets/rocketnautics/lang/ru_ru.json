@@ -210,6 +210,7 @@
   "chat.rocketnautics.world_border_warning.text2": "Ограничить до рекомендуемых значений?",
   "chat.rocketnautics.world_border_warning.yes": "[ Да ]",
   "chat.rocketnautics.world_border_warning.no": "[ Нет ]",
+  "chat.rocketnautics.world_border_warning.success": "Размер мира успешно.",
   "rocketnautics.tooltip.creative_thruster.extra": "Требует редстоун-сигнала. Сила тяги зависит от силы сигнала.",
   "block.rocketnautics.copper_wire": "Медный провод",
   "block.rocketnautics.copper_wire.funny": "Медный нерв вашего корабля. Передает энергию без лишних споров с физикой.",
