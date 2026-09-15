@@ -4,8 +4,9 @@ import com.simibubi.create.content.redstone.displayLink.DisplayLinkContext;
 import com.simibubi.create.content.redstone.displayLink.source.SingleLineDisplaySource;
 import com.simibubi.create.content.redstone.displayLink.target.DisplayTargetStats;
 import com.simibubi.create.foundation.gui.ModularGuiLineBuilder;
-import dev.devce.websnodelib.api.WNode;
-import dev.devce.websnodelib.api.NodeRegistry;
+import dev.devce.rocketnautics.content.sputnik.model.SputnikNode;
+import dev.devce.rocketnautics.content.sputnik.node.INodeHandler;
+import dev.devce.rocketnautics.content.sputnik.node.SputnikNodeRegistry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.neoforged.api.distmarker.Dist;
@@ -15,10 +16,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * Connects Sputnik block entities to Create Mod display boards.
- * Supports displaying values from both standard Display graph nodes and the Lua display bridge.
- */
 public class SputnikDisplaySource extends SingleLineDisplaySource {
 
     @Override
@@ -26,9 +23,9 @@ public class SputnikDisplaySource extends SingleLineDisplaySource {
         if (!(context.getSourceBlockEntity() instanceof SputnikBlockEntity sputnik))
             return EMPTY_LINE;
 
-        List<WNode> displayNodes = sputnik.graph.getNodes().stream()
+        List<SputnikNode> displayNodes = sputnik.getGraph().getNodes().stream()
                 .filter(SputnikDisplaySource::isDisplayNode)
-                .sorted(Comparator.comparing(WNode::getTitle))
+                .sorted(Comparator.comparing(SputnikNode::getTitle))
                 .toList();
 
         List<String> bridgeKeys = sputnik.getDisplayBridge().keySet().stream()
@@ -39,21 +36,9 @@ public class SputnikDisplaySource extends SingleLineDisplaySource {
         if (index < 0) return EMPTY_LINE;
 
         if (index < displayNodes.size()) {
-            WNode targetNode = displayNodes.get(index);
-            if (targetNode.getInputs().isEmpty())
-                return EMPTY_LINE;
-
-            if (targetNode.getInputs().size() == 1) {
-                return Component.literal(targetNode.getInputs().get(0).getValueAsString());
-            } else {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < targetNode.getInputs().size(); i++) {
-                    if (i > 0) sb.append(" ");
-                    sb.append(targetNode.getInputs().get(i).getName()).append(": ")
-                      .append(targetNode.getInputs().get(i).getValueAsString());
-                }
-                return Component.literal(sb.toString());
-            }
+            SputnikNode targetNode = displayNodes.get(index);
+            String val = targetNode.getCustomString();
+            return Component.literal(val != null ? val : "");
         } else {
             int bridgeIndex = index - displayNodes.size();
             if (bridgeIndex >= 0 && bridgeIndex < bridgeKeys.size()) {
@@ -84,12 +69,12 @@ public class SputnikDisplaySource extends SingleLineDisplaySource {
         if (!(context.getSourceBlockEntity() instanceof SputnikBlockEntity sputnik)) return;
 
         List<Component> options = new ArrayList<>();
-        List<WNode> displayNodes = sputnik.graph.getNodes().stream()
+        List<SputnikNode> displayNodes = sputnik.getGraph().getNodes().stream()
                 .filter(SputnikDisplaySource::isDisplayNode)
-                .sorted(Comparator.comparing(WNode::getTitle))
+                .sorted(Comparator.comparing(SputnikNode::getTitle))
                 .toList();
 
-        for (WNode n : displayNodes) {
+        for (SputnikNode n : displayNodes) {
             options.add(Component.literal("Node: " + n.getTitle()));
         }
 
@@ -98,7 +83,7 @@ public class SputnikDisplaySource extends SingleLineDisplaySource {
                 .toList();
 
         for (String k : bridgeKeys) {
-            options.add(Component.literal("Lua: " + k));
+            options.add(Component.literal("Bridge: " + k));
         }
 
         if (options.isEmpty()) {
@@ -111,8 +96,8 @@ public class SputnikDisplaySource extends SingleLineDisplaySource {
                 "NodeIndex");
     }
 
-    private static boolean isDisplayNode(WNode node) {
-        return "Display".equals(NodeRegistry.getCategory(node.getTypeId()))
-                || "string_display".equals(node.getTypeId().getPath());
+    private static boolean isDisplayNode(SputnikNode node) {
+        INodeHandler handler = SputnikNodeRegistry.get(node.getTypeId());
+        return handler != null && "Display".equals(handler.getCategory());
     }
 }

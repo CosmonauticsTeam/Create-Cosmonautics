@@ -13,7 +13,6 @@ import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.devce.rocketnautics.data.RocketDatagen;
 import dev.devce.rocketnautics.network.NetworkHandler;
 import dev.devce.rocketnautics.registry.*;
-import dev.devce.websnodelib.internal.InternalNodes;
 import dev.simulated_team.simulated.util.SimColors;
 import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.resources.ResourceKey;
@@ -81,11 +80,6 @@ public class RocketNautics {
         RocketBlockEntities.register(modEventBus);
         RocketParticles.register(modEventBus);
         RocketSounds.register(modEventBus);
-        InternalNodes.register();
-        dev.devce.rocketnautics.registry.RocketNodes.register();
-        // Load data-driven nodes from jar resources + gamedir/nodes/ folder
-        dev.devce.rocketnautics.registry.NodeDefinitionLoader.load();
-
         RocketDataComponents.register(modEventBus);
 
         // Register mod-bus event subscribers manually to avoid deprecated bus() parameter

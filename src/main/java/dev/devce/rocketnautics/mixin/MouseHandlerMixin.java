@@ -28,6 +28,16 @@ abstract class MouseHandlerMixin {
 
     @Inject(method = "turnPlayer", at = @At("HEAD"), cancellable = true)
     private void rocketnautics$freeLook(CallbackInfo ci) {
+        if (dev.devce.rocketnautics.client.ui.imgui.ImGuiManager.hasInstance()) {
+            dev.devce.rocketnautics.client.ui.imgui.ImGuiManager imgui = dev.devce.rocketnautics.client.ui.imgui.ImGuiManager.getInstance();
+            if (imgui.isOpen()) {
+                this.accumulatedDX = 0;
+                this.accumulatedDY = 0;
+                ci.cancel();
+                return;
+            }
+        }
+
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
 

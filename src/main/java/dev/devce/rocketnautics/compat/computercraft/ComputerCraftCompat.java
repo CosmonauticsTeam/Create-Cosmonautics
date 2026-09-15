@@ -18,5 +18,15 @@ public class ComputerCraftCompat {
                 RocketBlockEntities.SPUTNIK.get(),
                 (be, side) -> new SputnikPeripheral(be)
         );
+        event.registerBlockEntity(
+                PeripheralCapability.get(),
+                RocketBlockEntities.GYRODYNE.get(),
+                (be, side) -> new GyrodynePeripheral(be)
+        );
+        event.registerBlockEntity(
+                PeripheralCapability.get(),
+                RocketBlockEntities.MFD.get(),
+                (be, side) -> new MFDPeripheral(be)
+        );
     }
 }

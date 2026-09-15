@@ -60,18 +60,14 @@ void main() {
     } 
     // 2. Calculate Outer Plume Shell (Gradients from Base Color to shifted Tail)
     else if (steppedV < outerBoundary) {
-        // Relative position inside the outer shell region
         float shellFactor = (steppedV - coreBoundary) / (outerBoundary - coreBoundary);
         
         vec3 fieryBase = baseColor;
-        
-        // Purple shift at the tail
-        vec3 violetTip = mix(baseColor * 0.5, vec3(0.4, 0.1, 0.8), 0.4);
+        vec3 violetTip = mix(baseColor * 0.7, vec3(0.95, 0.22, 0.65), 0.65);
         
         vec3 outerColor = mix(fieryBase, violetTip, shellFactor);
         
-        // Soft edge fadeout at the tail of the plume (with stepped gradient)
-        float alpha = (1.0 - floor(shellFactor * 8.0) / 8.0) * 0.75;
+        float alpha = (1.0 - floor(shellFactor * 8.0) / 8.0) * 0.85;
         
         finalColor = vec4(outerColor, alpha);
     } 

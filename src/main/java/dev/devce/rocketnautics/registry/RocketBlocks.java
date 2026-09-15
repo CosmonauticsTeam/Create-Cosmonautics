@@ -16,6 +16,7 @@ import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.RocketSpriteShifts;
 import dev.devce.rocketnautics.content.RocketBlockItem;
 import dev.devce.rocketnautics.content.blocks.*;
+import dev.devce.rocketnautics.content.blocks.drain_valve.DrainValveBlock;
 import dev.devce.rocketnautics.content.blocks.hose.HoseAnchorBlock;
 import dev.devce.rocketnautics.content.blocks.separator.SeparatorBlock;
 import dev.devce.rocketnautics.content.blocks.separator.SeparatorChargeBlock;
@@ -140,6 +141,15 @@ public class RocketBlocks {
             .properties(BlockBehaviour.Properties::noOcclusion)
             .transform(pickaxeOnly())
             .transform(existingDirectionalModel("hose_anchor"))
+            .item(RocketBlockItem::new)
+            .transform(RocketItems.noGeneratedModel())
+            .build().register();
+
+    public static final BlockEntry<DrainValveBlock> DRAIN_VALVE = REGISTRATE.block("drain_valve", DrainValveBlock::new)
+            .initialProperties(() -> Blocks.COPPER_BLOCK)
+            .properties(BlockBehaviour.Properties::noOcclusion)
+            .transform(pickaxeOnly())
+            .transform(existingDirectionalModel("drain_valve"))
             .item(RocketBlockItem::new)
             .transform(RocketItems.noGeneratedModel())
             .build().register();
@@ -310,9 +320,10 @@ public class RocketBlocks {
             .initialProperties(() -> Blocks.IRON_BLOCK)
             .properties(BlockBehaviour.Properties::noOcclusion)
             .transform(pickaxeOnly())
-            .transform(existingSimpleModel("sputnik"))
+            .blockstate((ctx, prov) -> {})
             .tag(RocketTags.BlockTags.SUPER_HEAVY.tag)
             .item(RocketBlockItem::new)
+            .transform(RocketItems.noGeneratedModel())
             .recipe((ctx, prov) -> ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
                     .pattern("L L")
                     .pattern("IBI")
@@ -322,6 +333,17 @@ public class RocketBlocks {
                     .define('B', Items.IRON_BLOCK)
                     .unlockedBy("has_iron_block", prov.has(Items.IRON_BLOCK))
                     .save(prov))
+            .build()
+            .register();
+
+    public static final BlockEntry<dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlock> SPUTNIK_LINK = REGISTRATE.block("sputnik_link", dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlock::new)
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .properties(BlockBehaviour.Properties::noOcclusion)
+            .transform(pickaxeOnly())
+            .blockstate((ctx, prov) -> {})
+            .tag(RocketTags.BlockTags.LIGHT.tag)
+            .item(RocketBlockItem::new)
+            .transform(RocketItems.noGeneratedModel())
             .build()
             .register();
 
@@ -353,6 +375,7 @@ public class RocketBlocks {
             .item(RocketBlockItem::new)
             .build()
             .register();
+
 
     public static final BlockEntry<dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlock> GYRODYNE = REGISTRATE.block("gyrodyne", dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlock::new)
             .initialProperties(() -> Blocks.IRON_BLOCK)

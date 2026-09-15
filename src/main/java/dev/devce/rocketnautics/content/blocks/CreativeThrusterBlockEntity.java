@@ -22,6 +22,9 @@ public class CreativeThrusterBlockEntity extends AbstractThrusterBlockEntity {
 
     public boolean currentlyBurning = false;
     public float fuelThrottle = 0.0f;
+    private boolean computerControl = false;
+    private boolean computerActive = false;
+    private float computerThrottle = 0.0f;
 
     @Override
     public ScrollValueBehaviour getThrustPower() {
@@ -90,9 +93,14 @@ public class CreativeThrusterBlockEntity extends AbstractThrusterBlockEntity {
         boolean wasBurning = this.currentlyBurning;
         float oldThrottle = this.fuelThrottle;
 
-        int signal = level.getBestNeighborSignal(worldPosition);
-        this.fuelThrottle = signal / 15.0f;
-        this.currentlyBurning = signal > 0;
+        if (computerControl) {
+            this.currentlyBurning = computerActive;
+            this.fuelThrottle = computerThrottle;
+        } else {
+            int signal = level.getBestNeighborSignal(worldPosition);
+            this.fuelThrottle = signal / 15.0f;
+            this.currentlyBurning = signal > 0;
+        }
 
         if (wasBurning != currentlyBurning || Math.abs(oldThrottle - fuelThrottle) > 0.01f) {
             sendData();
@@ -129,6 +137,9 @@ public class CreativeThrusterBlockEntity extends AbstractThrusterBlockEntity {
         super.write(tag, registries, clientPacket);
         tag.putBoolean("Burning", currentlyBurning);
         tag.putFloat("FuelThrottle", fuelThrottle);
+        tag.putBoolean("ComputerControl", computerControl);
+        tag.putBoolean("ComputerActive", computerActive);
+        tag.putFloat("ComputerThrottle", computerThrottle);
     }
 
     @Override
@@ -136,6 +147,9 @@ public class CreativeThrusterBlockEntity extends AbstractThrusterBlockEntity {
         super.read(tag, registries, clientPacket);
         currentlyBurning = tag.getBoolean("Burning");
         fuelThrottle = tag.getFloat("FuelThrottle");
+        computerControl = tag.getBoolean("ComputerControl");
+        computerActive = tag.getBoolean("ComputerActive");
+        computerThrottle = tag.getFloat("ComputerThrottle");
     }
 
     public Direction getThrustDirection() {
@@ -176,24 +190,50 @@ public class CreativeThrusterBlockEntity extends AbstractThrusterBlockEntity {
 
     @Override
     public void setActive(boolean active) {
-        this.currentlyBurning = active;
+        this.computerControl = true;
+        this.computerActive = active;
         notifyUpdate();
     }
 
     @Override
     public void setThrottle(float throttle) {
-        this.fuelThrottle = Math.max(0.0f, Math.min(1.0f, throttle));
-        setChanged();
-        sendData();
+        this.computerControl = true;
+        this.computerThrottle = Math.max(0.0f, Math.min(1.0f, throttle));
+        notifyUpdate();
+    }
+
+    @Override
+    public double readValue(String key) {
+        if ("active".equals(key) || "ignition".equals(key)) return isActive() ? 1.0 : 0.0;
+        if ("thrust".equals(key)) return getCurrentPower() * 50.0;
+        if ("throttle".equals(key)) return fuelThrottle;
+        return 0;
+    }
+
+    @Override
+    public void writeValue(String key, double value) {
+        if ("ignition".equals(key) || "active".equals(key)) {
+            setActive(value > 0.5);
+        } else if ("throttle".equals(key)) {
+            setThrottle((float) value);
+        } else if ("thrust".equals(key)) {
+            setActive(value > 0);
+            var behavior = getThrustPower();
+            if (behavior != null) {
+                float maxN = behavior.getValue() * 50.0f;
+                setThrottle(maxN > 0 ? (float) (value / maxN) : 0);
+            } else {
+                setThrottle((float) value);
+            }
+        }
     }
 
     @Override
     public void setGimbal(double pitch, double yaw) {
-        // No gimbal
     }
 
     @Override
     public String getPeripheralType() {
-        return "thruster";
+        return "creative_thruster";
     }
 }

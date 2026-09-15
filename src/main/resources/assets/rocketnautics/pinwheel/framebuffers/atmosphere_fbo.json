@@ -1,0 +1,8 @@
+{
+  "width": "q.screen_width",
+  "height": "q.screen_height",
+  "autoClear": false,
+  "type": "texture",
+  "format": "RGBA8",
+  "depth": true
+}

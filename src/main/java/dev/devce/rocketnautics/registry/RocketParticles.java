@@ -28,6 +28,15 @@ public class RocketParticles {
     public static final Supplier<SimpleParticleType> RCS_GAS = PARTICLES.register("rcs_gas",
             () -> new SimpleParticleType(true));
 
+    public static final Supplier<SimpleParticleType> VENT_STEAM = PARTICLES.register("vent_steam",
+            () -> new SimpleParticleType(true));
+
+    public static final Supplier<SimpleParticleType> EXPLOSION_SMOKE = PARTICLES.register("explosion_smoke",
+            () -> new SimpleParticleType(true));
+
+    public static final Supplier<SimpleParticleType> TANK_EXPLOSION_CLOUD = PARTICLES.register("tank_explosion_cloud",
+            () -> new SimpleParticleType(true));
+
     public static final Supplier<JetpackFlameParticle.JetpackFlameParticleType> JETPACK_FLAME = PARTICLES.register("jetpack_flame",
             JetpackFlameParticle.JetpackFlameParticleType::new);
 

@@ -12,6 +12,7 @@ import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.common.Tags;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
+import org.joml.Vector3f;
 
 import java.util.EnumSet;
 
@@ -48,6 +49,10 @@ public final class StandardUniverseProvider {
         return new PlanetDefinitionBuilder("root", "sol")
                 .setMu(solMu)
                 .setStar(true)
+                .setStarRadius(1.75f)
+                .setStarIntensity(2.0f)
+                .setStarDensityFalloff(5.0f)
+                .setStarColor(new Vector3f(1.0f, 0.98f, 0.9f))
                 .setTextureFile(RocketNautics.path("textures/planet/sol.png"))
                 .setRadius(solRadius)
                 .setRotationPeriod(Vector3D.PLUS_J, overworldDaynightCycleLengthSeconds * 32d)
@@ -106,6 +111,12 @@ public final class StandardUniverseProvider {
                 .setRadius(overworldRadius)
                 .setCircularOrbit(overworldOrbitalYearInOverworldDays * overworldDaynightCycleLengthSeconds, Vector3D.PLUS_J)
                 .setRotationPeriod(Vector3D.MINUS_J, overworldDaynightCycleLengthSeconds)
+                .setAtmosphereEnabled(true)
+                .setAtmosphereRadius(1.3f)
+                .setAtmosphereIntensity(1.0f)
+                .setAtmosphereDensityFalloff(4.0f)
+                .setAtmosphereScatteringStrength(0.075f)
+                .setAtmosphereScatteringWavelengths(new Vector3f(700, 520, 440))
                 .setPriority(0);
     }
 

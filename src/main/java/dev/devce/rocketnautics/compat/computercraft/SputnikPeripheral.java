@@ -1,8 +1,13 @@
 package dev.devce.rocketnautics.compat.computercraft;
 
+import dan200.computercraft.api.lua.IArguments;
+import dan200.computercraft.api.lua.LuaException;
 import dan200.computercraft.api.lua.LuaFunction;
 import dan200.computercraft.api.peripheral.IPeripheral;
+import dev.devce.rocketnautics.api.peripherals.PeripheralRegistry;
 import dev.devce.rocketnautics.content.blocks.SputnikBlockEntity;
+import dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlockEntity;
+import dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneMode;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceInstance;
 import dev.devce.rocketnautics.content.orbit.universe.DeepSpacePosition;
@@ -14,7 +19,10 @@ import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import org.joml.Vector3d;
@@ -84,14 +92,11 @@ public class SputnikPeripheral implements IPeripheral {
 
         var subLevel = dev.ryanhcode.sable.Sable.HELPER.getContaining(sputnik.getLevel(), sputnik.getBlockPos());
         if (subLevel instanceof ServerSubLevel serverSubLevel) {
-            // Mass
             data.put("mass", serverSubLevel.getMassTracker().getMass());
 
-            // Pose (Position & Orientation)
             var pose = serverSubLevel.logicalPose();
             var lastPose = serverSubLevel.lastPose();
 
-            // Orientation Quaternions
             Map<String, Double> quat = new HashMap<>();
             quat.put("w", pose.orientation().w());
             quat.put("x", pose.orientation().x());
@@ -99,7 +104,6 @@ public class SputnikPeripheral implements IPeripheral {
             quat.put("z", pose.orientation().z());
             data.put("quaternion", quat);
 
-            // Euler Angles (Pitch, Yaw, Roll in degrees)
             Vector3d euler = pose.orientation().getEulerAnglesYXZ(new Vector3d());
             Map<String, Double> angles = new HashMap<>();
             angles.put("pitch", Math.toDegrees(euler.x));
@@ -107,7 +111,6 @@ public class SputnikPeripheral implements IPeripheral {
             angles.put("roll", Math.toDegrees(euler.z));
             data.put("euler", angles);
 
-            // Velocity (Calculated from position delta over 1 tick)
             Vector3d velocity = new Vector3d(pose.position()).sub(lastPose.position()).mul(20.0);
             Map<String, Double> velData = new HashMap<>();
             velData.put("x", velocity.x);
@@ -115,7 +118,6 @@ public class SputnikPeripheral implements IPeripheral {
             velData.put("z", velocity.z);
             data.put("velocity", velData);
 
-            // Local Gravity approximation (if needed by flight computers)
             Vector3d gravity = DimensionPhysicsData.getGravity(sputnik.getLevel())
                     .mul(1 - GlobalSpacePhysicsHandler.calculateGravityFactor(sputnik.getLevel(), sputnik.getY()));
             data.put("gravityX", gravity.x());
@@ -274,5 +276,72 @@ public class SputnikPeripheral implements IPeripheral {
         angles.put("yaw", yaw);
         angles.put("pitch", pitch);
         return angles;
+    }
+
+    @LuaFunction(mainThread = true)
+    public final List<Map<String, Object>> getGyrodynes() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        if (sputnik.getLevel() == null) return list;
+
+        for (dev.devce.rocketnautics.api.peripherals.IPeripheral p : PeripheralRegistry.getPeripherals(sputnik.getLevel())) {
+            if (p instanceof GyrodyneBlockEntity g && !g.isRemoved()) {
+                Map<String, Object> gData = new HashMap<>();
+                gData.put("id", g.getPeripheralId());
+                gData.put("uuid", g.getUniqueId().toString());
+                gData.put("mode", g.getMode().getSerializedName());
+                gData.put("active", g.isActive());
+                gData.put("rotorSpeed", (double) g.getRotorSpeed());
+                gData.put("x", g.getBlockPos().getX());
+                gData.put("y", g.getBlockPos().getY());
+                gData.put("z", g.getBlockPos().getZ());
+                list.add(gData);
+            }
+        }
+        return list;
+    }
+
+    @LuaFunction(mainThread = true)
+    public final boolean setGyrodyneMode(IArguments args) throws LuaException {
+        if (sputnik.getLevel() == null) return false;
+
+        String modeName;
+        Integer targetId = null;
+
+        if (args.count() == 1) {
+            modeName = args.getString(0);
+        } else if (args.count() >= 2) {
+            targetId = args.getInt(0);
+            modeName = args.getString(1);
+        } else {
+            throw new LuaException("Expected: setGyrodyneMode([id], mode)");
+        }
+
+        GyrodyneMode targetMode = null;
+        for (GyrodyneMode m : GyrodyneMode.values()) {
+            if (m.getSerializedName().equalsIgnoreCase(modeName)) {
+                targetMode = m;
+                break;
+            }
+        }
+
+        if (targetMode == null) {
+            throw new LuaException("Invalid gyrodyne mode: " + modeName + ". Valid modes: " + String.join(", ", getAvailableGyrodyneModes()));
+        }
+
+        boolean anyUpdated = false;
+        for (dev.devce.rocketnautics.api.peripherals.IPeripheral p : PeripheralRegistry.getPeripherals(sputnik.getLevel())) {
+            if (p instanceof GyrodyneBlockEntity g && !g.isRemoved()) {
+                if (targetId == null || g.getPeripheralId() == targetId) {
+                    g.setMode(targetMode);
+                    anyUpdated = true;
+                }
+            }
+        }
+        return anyUpdated;
+    }
+
+    @LuaFunction(mainThread = true)
+    public final List<String> getAvailableGyrodyneModes() {
+        return Arrays.stream(GyrodyneMode.values()).map(GyrodyneMode::getSerializedName).toList();
     }
 }

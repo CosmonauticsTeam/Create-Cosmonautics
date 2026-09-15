@@ -227,6 +227,13 @@ public class MFDCanvas {
         }
     }
 
+    public static short getGlyph(int index) {
+        if (index < 0 || index >= FONT_3X5.length) {
+            index = '?' - 32;
+        }
+        return FONT_3X5[index];
+    }
+
     private static final short[] FONT_3X5 = {
             (short) 0x0000, (short) 0x2492, (short) 0x5A80, (short) 0x5EFD, (short) 0x3916, (short) 0x52A5, (short) 0x2AA3, (short) 0x2400,
             (short) 0x2922, (short) 0x212A, (short) 0x0B50, (short) 0x05D0, (short) 0x0014, (short) 0x01C0, (short) 0x0002, (short) 0x12A4,

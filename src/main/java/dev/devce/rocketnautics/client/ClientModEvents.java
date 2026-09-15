@@ -57,7 +57,7 @@ public class ClientModEvents {
                 net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(dev.devce.rocketnautics.RocketNautics.MODID, "planet_normal"),
                 com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR
             ),
-            shader -> dev.devce.rocketnautics.client.DeepSpaceHandler.planetNormalShader = shader
+            shader -> dev.devce.rocketnautics.client.render.spaceRenderer.PlanetRenderer.planetNormalShader = shader
         );
     }
 

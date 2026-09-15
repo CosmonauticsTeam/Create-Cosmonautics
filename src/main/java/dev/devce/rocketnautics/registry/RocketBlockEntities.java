@@ -11,6 +11,7 @@ import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.client.render.HologramTableRenderer;
 import dev.devce.rocketnautics.client.render.VectorThrusterRenderer;
 import dev.devce.rocketnautics.content.blocks.*;
+import dev.devce.rocketnautics.content.blocks.drain_valve.DrainValveBlockEntity;
 import dev.devce.rocketnautics.content.blocks.hose.HoseAnchorBlockEntity;
 import dev.devce.rocketnautics.content.blocks.hose.client.HoseAnchorRenderer;
 import net.neoforged.bus.api.IEventBus;
@@ -63,6 +64,11 @@ public class RocketBlockEntities {
             .onRegisterAfter(com.simibubi.create.api.registry.CreateRegistries.DISPLAY_SOURCE, type -> DisplaySource.BY_BLOCK_ENTITY.add(type, SPUTNIK_DISPLAY_SOURCE.get()))
             .register();
 
+    public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlockEntity> SPUTNIK_LINK = REGISTRATE
+            .blockEntity("sputnik_link", dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlockEntity::new)
+            .validBlocks(RocketBlocks.SPUTNIK_LINK)
+            .register();
+
     public static final BlockEntityEntry<HologramTableBlockEntity> HOLOGRAM_TABLE = REGISTRATE
             .blockEntity("hologram_table", HologramTableBlockEntity::new)
             .validBlocks(RocketBlocks.HOLOGRAM_TABLE)
@@ -75,6 +81,7 @@ public class RocketBlockEntities {
             .renderer(() -> dev.devce.rocketnautics.client.render.MFDRenderer::new)
             .register();
 
+
     public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlockEntity> GYRODYNE = REGISTRATE
             .blockEntity("gyrodyne", dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlockEntity::new)
             .validBlocks(RocketBlocks.GYRODYNE)
@@ -85,6 +92,11 @@ public class RocketBlockEntities {
             .blockEntity("hose_anchor", HoseAnchorBlockEntity::new)
             .validBlocks(RocketBlocks.HOSE_ANCHOR)
             .renderer(() -> HoseAnchorRenderer::new)
+            .register();
+
+    public static final BlockEntityEntry<DrainValveBlockEntity> DRAIN_VALVE = REGISTRATE
+            .blockEntity("drain_valve", DrainValveBlockEntity::new)
+            .validBlocks(RocketBlocks.DRAIN_VALVE)
             .register();
 
     public static final BlockEntityEntry<ThrusterMountBlockEntity> THRUSTER_MOUNT = REGISTRATE

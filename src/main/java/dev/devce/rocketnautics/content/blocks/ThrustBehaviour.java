@@ -17,14 +17,13 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import org.joml.Vector3d;
 
 import java.util.List;
 
-/**
- * Universal module for thrust physics and exhaust visuals.
- * The BlockEntity (host) manages logic/fuel and provides state via {@link #update}.
- */
 public class ThrustBehaviour extends BlockEntityBehaviour {
     public static final BehaviourType<ThrustBehaviour> TYPE = new BehaviourType<>();
 
@@ -114,8 +113,10 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
             visualThrottle = Math.max(0f, Math.min(1f, this.currentThrustN / maxThrust));
         }
 
-        // Parity: Ignition ticks logic from RocketThrusterBlockEntity
         if (active && visualThrottle > 0.01f) {
+            if (ignitionTicks == 0 && this.engineType != EngineType.ION && this.engineType != EngineType.RCS) {
+                triggerIgnitionBlast(level);
+            }
             if (ignitionTicks < 100) ignitionTicks++;
         } else {
             if (ignitionTicks > 0) ignitionTicks--;
@@ -205,48 +206,12 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
             double speedY = exhaustDir.y * (0.3 + random.nextDouble() * 0.4) * visualBoost * baseSpeedMult + (random.nextDouble() - 0.5) * 0.05;
             double speedZ = exhaustDir.z * (0.3 + random.nextDouble() * 0.4) * visualBoost * baseSpeedMult + (random.nextDouble() - 0.5) * 0.05;
 
-            if (engineType == EngineType.ROCKET) {
-                // Legacy flame particles are disabled in favor of the custom 3D GPU-shaded exhaust plume.
-                // level.addParticle(RocketParticles.PLASMA.get(), rx, ry, rz, speedX * 1.1, speedY * 1.1, speedZ * 1.1);
-                // level.addParticle(RocketParticles.PLUME.get(), rx, ry, rz, speedX, speedY, speedZ);
-                
-                // if (ignitionTicks >= 40 && random.nextFloat() < 0.3f) {
-                //     level.addParticle(RocketParticles.BLUE_FLAME.get(), rx, ry, rz, speedX * 1.3, speedY * 1.3, speedZ * 1.3);
-                // }
-
-                // Persistent smoke trail (contrail)
-                if (random.nextFloat() < 0.05f) { // Was 0.08f — reduced contrail density for performance
-                    dev.ryanhcode.sable.sublevel.SubLevel ship = (dev.ryanhcode.sable.sublevel.SubLevel) dev.ryanhcode.sable.Sable.HELPER
-                            .getContaining(level, pos);
-                    if (ship != null) {
-                        dev.ryanhcode.sable.companion.math.Pose3dc pose = ship.logicalPose();
-                        dev.ryanhcode.sable.companion.math.Pose3dc lastPose = ship.lastPose();
-                        double distSq = pose.position().distanceSquared(lastPose.position());
-
-                        if (distSq > 0.0225) { // Threshold: 0.15 blocks per tick
-                            Vec3 smokeLocalPos = new Vec3(pos.getX() + offset.x, pos.getY() + offset.y, pos.getZ() + offset.z)
-                                     .add(exhaustDir.scale(2.5));
-                            Vec3 smokeWorldPos = dev.ryanhcode.sable.Sable.HELPER.projectOutOfSubLevel(level, smokeLocalPos);
-
-                            if (smokeWorldPos.y < 2000.0) {
-                                double sSpeedX = (random.nextDouble() - 0.5) * 0.05;
-                                double sSpeedY = (random.nextDouble() - 0.5) * 0.05;
-                                double sSpeedZ = (random.nextDouble() - 0.5) * 0.05;
-                                ThrusterClientHelper.addParticle(RocketParticles.JET_SMOKE.get(),
-                                             smokeWorldPos.x, smokeWorldPos.y, smokeWorldPos.z,
-                                             sSpeedX, sSpeedY, sSpeedZ);
-                            }
-                        }
-                    }
-                }
-            } else if (engineType == EngineType.STEAM) {
+            if (engineType == EngineType.STEAM) {
                 level.addParticle(RocketParticles.JET_SMOKE.get(), rx, ry, rz, speedX * 0.5, speedY * 0.5, speedZ * 0.5);
             }
         }
 
-        // Ground smoke and contrail logic (Only for ROCKET)
-        // Raycast is throttled to every 3 ticks to reduce CPU overhead
-        if (engineType == EngineType.ROCKET && level.getGameTime() % 3 == 0) {
+        if (engineType == EngineType.ROCKET && level.getGameTime() % 2 == 0) {
             handleExhaustCollisions(level, start, random, visualPower);
         }
     }
@@ -290,17 +255,48 @@ public class ThrustBehaviour extends BlockEntityBehaviour {
         }
 
         if (hit != null && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
-            if (random.nextFloat() < (visualPower / 100.0f)) {
+            float spawnChance = Math.min(1.0f, visualPower / 60.0f);
+            if (random.nextFloat() < spawnChance) {
                 Vec3 hitPos = hit.getLocation();
-                for (int i = 0; i < (1 + visualPower / 40); i++) {
-                    Vec3 normal = Vec3.atLowerCornerOf(hit.getDirection().getNormal());
+                int dustCount = 1 + visualPower / 20;
+                Vec3 normal = Vec3.atLowerCornerOf(hit.getDirection().getNormal());
+                for (int i = 0; i < dustCount; i++) {
                     Vec3 randomDir = new Vec3(random.nextDouble() - 0.5, random.nextDouble() - 0.5, random.nextDouble() - 0.5).normalize();
                     Vec3 spreadDir = randomDir.subtract(normal.scale(randomDir.dot(normal))).normalize();
-                    double speed = 0.5 + random.nextDouble() * 1.5;
-                    clipLevel.addParticle(RocketParticles.JET_SMOKE.get(), hitPos.x, hitPos.y, hitPos.z,
-                            spreadDir.x * speed, spreadDir.y * speed, spreadDir.z * speed);
+                    double horizontalSpeed = 0.6 + random.nextDouble() * 1.6;
+                    double verticalLift = 0.1 + random.nextDouble() * 0.3;
+                    clipLevel.addParticle(RocketParticles.JET_SMOKE.get(),
+                            hitPos.x, hitPos.y + 0.15, hitPos.z,
+                            spreadDir.x * horizontalSpeed,
+                            spreadDir.y * horizontalSpeed + verticalLift,
+                            spreadDir.z * horizontalSpeed);
                 }
             }
+        }
+    }
+
+    private void triggerIgnitionBlast(Level level) {
+        BlockPos pos = getPos();
+        level.playSound(null, pos, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 3.5f, 0.85f + level.getRandom().nextFloat() * 0.3f);
+        level.playSound(null, pos, SoundEvents.FIRECHARGE_USE, SoundSource.BLOCKS, 3.0f, 0.5f);
+
+        Vec3 nozzlePos = new Vec3(pos.getX() + offset.x, pos.getY() + offset.y, pos.getZ() + offset.z);
+        if (level.isClientSide) {
+            RandomSource random = level.getRandom();
+            for (int i = 0; i < 22; i++) {
+                double speed = 1.6 + random.nextDouble() * 2.8;
+                double spread = 0.5;
+                double sx = exhaustDir.x * speed + (random.nextDouble() - 0.5) * spread;
+                double sy = exhaustDir.y * speed + (random.nextDouble() - 0.5) * spread;
+                double sz = exhaustDir.z * speed + (random.nextDouble() - 0.5) * spread;
+                level.addParticle(RocketParticles.PLASMA.get(), nozzlePos.x, nozzlePos.y, nozzlePos.z, sx, sy, sz);
+            }
+            level.addParticle(ParticleTypes.FLASH, nozzlePos.x, nozzlePos.y, nozzlePos.z, 0, 0, 0);
+            level.addParticle(ParticleTypes.EXPLOSION, nozzlePos.x, nozzlePos.y, nozzlePos.z, 0, 0, 0);
+
+            float shakeInt = RocketConfig.CLIENT.shakeIntensity.get().floatValue();
+            double shakeRad = RocketConfig.CLIENT.shakeRadius.get();
+            ThrusterClientHelper.handleCameraShake(getPos(), 1.0f, shakeRad * 1.6, shakeInt * 3.5f);
         }
     }
 

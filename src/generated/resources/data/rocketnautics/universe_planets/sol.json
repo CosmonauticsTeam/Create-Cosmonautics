@@ -2,6 +2,7 @@
   "parent": "root",
   "mu": 6.907424484959378E18,
   "name": "sol",
+  "planet_atmosphere": {},
   "planet_extras": {
     "is_star": true
   },
@@ -27,5 +28,15 @@
       "y": 1.0,
       "z": 0.0
     }
+  },
+  "star_properties": {
+    "color": [
+      1.0,
+      0.98,
+      0.9
+    ],
+    "densityFalloff": 5.0,
+    "intensity": 2.0,
+    "radius": 1.75
   }
 }

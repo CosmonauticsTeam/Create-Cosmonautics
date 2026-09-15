@@ -68,7 +68,11 @@ public class RocketThrusterBlockEntity extends AbstractThrusterBlockEntity {
     private float currentEfficiencyMultiplier = 1.0f;
     private int burnoutDelay = 0;
     private boolean steamMode = false;
-    private float targetThrottle = 1.0f; // Default to Full Throttle
+    protected float targetThrottle = 1.0f;
+
+    public float getTargetThrottle() {
+        return targetThrottle;
+    }
 
     // Gimbal state
     public Vector3d gimbalOffset = new Vector3d(0, 0, 0);
@@ -396,9 +400,18 @@ public class RocketThrusterBlockEntity extends AbstractThrusterBlockEntity {
     }
 
     @Override
+    public double readValue(String key) {
+        if ("active".equals(key) || "ignition".equals(key)) return isActive() ? 1.0 : 0.0;
+        if ("thrust".equals(key)) return getFlow() * 100.0;
+        if ("throttle".equals(key)) return targetThrottle;
+        return 0;
+    }
+
+    @Override
     public void writeValue(String key, double value) {
-        if ("throttle".equals(key)) {
-            setActive(value > 0);
+        if ("ignition".equals(key) || "active".equals(key)) {
+            setActive(value > 0.5);
+        } else if ("throttle".equals(key)) {
             setThrottle((float) value);
         } else if ("thrust".equals(key)) {
             setActive(value > 0);

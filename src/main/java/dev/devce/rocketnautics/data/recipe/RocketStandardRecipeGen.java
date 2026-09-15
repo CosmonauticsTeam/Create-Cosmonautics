@@ -178,6 +178,14 @@ public final class RocketStandardRecipeGen extends BaseRecipeProvider {
             .define('C', RocketBlocks.TITANIUM_CASING)
             .define('P', AllBlocks.FLUID_PIPE));
 
+    GeneratedRecipe DRAIN_VALVE = create(RocketBlocks.DRAIN_VALVE).unlockedBy(AllBlocks.FLUID_PIPE).viaShaped(b -> b
+            .pattern(" N ")
+            .pattern(" C ")
+            .pattern(" P ")
+            .define('N', AllBlocks.FLUID_VALVE)
+            .define('C', CommonMetal.COPPER.plates)
+            .define('P', AllBlocks.FLUID_PIPE));
+
     GeneratedRecipe SEPARATOR = create(RocketBlocks.SEPARATOR).unlockedByTag(() -> CommonMetal.ZINC.ingots).viaShaped(b -> b
             .pattern("A")
             .pattern("B")

@@ -36,6 +36,9 @@ public class RocketSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> HIGH_WIND = SOUNDS.register("high_wind",
             () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "high_wind")));
 
+    public static final DeferredHolder<SoundEvent, SoundEvent> TANK_EXPLOSION = SOUNDS.register("tank_explosion",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "tank_explosion")));
+
     public static void register(IEventBus eventBus) {
         SOUNDS.register(eventBus);
     }

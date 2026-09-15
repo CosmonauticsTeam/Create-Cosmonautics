@@ -1,9 +1,20 @@
 package dev.devce.rocketnautics.content.blocks.mfd.cartridge.ui;
 
+import dev.devce.rocketnautics.client.ui.imgui.ImGuiManager;
 import dev.devce.rocketnautics.content.blocks.mfd.cartridge.CartridgeManager;
 import dev.devce.rocketnautics.content.blocks.mfd.cartridge.CartridgeManager.CartridgeMetadata;
-import dev.devce.websnodelib.api.elements.WCodeArea;
+import dev.devce.rocketnautics.lua.LuaSandbox;
+import imgui.ImColor;
+import imgui.ImGui;
+import imgui.ImGuiIO;
+import imgui.flag.ImGuiCond;
+import imgui.flag.ImGuiInputTextFlags;
+import imgui.flag.ImGuiTabBarFlags;
+import imgui.flag.ImGuiWindowFlags;
+import imgui.type.ImBoolean;
+import imgui.type.ImString;
 import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -11,7 +22,7 @@ import net.minecraft.world.InteractionHand;
 import org.lwjgl.glfw.GLFW;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
-import org.luaj.vm2.lib.jse.JsePlatform;
+import org.luaj.vm2.LuaValue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,649 +35,700 @@ import java.util.stream.Stream;
 
 public class MFDCartridgeEditorScreen extends Screen {
 
-    private final String cartridgeId;
-    private final InteractionHand hand;
-    private final WCodeArea codeArea;
+    private static class OpenTab {
+        final Path path;
+        final ImString content;
+        String lastSavedContent;
+        boolean isDirty;
 
-    private Path currentFilePath;
-    private final List<Path> cartridgeFiles = new ArrayList<>();
-    private final List<Path> openTabs = new ArrayList<>();
+        OpenTab(Path path, String text) {
+            this.path = path;
+            this.content = new ImString(text, 250000);
+            this.lastSavedContent = text;
+            this.isDirty = false;
+        }
 
-    private boolean isMetadataView = false;
-    private CartridgeMetadata metadata;
-    private int selectedMetaField = -1;
-
-    private int rightPanelWidth = 150;
-    private int terminalHeight = 90;
-    private boolean isDraggingVerticalSplitter = false;
-    private boolean isDraggingHorizontalSplitter = false;
-
-    private static final int TOP_BAR_H = 26;
-    private static final int STATUS_BAR_H = 18;
-    private static final int SPLITTER_THICKNESS = 3;
-
-    private static final int BG_MAIN = 0xFF0D0D0D;
-    private static final int BG_DARK = 0xFF080808;
-    private static final int BG_PANEL = 0xFF111111;
-    private static final int BG_HEADER = 0xFF141414;
-    private static final int BG_ELEM = 0xFF1A1A1A;
-    private static final int BG_ELEM_HOVER = 0xFF252525;
-    private static final int ACCENT_GREEN = 0xFF00FF88;
-    private static final int ACCENT_CYAN = 0xFF00FFCC;
-    private static final int ACCENT_ORANGE = 0xFFFFAA00;
-    private static final int ACCENT_RED = 0xFFFF5555;
-    private static final int BORDER_MUTED = 0xFF1F1F1F;
-    private static final int TEXT_MUTED = 0xFF888888;
-    private static final int TEXT_MAIN = 0xFFD0D0D0;
-
-    public record TerminalEntry(String time, String level, String message, int color) {}
-    private final List<TerminalEntry> terminalLogs = new ArrayList<>();
-    private int terminalTab = 0;
-    private String terminalInput = "";
-    private boolean terminalInputFocused = false;
-    private int terminalScrollOffset = 0;
-
-    private boolean isSaved = true;
-
-    public MFDCartridgeEditorScreen(String cartridgeId, InteractionHand hand) {
-        super(Component.literal("Rocketnautics IDE - " + cartridgeId));
-        this.cartridgeId = cartridgeId;
-        this.hand = hand;
-        this.codeArea = new WCodeArea(0, 0);
-
-        this.metadata = CartridgeManager.getMetadata(cartridgeId);
-
-        Path dir = CartridgeManager.getCartridgeDir(cartridgeId);
-        this.currentFilePath = dir.resolve("main.lua");
-        openTabs.add(currentFilePath);
-
-        logTerminal("INFO", "Initialized Console IDE for cartridge: " + cartridgeId, ACCENT_GREEN);
-        logTerminal("INFO", "Path: " + dir.toAbsolutePath(), TEXT_MUTED);
-
-        loadFile(currentFilePath);
-        refreshFileList();
+        String getFileName() {
+            return path.getFileName().toString();
+        }
     }
 
-    private void logTerminal(String level, String msg, int color) {
+    private static class LogEntry {
+        final String time;
+        final String level;
+        final String message;
+        final int color;
+
+        LogEntry(String time, String level, String message, int color) {
+            this.time = time;
+            this.level = level;
+            this.message = message;
+            this.color = color;
+        }
+    }
+
+    private final String cartridgeId;
+    private final InteractionHand hand;
+    private final Path cartridgeDir;
+
+    private final List<OpenTab> openTabs = new ArrayList<>();
+    private int activeTabIndex = 0;
+    private final List<Path> cartridgeFiles = new ArrayList<>();
+
+    private CartridgeMetadata metadata;
+    private final ImString metaTitle = new ImString(128);
+    private final ImString metaAuthor = new ImString(128);
+    private final ImString metaVersion = new ImString(64);
+    private final ImString metaDescription = new ImString(2048);
+
+    private final List<LogEntry> terminalLogs = new ArrayList<>();
+    private final ImString replInput = new ImString(2048);
+    private final ImString newFileNameInput = new ImString(128);
+    private boolean openNewFileModal = false;
+
+    private long lastSavedNotificationTime = 0;
+    private boolean autoScrollLogs = true;
+
+    public MFDCartridgeEditorScreen(String cartridgeId, InteractionHand hand) {
+        super(Component.literal("MFD Cartridge Studio - " + cartridgeId));
+        this.cartridgeId = (cartridgeId != null && !cartridgeId.isEmpty()) ? cartridgeId : "default";
+        this.hand = hand;
+        this.cartridgeDir = CartridgeManager.getCartridgeDir(this.cartridgeId);
+
+        this.metadata = CartridgeManager.getMetadata(this.cartridgeId);
+        this.metaTitle.set(metadata.title != null ? metadata.title : this.cartridgeId);
+        this.metaAuthor.set(metadata.author != null ? metadata.author : "Anonymous");
+        this.metaVersion.set(metadata.version != null ? metadata.version : "1.0.0");
+        this.metaDescription.set(metadata.description != null ? metadata.description : "");
+
+        log("INFO", "Initialized MFD Cartridge Studio for [" + this.cartridgeId + "]", ImColor.rgb(100, 255, 140));
+        log("INFO", "Location: " + cartridgeDir.toAbsolutePath(), ImColor.rgb(160, 160, 160));
+
+        refreshFiles();
+
+        Path mainLua = cartridgeDir.resolve("main.lua");
+        if (Files.exists(mainLua)) {
+            openFileInTab(mainLua);
+        } else if (!cartridgeFiles.isEmpty()) {
+            openFileInTab(cartridgeFiles.get(0));
+        }
+    }
+
+    private void log(String level, String msg, int color) {
         String time = new SimpleDateFormat("HH:mm:ss").format(new Date());
-        terminalLogs.add(new TerminalEntry(time, level, msg, color));
-        if (terminalLogs.size() > 200) {
+        terminalLogs.add(new LogEntry(time, level, msg, color));
+        if (terminalLogs.size() > 300) {
             terminalLogs.remove(0);
         }
     }
 
-    private void refreshFileList() {
+    private void refreshFiles() {
         cartridgeFiles.clear();
-        Path dir = CartridgeManager.getCartridgeDir(cartridgeId);
-        if (Files.exists(dir)) {
-            try (Stream<Path> stream = Files.walk(dir, 3)) {
-                stream.filter(Files::isRegularFile).forEach(cartridgeFiles::add);
+        if (Files.exists(cartridgeDir)) {
+            try (Stream<Path> stream = Files.walk(cartridgeDir, 3)) {
+                stream.filter(Files::isRegularFile)
+                      .filter(p -> !p.getFileName().toString().equals("metadata.json"))
+                      .forEach(cartridgeFiles::add);
             } catch (IOException e) {
-                logTerminal("ERROR", "Failed to list files: " + e.getMessage(), ACCENT_RED);
+                log("ERROR", "Failed to refresh file list: " + e.getMessage(), ImColor.rgb(255, 90, 90));
             }
         }
     }
 
-    private void loadFile(Path path) {
-        this.isMetadataView = false;
-        this.currentFilePath = path;
-        if (!openTabs.contains(path)) {
-            openTabs.add(path);
+    private void openFileInTab(Path path) {
+        for (int i = 0; i < openTabs.size(); i++) {
+            if (openTabs.get(i).path.equals(path)) {
+                activeTabIndex = i;
+                return;
+            }
         }
-        if (Files.exists(path)) {
+        try {
+            String content = Files.exists(path) ? Files.readString(path) : "";
+            OpenTab tab = new OpenTab(path, content);
+            openTabs.add(tab);
+            activeTabIndex = openTabs.size() - 1;
+            log("INFO", "Opened " + path.getFileName(), ImColor.rgb(120, 200, 255));
+        } catch (IOException e) {
+            log("ERROR", "Failed to open " + path.getFileName() + ": " + e.getMessage(), ImColor.rgb(255, 90, 90));
+        }
+    }
+
+    private void saveCurrentTab() {
+        if (activeTabIndex >= 0 && activeTabIndex < openTabs.size()) {
+            OpenTab tab = openTabs.get(activeTabIndex);
             try {
-                String content = Files.readString(path);
-                this.codeArea.setValue(content);
-                this.isSaved = true;
-                logTerminal("INFO", "Loaded " + path.getFileName() + " (" + content.length() + " bytes)", TEXT_MUTED);
+                Files.createDirectories(tab.path.getParent());
+                String code = tab.content.get();
+                Files.writeString(tab.path, code);
+                tab.lastSavedContent = code;
+                tab.isDirty = false;
+                lastSavedNotificationTime = System.currentTimeMillis();
+                log("INFO", "Saved " + tab.getFileName(), ImColor.rgb(100, 255, 140));
             } catch (IOException e) {
-                this.codeArea.setValue("-- Error loading file: " + e.getMessage());
-                logTerminal("ERROR", "Load error: " + e.getMessage(), ACCENT_RED);
+                log("ERROR", "Failed to save " + tab.getFileName() + ": " + e.getMessage(), ImColor.rgb(255, 90, 90));
             }
         }
     }
 
-    private void saveCurrentFile() {
-        if (isMetadataView) {
-            CartridgeManager.saveMetadata(cartridgeId, metadata);
-            isSaved = true;
-            logTerminal("SUCCESS", "Saved metadata.json (v" + metadata.version + ")", ACCENT_GREEN);
+    private void saveAll() {
+        for (OpenTab tab : openTabs) {
+            if (tab.isDirty) {
+                try {
+                    Files.createDirectories(tab.path.getParent());
+                    String code = tab.content.get();
+                    Files.writeString(tab.path, code);
+                    tab.lastSavedContent = code;
+                    tab.isDirty = false;
+                } catch (IOException e) {
+                    log("ERROR", "Failed to save " + tab.getFileName() + ": " + e.getMessage(), ImColor.rgb(255, 90, 90));
+                }
+            }
+        }
+        saveMetadataChanges();
+        lastSavedNotificationTime = System.currentTimeMillis();
+        log("INFO", "Saved all files and metadata successfully.", ImColor.rgb(100, 255, 140));
+    }
+
+    private void saveMetadataChanges() {
+        metadata.title = metaTitle.get().trim();
+        metadata.author = metaAuthor.get().trim();
+        metadata.version = metaVersion.get().trim();
+        metadata.description = metaDescription.get().trim();
+        CartridgeManager.saveMetadata(cartridgeId, metadata);
+        lastSavedNotificationTime = System.currentTimeMillis();
+        log("INFO", "Updated cartridge metadata.", ImColor.rgb(100, 255, 140));
+    }
+
+    private void createNewFile(String name) {
+        String clean = name.trim();
+        if (clean.isEmpty()) return;
+        if (!clean.endsWith(".lua")) clean += ".lua";
+        Path target = cartridgeDir.resolve(clean);
+        if (Files.exists(target)) {
+            log("WARN", "File already exists: " + clean, ImColor.rgb(255, 200, 80));
+            openFileInTab(target);
             return;
         }
+        try {
+            Files.createDirectories(target.getParent());
+            Files.writeString(target, "local M = {}\n\nfunction M.init()\nend\n\nfunction M.update()\nend\n\nreturn M\n");
+            refreshFiles();
+            openFileInTab(target);
+            log("INFO", "Created new script: " + clean, ImColor.rgb(100, 255, 140));
+        } catch (IOException e) {
+            log("ERROR", "Failed to create file: " + e.getMessage(), ImColor.rgb(255, 90, 90));
+        }
+    }
 
-        if (currentFilePath != null) {
+    private void deleteFile(Path path) {
+        try {
+            Files.deleteIfExists(path);
+            openTabs.removeIf(t -> t.path.equals(path));
+            if (activeTabIndex >= openTabs.size()) {
+                activeTabIndex = Math.max(0, openTabs.size() - 1);
+            }
+            refreshFiles();
+            log("INFO", "Deleted file: " + path.getFileName(), ImColor.rgb(255, 150, 100));
+        } catch (IOException e) {
+            log("ERROR", "Failed to delete file: " + e.getMessage(), ImColor.rgb(255, 90, 90));
+        }
+    }
+
+    private void validateSyntax(OpenTab tab) {
+        if (tab == null) return;
+        try {
+            Globals globals = LuaSandbox.createSandboxedGlobals();
+            globals.load(tab.content.get());
+            log("INFO", "[Syntax OK] " + tab.getFileName() + " compiled without errors.", ImColor.rgb(100, 255, 140));
+        } catch (LuaError e) {
+            log("ERROR", "[Syntax Error] " + tab.getFileName() + ": " + e.getMessage(), ImColor.rgb(255, 90, 90));
+        } catch (Exception e) {
+            log("ERROR", "[Validation Error] " + e.getMessage(), ImColor.rgb(255, 90, 90));
+        }
+    }
+
+    private void runRepl(String expr) {
+        String clean = expr.trim();
+        if (clean.isEmpty()) return;
+        log("INPUT", "> " + clean, ImColor.rgb(200, 200, 200));
+        try {
+            Globals globals = LuaSandbox.createSandboxedGlobals();
+            LuaValue chunk;
             try {
-                Files.createDirectories(currentFilePath.getParent());
-                Files.writeString(currentFilePath, codeArea.getValue());
-                isSaved = true;
-                String time = new SimpleDateFormat("HH:mm:ss").format(new Date());
-                logTerminal("SUCCESS", "Saved " + currentFilePath.getFileName() + " at " + time, ACCENT_GREEN);
-            } catch (IOException e) {
-                logTerminal("ERROR", "Save failed: " + e.getMessage(), ACCENT_RED);
+                chunk = globals.load("return " + clean);
+            } catch (Exception ignored) {
+                chunk = globals.load(clean);
             }
-        }
-    }
-
-    private void createNewFile() {
-        Path dir = CartridgeManager.getCartridgeDir(cartridgeId);
-        int idx = 1;
-        Path newFile = dir.resolve("script_" + idx + ".lua");
-        while (Files.exists(newFile)) {
-            idx++;
-            newFile = dir.resolve("script_" + idx + ".lua");
-        }
-        try {
-            Files.writeString(newFile, "local M = {}\n\nfunction M.example()\nend\n\nreturn M\n");
-            saveCurrentFile();
-            refreshFileList();
-            loadFile(newFile);
-            logTerminal("INFO", "Created file " + newFile.getFileName(), ACCENT_GREEN);
-        } catch (IOException e) {
-            logTerminal("ERROR", "File creation failed: " + e.getMessage(), ACCENT_RED);
+            LuaValue result = chunk.call();
+            log("RESULT", "= " + (result.isnil() ? "nil" : result.tojstring()), ImColor.rgb(120, 220, 255));
+        } catch (LuaError e) {
+            log("ERROR", e.getMessage(), ImColor.rgb(255, 90, 90));
+        } catch (Exception e) {
+            log("ERROR", e.getMessage(), ImColor.rgb(255, 90, 90));
         }
     }
 
     @Override
-    protected void init() {
-        super.init();
-        updateLayout();
-    }
-
-    private void updateLayout() {
-        int editorW = Math.max(120, width - rightPanelWidth - SPLITTER_THICKNESS);
-        int editorH = Math.max(60, height - TOP_BAR_H - terminalHeight - SPLITTER_THICKNESS - STATUS_BAR_H);
-        codeArea.setWidth(editorW);
-        codeArea.setHeight(editorH);
+    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override
-    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void renderMenuBackground(GuiGraphics guiGraphics) {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        int editorW = Math.max(120, width - rightPanelWidth - SPLITTER_THICKNESS);
-        int editorH = Math.max(60, height - TOP_BAR_H - terminalHeight - SPLITTER_THICKNESS - STATUS_BAR_H);
-        int terminalY = TOP_BAR_H + editorH + SPLITTER_THICKNESS;
-        int terminalW = editorW;
-        int panelX = width - rightPanelWidth;
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        ImGuiManager.getInstance().renderScreen(this::renderStudio);
+    }
 
-        graphics.fill(0, 0, width, height, BG_MAIN);
+    private void renderStudio() {
+        ImGuiIO io = ImGui.getIO();
+        ImGui.setNextWindowPos(0.0f, 0.0f, ImGuiCond.Always);
+        ImGui.setNextWindowSize(io.getDisplaySizeX(), io.getDisplaySizeY(), ImGuiCond.Always);
 
-        graphics.fill(0, 0, width, TOP_BAR_H, BG_HEADER);
-        graphics.fill(0, TOP_BAR_H - 1, width, TOP_BAR_H, BORDER_MUTED);
+        int flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove
+                | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoBringToFrontOnFocus;
 
-        graphics.drawString(font, "> " + cartridgeId, 10, 8, ACCENT_GREEN, false);
+        if (ImGui.begin("MFDCartridgeStudioWindow", flags)) {
+            renderMenuBar(io);
 
-        int tabX = 90;
+            float leftPanelWidth = 230.0f;
+            float totalHeight = ImGui.getContentRegionAvailY();
 
-        int metaTabW = font.width("Metadata") + 22;
-        boolean hoverMeta = mouseX >= tabX && mouseX <= tabX + metaTabW && mouseY >= 3 && mouseY <= TOP_BAR_H - 1;
-        graphics.fill(tabX, 3, tabX + metaTabW, TOP_BAR_H - 1, isMetadataView ? BG_ELEM : (hoverMeta ? BG_ELEM_HOVER : BG_DARK));
-        if (isMetadataView) {
-            graphics.fill(tabX, 3, tabX + metaTabW, 4, ACCENT_GREEN);
-            graphics.renderOutline(tabX, 3, metaTabW, TOP_BAR_H - 4, ACCENT_GREEN);
+            ImGui.beginChild("FileExplorerPanel", leftPanelWidth, totalHeight, true);
+            renderFileExplorer();
+            ImGui.endChild();
+
+            ImGui.sameLine();
+
+            ImGui.beginChild("CenterEditorArea", 0.0f, totalHeight, false);
+            renderMainWorkspace();
+            ImGui.endChild();
+
+            renderModals();
         }
-        graphics.drawString(font, "⚙ Metadata", tabX + 6, 9, isMetadataView ? ACCENT_GREEN : TEXT_MUTED, false);
-        tabX += metaTabW + 4;
+        ImGui.end();
+    }
 
-        for (Path tabPath : openTabs) {
-            String tabName = tabPath.getFileName().toString();
-            boolean isActive = !isMetadataView && tabPath.equals(currentFilePath);
-            int nameW = font.width(tabName);
-            int tabW = nameW + 36;
-
-            int tabBg = isActive ? BG_ELEM : BG_DARK;
-            graphics.fill(tabX, 3, tabX + tabW, TOP_BAR_H - 1, tabBg);
-            if (isActive) {
-                graphics.fill(tabX, 3, tabX + tabW, 4, ACCENT_GREEN);
-                graphics.renderOutline(tabX, 3, tabW, TOP_BAR_H - 4, ACCENT_GREEN);
+    private void renderMenuBar(ImGuiIO io) {
+        if (ImGui.beginMenuBar()) {
+            if (ImGui.beginMenu("File")) {
+                if (ImGui.menuItem("Save Script", "Ctrl+S", false, !openTabs.isEmpty())) {
+                    saveCurrentTab();
+                }
+                if (ImGui.menuItem("Save All", null, false, !openTabs.isEmpty())) {
+                    saveAll();
+                }
+                ImGui.separator();
+                if (ImGui.menuItem("New Lua Script...")) {
+                    newFileNameInput.set("new_script.lua");
+                    openNewFileModal = true;
+                }
+                ImGui.separator();
+                if (ImGui.menuItem("Close Studio", "Esc")) {
+                    this.onClose();
+                }
+                ImGui.endMenu();
             }
 
-            int tabTextCol = isActive ? 0xFFFFFFFF : TEXT_MUTED;
-            graphics.drawString(font, tabName, tabX + 8, 9, tabTextCol, false);
-
-            if (isActive && !isSaved) {
-                graphics.drawString(font, "●", tabX + 8 + nameW + 3, 9, ACCENT_ORANGE, false);
+            if (ImGui.beginMenu("Project")) {
+                if (ImGui.menuItem("Refresh Files")) {
+                    refreshFiles();
+                    log("INFO", "File list refreshed.", ImColor.rgb(180, 180, 180));
+                }
+                if (ImGui.menuItem("Open In File Explorer")) {
+                    Util.getPlatform().openFile(cartridgeDir.toFile());
+                }
+                ImGui.endMenu();
             }
 
-            int closeX = tabX + tabW - 14;
-            boolean hoverClose = mouseX >= closeX - 2 && mouseX <= closeX + 10 && mouseY >= 7 && mouseY <= 17;
-            if (hoverClose) {
-                graphics.fill(closeX - 2, 7, closeX + 10, 18, 0x44FF5555);
+            if (ImGui.beginMenu("Lua")) {
+                if (ImGui.menuItem("Check Syntax", "F5", false, !openTabs.isEmpty())) {
+                    if (activeTabIndex >= 0 && activeTabIndex < openTabs.size()) {
+                        validateSyntax(openTabs.get(activeTabIndex));
+                    }
+                }
+                if (ImGui.menuItem("Clear Console Output")) {
+                    terminalLogs.clear();
+                }
+                ImGui.endMenu();
             }
-            graphics.drawString(font, "×", closeX + 1, 8, hoverClose ? ACCENT_RED : 0xFF666666, false);
 
-            tabX += tabW + 4;
+            if (System.currentTimeMillis() - lastSavedNotificationTime < 2500) {
+                ImGui.sameLine(io.getDisplaySizeX() - 260.0f);
+                ImGui.textColored(0.35f, 1.0f, 0.45f, 1.0f, "[SAVED TO DISK]");
+            }
+
+            ImGui.sameLine(io.getDisplaySizeX() - 150.0f);
+            ImGui.textDisabled("Cartridge: " + cartridgeId);
+
+            ImGui.endMenuBar();
+        }
+    }
+
+    private void renderFileExplorer() {
+        ImGui.textColored(0.4f, 0.85f, 1.0f, 1.0f, "PROJECT EXPLORER");
+        ImGui.textDisabled(cartridgeId + "/");
+        ImGui.separator();
+
+        if (ImGui.button("+ New", 70.0f, 22.0f)) {
+            newFileNameInput.set("script.lua");
+            openNewFileModal = true;
+        }
+        ImGui.sameLine();
+        if (ImGui.button("Refresh", 70.0f, 22.0f)) {
+            refreshFiles();
+        }
+        ImGui.sameLine();
+        if (ImGui.button("Dir", 60.0f, 22.0f)) {
+            Util.getPlatform().openFile(cartridgeDir.toFile());
         }
 
-        int btnY = 4;
-        int btnH = 17;
+        ImGui.spacing();
+        ImGui.separator();
+        ImGui.spacing();
 
-        int saveW = 50;
-        int saveX = width - rightPanelWidth - 130;
-        boolean hoverSave = mouseX >= saveX && mouseX <= saveX + saveW && mouseY >= btnY && mouseY <= btnY + btnH;
-        graphics.fill(saveX, btnY, saveX + saveW, btnY + btnH, hoverSave ? ACCENT_GREEN : BG_ELEM);
-        graphics.renderOutline(saveX, btnY, saveW, btnH, hoverSave ? ACCENT_GREEN : BORDER_MUTED);
-        graphics.drawString(font, "Save", saveX + 13, btnY + 5, hoverSave ? 0xFF000000 : ACCENT_GREEN, false);
-
-        int expW = 68;
-        int expX = width - rightPanelWidth - 74;
-        boolean hoverExp = mouseX >= expX && mouseX <= expX + expW && mouseY >= btnY && mouseY <= btnY + btnH;
-        graphics.fill(expX, btnY, expX + expW, btnY + btnH, hoverExp ? ACCENT_GREEN : BG_ELEM);
-        graphics.renderOutline(expX, btnY, expW, btnH, hoverExp ? ACCENT_GREEN : BORDER_MUTED);
-        graphics.drawString(font, "Explorer", expX + 11, btnY + 5, hoverExp ? 0xFF000000 : TEXT_MAIN, false);
-
-        if (isMetadataView) {
-            renderMetadataEditor(graphics, 0, TOP_BAR_H, editorW, editorH);
-        } else {
-            codeArea.render(graphics, 0, TOP_BAR_H, mouseX, mouseY, partialTick);
-        }
-
-        int hSplitterY = TOP_BAR_H + editorH;
-        boolean hoverHSplitter = mouseX < panelX && mouseY >= hSplitterY - 2 && mouseY <= hSplitterY + SPLITTER_THICKNESS + 2;
-        graphics.fill(0, hSplitterY, editorW, hSplitterY + SPLITTER_THICKNESS, (hoverHSplitter || isDraggingHorizontalSplitter) ? ACCENT_GREEN : BORDER_MUTED);
-
-        graphics.fill(0, terminalY, terminalW, terminalY + terminalHeight, BG_DARK);
-
-        graphics.fill(0, terminalY, terminalW, terminalY + 16, BG_HEADER);
-        graphics.fill(0, terminalY + 15, terminalW, terminalY + 16, BORDER_MUTED);
-
-        boolean actTerm = terminalTab == 0;
-        graphics.drawString(font, "> TERMINAL", 10, terminalY + 4, actTerm ? ACCENT_GREEN : TEXT_MUTED, false);
-        if (actTerm) graphics.fill(10, terminalY + 14, 68, terminalY + 15, ACCENT_GREEN);
-
-        boolean actProb = terminalTab == 1;
-        graphics.drawString(font, "> PROBLEMS", 80, terminalY + 4, actProb ? ACCENT_GREEN : TEXT_MUTED, false);
-        if (actProb) graphics.fill(80, terminalY + 14, 138, terminalY + 15, ACCENT_GREEN);
-
-        int clearX = terminalW - 40;
-        boolean hoverClear = mouseX >= clearX && mouseX <= clearX + 34 && mouseY >= terminalY + 2 && mouseY <= terminalY + 14;
-        graphics.drawString(font, "Clear", clearX, terminalY + 4, hoverClear ? ACCENT_RED : TEXT_MUTED, false);
-
-        int logY = terminalY + 19;
-        int maxLogsVisible = Math.max(1, (terminalHeight - 34) / 10);
-        int startLogIdx = Math.max(0, terminalLogs.size() - maxLogsVisible - terminalScrollOffset);
-        for (int i = startLogIdx; i < terminalLogs.size() && logY < terminalY + terminalHeight - 14; i++) {
-            TerminalEntry entry = terminalLogs.get(i);
-            graphics.drawString(font, entry.time(), 8, logY, 0xFF444444, false);
-            graphics.drawString(font, "[" + entry.level() + "]", 58, logY, entry.color(), false);
-            graphics.drawString(font, entry.message(), 108, logY, TEXT_MAIN, false);
-            logY += 10;
-        }
-
-        int inputBarY = terminalY + terminalHeight - 13;
-        graphics.fill(0, inputBarY - 1, terminalW, inputBarY, BORDER_MUTED);
-        graphics.drawString(font, "lua>", 8, inputBarY + 3, ACCENT_GREEN, false);
-        graphics.drawString(font, terminalInput + (terminalInputFocused && (System.currentTimeMillis() % 1000 < 500) ? "_" : ""), 36, inputBarY + 3, 0xFFFFFFFF, false);
-
-        int vSplitterX = panelX - SPLITTER_THICKNESS;
-        boolean hoverVSplitter = mouseX >= vSplitterX - 2 && mouseX <= vSplitterX + SPLITTER_THICKNESS + 2 && mouseY >= TOP_BAR_H;
-        graphics.fill(vSplitterX, TOP_BAR_H, panelX, height - STATUS_BAR_H, (hoverVSplitter || isDraggingVerticalSplitter) ? ACCENT_GREEN : BORDER_MUTED);
-
-        graphics.fill(panelX, TOP_BAR_H, width, height - STATUS_BAR_H, BG_PANEL);
-
-        graphics.fill(panelX, TOP_BAR_H, width, TOP_BAR_H + 18, BG_HEADER);
-        graphics.fill(panelX, TOP_BAR_H + 17, width, TOP_BAR_H + 18, BORDER_MUTED);
-        graphics.drawString(font, "> EXPLORER", panelX + 6, TOP_BAR_H + 5, TEXT_MUTED, false);
-
-        int newBtnX = width - 44;
-        int newBtnY = TOP_BAR_H + 2;
-        boolean hoverNew = mouseX >= newBtnX && mouseX <= newBtnX + 38 && mouseY >= newBtnY && mouseY <= newBtnY + 13;
-        graphics.fill(newBtnX, newBtnY, newBtnX + 38, newBtnY + 13, hoverNew ? ACCENT_GREEN : BG_ELEM);
-        graphics.renderOutline(newBtnX, newBtnY, 38, 13, hoverNew ? ACCENT_GREEN : BORDER_MUTED);
-        graphics.drawString(font, "+ File", newBtnX + 4, newBtnY + 3, hoverNew ? 0xFF000000 : ACCENT_GREEN, false);
-
-        int itemY = TOP_BAR_H + 24;
+        ImGui.beginChild("FilesListScroll", 0.0f, 0.0f, false);
         for (Path file : cartridgeFiles) {
-            String fname = file.getFileName().toString();
-            boolean isCur = !isMetadataView && file.equals(currentFilePath);
-            boolean hover = mouseX >= panelX && mouseX <= width && mouseY >= itemY && mouseY <= itemY + 14;
+            String fileName = file.getFileName().toString();
+            boolean isSelected = (!openTabs.isEmpty() && activeTabIndex >= 0
+                    && activeTabIndex < openTabs.size() && openTabs.get(activeTabIndex).path.equals(file));
 
-            if (isCur) {
-                graphics.fill(panelX, itemY, width, itemY + 14, BG_ELEM);
-                graphics.fill(panelX, itemY, panelX + 2, itemY + 14, ACCENT_GREEN);
-            } else if (hover) {
-                graphics.fill(panelX, itemY, width, itemY + 14, BG_ELEM_HOVER);
+            if (ImGui.selectable(fileName + "##fileitem", isSelected)) {
+                openFileInTab(file);
             }
 
-            String icon = fname.endsWith(".lua") ? "📄" : (fname.endsWith(".png") ? "🖼" : (fname.endsWith(".json") ? "⚙" : "📁"));
-            graphics.drawString(font, icon + " " + fname, panelX + 6, itemY + 3, isCur ? ACCENT_GREEN : TEXT_MAIN, false);
-
-            itemY += 15;
-            if (itemY > height - STATUS_BAR_H - 18) break;
-        }
-
-        int statY = height - STATUS_BAR_H;
-        graphics.fill(0, statY, width, height, BG_DARK);
-        graphics.fill(0, statY, width, statY + 1, BORDER_MUTED);
-
-        graphics.drawString(font, "● " + (isSaved ? "Saved" : "Unsaved changes"), 10, statY + 5, isSaved ? ACCENT_GREEN : ACCENT_ORANGE, false);
-
-        String rightStatus = "Lua 5.2  |  UTF-8  |  64x64 Fantasy Console";
-        graphics.drawString(font, rightStatus, width - font.width(rightStatus) - 10, statY + 5, TEXT_MUTED, false);
-    }
-
-    private void renderMetadataEditor(GuiGraphics graphics, int x, int y, int w, int h) {
-        graphics.fill(x, y, x + w, y + h, BG_MAIN);
-
-        int startX = x + 24;
-        int curY = y + 20;
-
-        graphics.drawString(font, "> Cartridge Metadata [metadata.json]", startX, curY, ACCENT_GREEN, false);
-        curY += 24;
-
-        renderMetaField(graphics, "Title:", metadata.title, startX, curY, 220, selectedMetaField == 0);
-        curY += 32;
-
-        renderMetaField(graphics, "Author:", metadata.author, startX, curY, 220, selectedMetaField == 1);
-        curY += 32;
-
-        renderMetaField(graphics, "Version:", metadata.version, startX, curY, 100, selectedMetaField == 2);
-        curY += 32;
-
-        renderMetaField(graphics, "Description:", metadata.description, startX, curY, 320, selectedMetaField == 3);
-        curY += 38;
-
-        graphics.drawString(font, "Details appear in the cartridge item tooltip and game browser.", startX, curY, 0xFF444444, false);
-    }
-
-    private void renderMetaField(GuiGraphics graphics, String label, String value, int x, int y, int fieldW, boolean focused) {
-        graphics.drawString(font, "> " + label, x, y + 4, focused ? ACCENT_GREEN : TEXT_MUTED, false);
-        int inputX = x + 85;
-        int inputY = y;
-        int inputH = 16;
-
-        graphics.fill(inputX, inputY, inputX + fieldW, inputY + inputH, BG_DARK);
-        graphics.renderOutline(inputX, inputY, fieldW, inputH, focused ? ACCENT_GREEN : BORDER_MUTED);
-
-        String display = value + (focused && (System.currentTimeMillis() % 1000 < 500) ? "_" : "");
-        graphics.drawString(font, display, inputX + 6, inputY + 4, 0xFFFFFFFF, false);
-    }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int editorW = Math.max(120, width - rightPanelWidth - SPLITTER_THICKNESS);
-        int editorH = Math.max(60, height - TOP_BAR_H - terminalHeight - SPLITTER_THICKNESS - STATUS_BAR_H);
-        int hSplitterY = TOP_BAR_H + editorH;
-        int panelX = width - rightPanelWidth;
-        int vSplitterX = panelX - SPLITTER_THICKNESS;
-        int terminalY = TOP_BAR_H + editorH + SPLITTER_THICKNESS;
-
-        if (mouseX < panelX && mouseY >= hSplitterY - 2 && mouseY <= hSplitterY + SPLITTER_THICKNESS + 2) {
-            isDraggingHorizontalSplitter = true;
-            return true;
-        }
-
-        if (mouseX >= vSplitterX - 2 && mouseX <= vSplitterX + SPLITTER_THICKNESS + 2 && mouseY >= TOP_BAR_H) {
-            isDraggingVerticalSplitter = true;
-            return true;
-        }
-
-        int saveW = 50;
-        int saveX = width - rightPanelWidth - 130;
-        if (mouseX >= saveX && mouseX <= saveX + saveW && mouseY >= 4 && mouseY <= 21) {
-            saveCurrentFile();
-            return true;
-        }
-
-        int expW = 68;
-        int expX = width - rightPanelWidth - 74;
-        if (mouseX >= expX && mouseX <= expX + expW && mouseY >= 4 && mouseY <= 21) {
-            Path dir = CartridgeManager.getCartridgeDir(cartridgeId);
-            Util.getPlatform().openFile(dir.toFile());
-            logTerminal("INFO", "Revealed in Explorer: " + dir.getFileName(), TEXT_MUTED);
-            return true;
-        }
-
-        int tabX = 90;
-
-        int metaTabW = font.width("Metadata") + 22;
-        if (mouseY >= 3 && mouseY <= TOP_BAR_H - 1 && mouseX >= tabX && mouseX <= tabX + metaTabW) {
-            isMetadataView = true;
-            selectedMetaField = -1;
-            return true;
-        }
-        tabX += metaTabW + 4;
-
-        for (int t = 0; t < openTabs.size(); t++) {
-            Path tabPath = openTabs.get(t);
-            int nameW = font.width(tabPath.getFileName().toString());
-            int tabW = nameW + 36;
-            if (mouseY >= 3 && mouseY <= TOP_BAR_H - 1 && mouseX >= tabX && mouseX <= tabX + tabW) {
-                int closeX = tabX + tabW - 14;
-                if (mouseX >= closeX - 2 && mouseX <= closeX + 10) {
-                    openTabs.remove(t);
-                    if (openTabs.isEmpty()) {
-                        openTabs.add(CartridgeManager.getCartridgeDir(cartridgeId).resolve("main.lua"));
-                    }
-                    if (tabPath.equals(currentFilePath)) {
-                        loadFile(openTabs.get(Math.max(0, openTabs.size() - 1)));
-                    }
-                    return true;
+            if (ImGui.beginPopupContextItem("file_ctx_" + fileName)) {
+                if (ImGui.menuItem("Open In Editor")) {
+                    openFileInTab(file);
                 }
-                loadFile(tabPath);
-                return true;
+                ImGui.separator();
+                if (ImGui.menuItem("Delete File")) {
+                    deleteFile(file);
+                }
+                ImGui.endPopup();
             }
-            tabX += tabW + 4;
         }
+        ImGui.endChild();
+    }
 
-        if (isMetadataView && mouseX < editorW && mouseY >= TOP_BAR_H && mouseY < hSplitterY) {
-            int startX = 24 + 85;
-            int curY = TOP_BAR_H + 44;
-            if (mouseX >= startX && mouseX <= startX + 220 && mouseY >= curY && mouseY <= curY + 16) {
-                selectedMetaField = 0;
-                return true;
+    private void renderMainWorkspace() {
+        if (ImGui.beginTabBar("WorkspaceTabBar", ImGuiTabBarFlags.None)) {
+
+            if (ImGui.beginTabItem("Code Editor")) {
+                renderCodeEditorView();
+                ImGui.endTabItem();
             }
-            curY += 32;
-            if (mouseX >= startX && mouseX <= startX + 220 && mouseY >= curY && mouseY <= curY + 16) {
-                selectedMetaField = 1;
-                return true;
+
+            if (ImGui.beginTabItem("Cartridge Properties")) {
+                renderMetadataView();
+                ImGui.endTabItem();
             }
-            curY += 32;
-            if (mouseX >= startX && mouseX <= startX + 100 && mouseY >= curY && mouseY <= curY + 16) {
-                selectedMetaField = 2;
-                return true;
-            }
-            curY += 32;
-            if (mouseX >= startX && mouseX <= startX + 320 && mouseY >= curY && mouseY <= curY + 16) {
-                selectedMetaField = 3;
-                return true;
-            }
-            selectedMetaField = -1;
-            return true;
+
+            ImGui.endTabBar();
         }
+    }
 
-        if (mouseY >= terminalY && mouseY <= terminalY + terminalHeight) {
-            if (mouseX >= 10 && mouseX <= 70 && mouseY <= terminalY + 16) {
-                terminalTab = 0;
-                return true;
-            }
-            if (mouseX >= 80 && mouseX <= 140 && mouseY <= terminalY + 16) {
-                terminalTab = 1;
-                return true;
-            }
-            int clearX = editorW - 40;
-            if (mouseX >= clearX && mouseX <= clearX + 34 && mouseY <= terminalY + 16) {
-                terminalLogs.clear();
-                return true;
-            }
-            if (mouseY >= terminalY + terminalHeight - 15) {
-                terminalInputFocused = true;
-                return true;
-            }
-            terminalInputFocused = false;
+    private void renderCodeEditorView() {
+        float totalHeight = ImGui.getContentRegionAvailY();
+        float bottomConsoleHeight = Math.max(160.0f, totalHeight * 0.32f);
+        float editorHeight = totalHeight - bottomConsoleHeight - 12.0f;
+
+        if (openTabs.isEmpty()) {
+            ImGui.beginChild("EmptyEditorPlaceholder", 0.0f, editorHeight, true);
+            ImGui.spacing();
+            ImGui.textDisabled("No script open. Select a file from the explorer or click '+ New' to create one.");
+            ImGui.endChild();
         } else {
-            terminalInputFocused = false;
-        }
+            if (ImGui.beginTabBar("OpenTabsBar", ImGuiTabBarFlags.Reorderable | ImGuiTabBarFlags.AutoSelectNewTabs)) {
+                for (int i = 0; i < openTabs.size(); i++) {
+                    OpenTab tab = openTabs.get(i);
+                    String label = tab.getFileName() + (tab.isDirty ? " *###tab_" : "###tab_") + tab.path.toString();
+                    ImBoolean keepOpen = new ImBoolean(true);
 
-        if (mouseX >= panelX && mouseY >= TOP_BAR_H) {
-            int newBtnX = width - 44;
-            int newBtnY = TOP_BAR_H + 2;
-            if (mouseX >= newBtnX && mouseX <= newBtnX + 38 && mouseY >= newBtnY && mouseY <= newBtnY + 13) {
-                createNewFile();
-                return true;
-            }
+                    if (ImGui.beginTabItem(label, keepOpen)) {
+                        activeTabIndex = i;
 
-            int itemY = TOP_BAR_H + 24;
-            for (Path file : cartridgeFiles) {
-                if (mouseY >= itemY && mouseY <= itemY + 14) {
-                    saveCurrentFile();
-                    if (file.getFileName().toString().equals("metadata.json")) {
-                        isMetadataView = true;
-                    } else {
-                        loadFile(file);
-                    }
-                    return true;
-                }
-                itemY += 15;
-            }
-            return true;
-        }
-
-        if (!isMetadataView && mouseX < editorW && mouseY >= TOP_BAR_H && mouseY < hSplitterY) {
-            codeArea.handleMouseClick(mouseX, mouseY - TOP_BAR_H, button);
-            isSaved = false;
-            return true;
-        }
-
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        isDraggingVerticalSplitter = false;
-        isDraggingHorizontalSplitter = false;
-        return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (isDraggingVerticalSplitter) {
-            rightPanelWidth = Math.max(100, Math.min(width - 150, width - (int) mouseX));
-            updateLayout();
-            return true;
-        }
-        if (isDraggingHorizontalSplitter) {
-            terminalHeight = Math.max(40, Math.min(height - 120, height - (int) mouseY - STATUS_BAR_H));
-            updateLayout();
-            return true;
-        }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        int editorW = Math.max(120, width - rightPanelWidth - SPLITTER_THICKNESS);
-        int editorH = Math.max(60, height - TOP_BAR_H - terminalHeight - SPLITTER_THICKNESS - STATUS_BAR_H);
-        int terminalY = TOP_BAR_H + editorH + SPLITTER_THICKNESS;
-
-        if (mouseY >= terminalY && mouseY <= terminalY + terminalHeight) {
-            terminalScrollOffset = Math.max(0, terminalScrollOffset - (int) scrollY);
-            return true;
-        }
-
-        if (!isMetadataView && mouseX < editorW && mouseY >= TOP_BAR_H && mouseY < terminalY) {
-            codeArea.handleMouseScrolled(mouseX, mouseY - TOP_BAR_H, scrollY);
-            return true;
-        }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_S && (modifiers & GLFW.GLFW_MOD_CONTROL) != 0) {
-            saveCurrentFile();
-            return true;
-        }
-
-        if (isMetadataView && selectedMetaField >= 0) {
-            if (keyCode == GLFW.GLFW_KEY_BACKSPACE) {
-                switch (selectedMetaField) {
-                    case 0 -> { if (!metadata.title.isEmpty()) metadata.title = metadata.title.substring(0, metadata.title.length() - 1); }
-                    case 1 -> { if (!metadata.author.isEmpty()) metadata.author = metadata.author.substring(0, metadata.author.length() - 1); }
-                    case 2 -> { if (!metadata.version.isEmpty()) metadata.version = metadata.version.substring(0, metadata.version.length() - 1); }
-                    case 3 -> { if (!metadata.description.isEmpty()) metadata.description = metadata.description.substring(0, metadata.description.length() - 1); }
-                }
-                isSaved = false;
-                return true;
-            }
-            if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_TAB) {
-                selectedMetaField = (selectedMetaField + 1) % 4;
-                return true;
-            }
-            return true;
-        }
-
-        if (terminalInputFocused) {
-            if (keyCode == GLFW.GLFW_KEY_ENTER) {
-                if (!terminalInput.trim().isEmpty()) {
-                    logTerminal("LUA", "> " + terminalInput, ACCENT_GREEN);
-                    try {
-                        Globals g = JsePlatform.standardGlobals();
-                        var res = g.load(terminalInput).call();
-                        if (!res.isnil()) {
-                            logTerminal("RESULT", res.tojstring(), 0xFFFFFF88);
+                        ImGui.beginChild("EditorContainer", 0.0f, editorHeight - 34.0f, false);
+                        int inputFlags = ImGuiInputTextFlags.AllowTabInput;
+                        if (ImGui.inputTextMultiline("##source_code", tab.content, -1.0f, -1.0f, inputFlags)) {
+                            tab.isDirty = !tab.content.get().equals(tab.lastSavedContent);
                         }
-                    } catch (LuaError e) {
-                        logTerminal("ERROR", e.getMessage(), ACCENT_RED);
+                        ImGui.endChild();
+
+                        renderEditorStatusBar(tab);
+
+                        ImGui.endTabItem();
                     }
-                    terminalInput = "";
+
+                    if (!keepOpen.get()) {
+                        if (tab.isDirty) {
+                            saveCurrentTab();
+                        }
+                        openTabs.remove(i);
+                        if (activeTabIndex >= openTabs.size()) {
+                            activeTabIndex = Math.max(0, openTabs.size() - 1);
+                        }
+                        break;
+                    }
                 }
-                return true;
+                ImGui.endTabBar();
             }
-            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && !terminalInput.isEmpty()) {
-                terminalInput = terminalInput.substring(0, terminalInput.length() - 1);
-                return true;
-            }
-            return true;
         }
 
-        isSaved = false;
-        return codeArea.handleKeyPress(keyCode, scanCode, modifiers) || super.keyPressed(keyCode, scanCode, modifiers);
+        ImGui.separator();
+        ImGui.beginChild("BottomConsoleChild", 0.0f, 0.0f, true);
+        renderConsolePanel();
+        ImGui.endChild();
+    }
+
+    private void renderEditorStatusBar(OpenTab tab) {
+        ImGui.separator();
+        int lineCount = tab.content.get().split("\n", -1).length;
+        int charCount = tab.content.get().length();
+
+        ImGui.textDisabled("Lines: " + lineCount + " | Chars: " + charCount);
+        ImGui.sameLine();
+        if (tab.isDirty) {
+            ImGui.textColored(1.0f, 0.7f, 0.2f, 1.0f, "[MODIFIED]");
+        } else {
+            ImGui.textColored(0.4f, 0.9f, 0.4f, 1.0f, "[CLEAN]");
+        }
+
+        ImGui.sameLine(ImGui.getContentRegionAvailX() - 180.0f);
+        if (ImGui.button("Check Syntax", 95.0f, 20.0f)) {
+            validateSyntax(tab);
+        }
+        ImGui.sameLine();
+        if (ImGui.button("Save (Ctrl+S)", 95.0f, 20.0f)) {
+            saveCurrentTab();
+        }
+    }
+
+    private void renderConsolePanel() {
+        if (ImGui.beginTabBar("ConsoleTabs", ImGuiTabBarFlags.None)) {
+
+            if (ImGui.beginTabItem("Console Log")) {
+                if (ImGui.button("Clear Output", 90.0f, 20.0f)) {
+                    terminalLogs.clear();
+                }
+                ImGui.sameLine();
+                ImGui.checkbox("Auto-scroll", autoScrollLogs);
+
+                ImGui.separator();
+                ImGui.beginChild("LogTextScrolling", 0.0f, 0.0f, false);
+                for (LogEntry entry : terminalLogs) {
+                    ImGui.textDisabled("[" + entry.time + "]");
+                    ImGui.sameLine();
+                    ImGui.textColored((entry.color >> 16 & 0xFF) / 255.0f,
+                                      (entry.color >> 8 & 0xFF) / 255.0f,
+                                      (entry.color & 0xFF) / 255.0f,
+                                      1.0f,
+                                      "[" + entry.level + "]");
+                    ImGui.sameLine();
+                    ImGui.textUnformatted(entry.message);
+                }
+                if (autoScrollLogs && ImGui.getScrollY() >= ImGui.getScrollMaxY() - 20.0f) {
+                    ImGui.setScrollHereY(1.0f);
+                }
+                ImGui.endChild();
+
+                ImGui.endTabItem();
+            }
+
+            if (ImGui.beginTabItem("Lua REPL")) {
+                ImGui.textDisabled("Execute test expressions directly in the sandboxed Lua environment:");
+
+                boolean execute = false;
+                ImGui.pushItemWidth(ImGui.getContentRegionAvailX() - 85.0f);
+                if (ImGui.inputText("##repl_input", replInput, ImGuiInputTextFlags.EnterReturnsTrue)) {
+                    execute = true;
+                }
+                ImGui.popItemWidth();
+
+                ImGui.sameLine();
+                if (ImGui.button("Execute", 75.0f, 22.0f)) {
+                    execute = true;
+                }
+
+                if (execute) {
+                    runRepl(replInput.get());
+                    replInput.set("");
+                }
+
+                ImGui.separator();
+                ImGui.beginChild("ReplOutputScroll", 0.0f, 0.0f, false);
+                for (LogEntry entry : terminalLogs) {
+                    if ("INPUT".equals(entry.level) || "RESULT".equals(entry.level) || "ERROR".equals(entry.level)) {
+                        ImGui.textColored((entry.color >> 16 & 0xFF) / 255.0f,
+                                          (entry.color >> 8 & 0xFF) / 255.0f,
+                                          (entry.color & 0xFF) / 255.0f,
+                                          1.0f,
+                                          entry.message);
+                    }
+                }
+                ImGui.setScrollHereY(1.0f);
+                ImGui.endChild();
+
+                ImGui.endTabItem();
+            }
+
+            ImGui.endTabBar();
+        }
+    }
+
+    private void renderMetadataView() {
+        ImGui.spacing();
+        ImGui.textColored(0.4f, 0.85f, 1.0f, 1.0f, "CARTRIDGE MANIFEST & CONFIGURATION");
+        ImGui.textDisabled("Edit package properties stored in metadata.json:");
+        ImGui.spacing();
+        ImGui.separator();
+        ImGui.spacing();
+
+        ImGui.text("Package Title:");
+        ImGui.inputText("##meta_title", metaTitle);
+
+        ImGui.spacing();
+        ImGui.text("Author:");
+        ImGui.inputText("##meta_author", metaAuthor);
+
+        ImGui.spacing();
+        ImGui.text("Version:");
+        ImGui.inputText("##meta_version", metaVersion);
+
+        ImGui.spacing();
+        ImGui.text("Description:");
+        ImGui.inputTextMultiline("##meta_desc", metaDescription, -1.0f, 120.0f, 0);
+
+        ImGui.spacing();
+        ImGui.separator();
+        ImGui.spacing();
+
+        if (ImGui.button("Save Metadata Changes", 200.0f, 30.0f)) {
+            saveMetadataChanges();
+        }
+    }
+
+    private void renderModals() {
+        if (openNewFileModal) {
+            ImGui.openPopup("Create New Script##NewFileModal");
+            openNewFileModal = false;
+        }
+
+        if (ImGui.beginPopupModal("Create New Script##NewFileModal", ImGuiWindowFlags.AlwaysAutoResize)) {
+            ImGui.text("Enter file name for new Lua script:");
+            ImGui.spacing();
+
+            boolean create = false;
+            if (ImGui.inputText("##new_file_name", newFileNameInput, ImGuiInputTextFlags.EnterReturnsTrue)) {
+                create = true;
+            }
+
+            ImGui.spacing();
+            ImGui.separator();
+            ImGui.spacing();
+
+            if (ImGui.button("Create", 120.0f, 26.0f) || create) {
+                createNewFile(newFileNameInput.get());
+                ImGui.closeCurrentPopup();
+            }
+            ImGui.sameLine();
+            if (ImGui.button("Cancel", 120.0f, 26.0f)) {
+                ImGui.closeCurrentPopup();
+            }
+
+            ImGui.endPopup();
+        }
     }
 
     @Override
-    public boolean charTyped(char codePoint, int modifiers) {
-        if (isMetadataView && selectedMetaField >= 0) {
-            switch (selectedMetaField) {
-                case 0 -> metadata.title += codePoint;
-                case 1 -> metadata.author += codePoint;
-                case 2 -> metadata.version += codePoint;
-                case 3 -> metadata.description += codePoint;
-            }
-            isSaved = false;
-            return true;
-        }
-
-        if (terminalInputFocused) {
-            terminalInput += codePoint;
-            return true;
-        }
-        isSaved = false;
-        return codeArea.handleCharTyped(codePoint, modifiers) || super.charTyped(codePoint, modifiers);
-    }
-
-    @Override
-    public void onFilesDrop(List<Path> paths) {
-        Path assetsDir = CartridgeManager.getCartridgeDir(cartridgeId).resolve("assets");
-        try {
-            Files.createDirectories(assetsDir);
-            for (Path p : paths) {
-                if (Files.isRegularFile(p)) {
-                    Path dest = assetsDir.resolve(p.getFileName());
-                    Files.copy(p, dest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                    logTerminal("INFO", "Imported asset: " + p.getFileName(), ACCENT_GREEN);
-                }
-            }
-            refreshFileList();
-        } catch (IOException e) {
-            logTerminal("ERROR", "Asset import error: " + e.getMessage(), ACCENT_RED);
-        }
+    public void onClose() {
+        saveAll();
+        super.onClose();
     }
 
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    @Override
+    public void mouseMoved(double mouseX, double mouseY) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.getWindow() != null) {
+            double[] xpos = new double[1];
+            double[] ypos = new double[1];
+            GLFW.glfwGetCursorPos(mc.getWindow().getWindow(), xpos, ypos);
+            ImGuiManager.getInstance().onMouseMove(mc.getWindow().getWindow(), xpos[0], ypos[0]);
+        }
+        super.mouseMoved(mouseX, mouseY);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.getWindow() != null) {
+            ImGuiManager.getInstance().onMouseClick(mc.getWindow().getWindow(), button, GLFW.GLFW_PRESS, 0);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.getWindow() != null) {
+            ImGuiManager.getInstance().onMouseClick(mc.getWindow().getWindow(), button, GLFW.GLFW_RELEASE, 0);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        ImGuiManager.getInstance().onMouseScroll(scrollX, scrollY);
+        return true;
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            this.onClose();
+            return true;
+        }
+
+        boolean ctrl = (modifiers & GLFW.GLFW_MOD_CONTROL) != 0 || hasControlDown();
+        if (ctrl && keyCode == GLFW.GLFW_KEY_S) {
+            saveCurrentTab();
+            return true;
+        }
+        if (keyCode == GLFW.GLFW_KEY_F5) {
+            if (activeTabIndex >= 0 && activeTabIndex < openTabs.size()) {
+                validateSyntax(openTabs.get(activeTabIndex));
+            }
+            return true;
+        }
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.getWindow() != null) {
+            ImGuiManager.getInstance().onKey(mc.getWindow().getWindow(), keyCode, scanCode, GLFW.GLFW_PRESS, modifiers);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.getWindow() != null) {
+            ImGuiManager.getInstance().onKey(mc.getWindow().getWindow(), keyCode, scanCode, GLFW.GLFW_RELEASE, modifiers);
+        }
+        return super.keyReleased(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.getWindow() != null) {
+            ImGuiManager.getInstance().onChar(mc.getWindow().getWindow(), codePoint);
+        }
+        return true;
     }
 }
