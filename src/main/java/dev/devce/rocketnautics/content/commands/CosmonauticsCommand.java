@@ -10,9 +10,14 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import com.simibubi.create.content.fluids.tank.CreativeFluidTankBlockEntity;
+import com.simibubi.create.content.fluids.tank.FluidTankBlock;
+import com.simibubi.create.content.fluids.tank.FluidTankBlockEntity;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.RocketDimensions;
+import dev.devce.rocketnautics.content.blocks.drain_valve.DrainValveBlockEntity;
+import dev.devce.rocketnautics.content.fluids.ITankPressure;
 import dev.devce.rocketnautics.content.items.JetpackItem;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceInstance;
@@ -22,11 +27,15 @@ import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseLoader;
 import dev.devce.rocketnautics.content.physics.AsteroidSpawner;
 import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
-import dev.devce.rocketnautics.registry.NodeDefinitionLoader;
+import dev.devce.rocketnautics.content.physics.SubLevelExplosionHandler;
+import dev.devce.rocketnautics.registry.RocketParticles;
 import dev.devce.rocketnautics.server.telemetry.TelemetryServer;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.companion.math.Pose3d;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import dev.ryanhcode.sable.sublevel.plot.PlotChunkHolder;
+import dev.ryanhcode.sable.sublevel.plot.ServerLevelPlot;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -38,8 +47,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.loading.FMLPaths;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.joml.Quaterniond;
@@ -91,6 +103,27 @@ public final class CosmonauticsCommand {
                     dev.devce.rocketnautics.content.blocks.mfd.cartridge.CartridgeManager.listCartridges(), builder))
                 .executes(ctx -> executeGiveCartridge(ctx.getSource(), StringArgumentType.getString(ctx, "id"))))
             .executes(ctx -> executeGiveCartridge(ctx.getSource(), "default")));
+
+        dispatcher.register(Commands.literal("ship")
+            .requires(source -> source.hasPermission(2))
+            .then(Commands.literal("explode").executes(CosmonauticsCommand::executeShipExplode)));
+
+        dispatcher.register(Commands.literal("tank")
+            .requires(source -> source.hasPermission(2))
+            .then(Commands.literal("info").executes(CosmonauticsCommand::executeTankInfo))
+            .then(Commands.literal("explode").executes(CosmonauticsCommand::executeTankExplode))
+            .then(Commands.literal("pressure")
+                .then(Commands.argument("value", FloatArgumentType.floatArg(0.0f, 100.0f))
+                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of("1.0", "3.0", "5.0", "10.0"), builder))
+                    .executes(ctx -> executeTankSetPressure(ctx.getSource(), FloatArgumentType.getFloat(ctx, "value")))))
+            .then(Commands.literal("test_explosion")
+                .executes(ctx -> executeTankTestExplosion(ctx.getSource(), 10.0f, 30.0f))
+                .then(Commands.argument("power", FloatArgumentType.floatArg(1.0f, 50.0f))
+                    .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of("5.0", "10.0", "20.0", "30.0"), builder))
+                    .executes(ctx -> executeTankTestExplosion(ctx.getSource(), FloatArgumentType.getFloat(ctx, "power"), 30.0f))
+                    .then(Commands.argument("distance", FloatArgumentType.floatArg(1.0f, 500.0f))
+                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of("15.0", "30.0", "50.0", "100.0"), builder))
+                        .executes(ctx -> executeTankTestExplosion(ctx.getSource(), FloatArgumentType.getFloat(ctx, "power"), FloatArgumentType.getFloat(ctx, "distance")))))));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildTree(String rootLiteral) {
@@ -255,18 +288,10 @@ public final class CosmonauticsCommand {
                 )
             )
 
-            // 5. /cosmo reload [nodes]
+            // 5. /cosmo reload
             .then(Commands.literal("reload")
-                .then(Commands.literal("nodes")
-                    .executes(ctx -> {
-                        NodeDefinitionLoader.reload();
-                        ctx.getSource().sendSuccess(() -> Component.literal("§6[Cosmonautics] §aCustom Sputnik nodes reloaded from disk."), true);
-                        return 1;
-                    })
-                )
                 .executes(ctx -> {
-                    NodeDefinitionLoader.reload();
-                    ctx.getSource().sendSuccess(() -> Component.literal("§6[Cosmonautics] §aCustom Sputnik nodes reloaded. For datapacks/universe, use §b/reload§a."), true);
+                    ctx.getSource().sendSuccess(() -> Component.literal("§6[Cosmonautics] §aFor datapacks/universe, use §b/reload§a."), true);
                     return 1;
                 })
             )
@@ -317,7 +342,25 @@ public final class CosmonauticsCommand {
                     .then(Commands.argument("name", StringArgumentType.string())
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(getSavedShipNames(), builder))
                         .executes(CosmonauticsCommand::deleteShip)))
-            );
+                .then(Commands.literal("explode").executes(CosmonauticsCommand::executeShipExplode))
+            )
+
+            // 9. /cosmo tank <info | pressure | explode | test_explosion>
+            .then(Commands.literal("tank")
+                .then(Commands.literal("info").executes(CosmonauticsCommand::executeTankInfo))
+                .then(Commands.literal("explode").executes(CosmonauticsCommand::executeTankExplode))
+                .then(Commands.literal("pressure")
+                    .then(Commands.argument("value", FloatArgumentType.floatArg(0.0f, 100.0f))
+                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of("1.0", "3.0", "5.0", "10.0"), builder))
+                        .executes(ctx -> executeTankSetPressure(ctx.getSource(), FloatArgumentType.getFloat(ctx, "value")))))
+                .then(Commands.literal("test_explosion")
+                    .executes(ctx -> executeTankTestExplosion(ctx.getSource(), 10.0f, 30.0f))
+                    .then(Commands.argument("power", FloatArgumentType.floatArg(1.0f, 50.0f))
+                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of("5.0", "10.0", "20.0", "30.0"), builder))
+                        .executes(ctx -> executeTankTestExplosion(ctx.getSource(), FloatArgumentType.getFloat(ctx, "power"), 30.0f))
+                        .then(Commands.argument("distance", FloatArgumentType.floatArg(1.0f, 500.0f))
+                            .suggests((context, builder) -> SharedSuggestionProvider.suggest(List.of("15.0", "30.0", "50.0", "100.0"), builder))
+                            .executes(ctx -> executeTankTestExplosion(ctx.getSource(), FloatArgumentType.getFloat(ctx, "power"), FloatArgumentType.getFloat(ctx, "distance")))))));
     }
 
     // ==========================================
@@ -630,5 +673,354 @@ public final class CosmonauticsCommand {
                 if (beTag.contains("z")) beTag.putInt("z", beTag.getInt("z") + offsetZ);
             }
         }
+    }
+
+    private static ServerSubLevel findTargetShip(CommandSourceStack source, ServerPlayer player) {
+        ServerSubLevel subLevel = null;
+        try {
+            Object obj = Sable.HELPER.getContaining(player);
+            if (obj instanceof ServerSubLevel ssl) {
+                subLevel = ssl;
+            }
+        } catch (Throwable ignored) {}
+
+        if (subLevel == null) {
+            HitResult hit = player.pick(512.0, 1.0f, false);
+            if (hit instanceof BlockHitResult blockHit) {
+                try {
+                    Object obj = Sable.HELPER.getContaining(source.getLevel(), blockHit.getBlockPos());
+                    if (obj instanceof ServerSubLevel ssl) {
+                        subLevel = ssl;
+                    }
+                } catch (Throwable ignored) {}
+            }
+        }
+
+        if (subLevel == null) {
+            dev.ryanhcode.sable.api.sublevel.SubLevelContainer container =
+                    dev.ryanhcode.sable.api.sublevel.SubLevelContainer.getContainer(player.serverLevel());
+            if (container != null) {
+                Vec3 eye = player.getEyePosition();
+                Vec3 look = player.getLookAngle().normalize();
+                ServerSubLevel bestShip = null;
+                double bestDistAlongRay = Double.MAX_VALUE;
+
+                for (SubLevel sl : container.getAllSubLevels()) {
+                    if (sl instanceof ServerSubLevel ssl && !ssl.isRemoved()) {
+                        Vector3d center = ssl.logicalPose().position();
+                        Vec3 toCenter = new Vec3(center.x - eye.x, center.y - eye.y, center.z - eye.z);
+                        double t = toCenter.dot(look);
+                        if (t > 1.0 && t < 2048.0) {
+                            Vec3 closest = eye.add(look.scale(t));
+                            double distSq = closest.distanceToSqr(center.x, center.y, center.z);
+
+                            double radius = 15.0;
+                            ServerLevelPlot plot = ssl.getPlot();
+                            if (plot != null) {
+                                var bounds = plot.getBoundingBox();
+                                if (bounds != null) {
+                                    double sx = bounds.maxX() - bounds.minX() + 1;
+                                    double sy = bounds.maxY() - bounds.minY() + 1;
+                                    double sz = bounds.maxZ() - bounds.minZ() + 1;
+                                    radius = Math.max(Math.sqrt(sx * sx + sy * sy + sz * sz) * 0.5, 4.0);
+                                }
+                            }
+
+                            double effectiveRadius = Math.max(radius * 2.5, 10.0 + t * 0.08);
+                            if (distSq <= effectiveRadius * effectiveRadius && t < bestDistAlongRay) {
+                                bestDistAlongRay = t;
+                                bestShip = ssl;
+                            }
+                        }
+                    }
+                }
+                subLevel = bestShip;
+            }
+        }
+
+        return subLevel;
+    }
+
+    private static Set<FluidTankBlockEntity> findShipFluidTanks(ServerSubLevel subLevel) {
+        Set<FluidTankBlockEntity> controllers = new HashSet<>();
+        ServerLevelPlot plot = subLevel.getPlot();
+        if (plot == null) return controllers;
+        ServerLevel level = subLevel.getLevel();
+        if (level == null) return controllers;
+
+        for (PlotChunkHolder chunkHolder : plot.getLoadedChunks()) {
+            LevelChunk chunk = chunkHolder.getChunk();
+            if (chunk == null) continue;
+            for (BlockPos pos : chunk.getBlockEntitiesPos()) {
+                BlockEntity be = level.getBlockEntity(pos);
+                if (be instanceof FluidTankBlockEntity tankBE) {
+                    FluidTankBlockEntity controller = tankBE.getControllerBE();
+                    FluidTankBlockEntity target = controller != null ? controller : tankBE;
+                    if (!(target instanceof CreativeFluidTankBlockEntity)) {
+                        controllers.add(target);
+                    }
+                } else if (be instanceof DrainValveBlockEntity valve) {
+                    FluidTankBlockEntity tank = valve.getTank();
+                    if (tank != null) {
+                        FluidTankBlockEntity controller = tank.getControllerBE();
+                        FluidTankBlockEntity target = controller != null ? controller : tank;
+                        if (!(target instanceof CreativeFluidTankBlockEntity)) {
+                            controllers.add(target);
+                        }
+                    }
+                }
+            }
+        }
+        return controllers;
+    }
+
+    private static FluidTankBlockEntity findTargetTank(CommandSourceStack source, ServerPlayer player) {
+        HitResult hit = player.pick(128.0, 1.0f, false);
+        if (hit instanceof BlockHitResult blockHit) {
+            BlockPos pos = blockHit.getBlockPos();
+            ServerLevel level = source.getLevel();
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof FluidTankBlockEntity tankBE) {
+                return tankBE.getControllerBE() != null ? tankBE.getControllerBE() : tankBE;
+            } else if (be instanceof DrainValveBlockEntity valve) {
+                FluidTankBlockEntity tank = valve.getTank();
+                if (tank != null) {
+                    return tank.getControllerBE() != null ? tank.getControllerBE() : tank;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static int executeShipExplode(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        CommandSourceStack source = ctx.getSource();
+        ServerPlayer player = source.getPlayerOrException();
+
+        ServerSubLevel ship = findTargetShip(source, player);
+        if (ship == null) {
+            source.sendFailure(Component.literal("§c[Cosmonautics] No ship found in crosshairs (checked up to 2048 blocks)!"));
+            return 0;
+        }
+
+        Set<FluidTankBlockEntity> tanks = findShipFluidTanks(ship);
+        int count = tanks.size();
+        float power = count > 0 ? (20.0f + (count * 5.0f)) : 35.0f;
+        dev.devce.rocketnautics.content.physics.SubLevelExplosionHandler.explodeSubLevel(ship, power);
+
+        final int finalCount = count;
+        source.sendSuccess(() -> Component.literal(
+                finalCount > 0
+                        ? "§6[Cosmonautics] §cExploded ship with §e" + finalCount + "§c tank multiblock(s) from a distance!"
+                        : "§6[Cosmonautics] §cExploded ship hull from a distance!"), true);
+        return Math.max(1, count);
+    }
+
+    private static int executeTankExplode(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        CommandSourceStack source = ctx.getSource();
+        ServerPlayer player = source.getPlayerOrException();
+
+        FluidTankBlockEntity tank = findTargetTank(source, player);
+        if (tank != null) {
+            FluidTankBlockEntity controller = tank.getControllerBE() != null ? tank.getControllerBE() : tank;
+            if (controller instanceof CreativeFluidTankBlockEntity) {
+                source.sendFailure(Component.literal("§c[Cosmonautics] Creative Fluid Tanks are immune to explosions!"));
+                return 0;
+            }
+            if (controller instanceof ITankPressure p) {
+                p.triggerCatastrophicExplosion();
+                source.sendSuccess(() -> Component.literal("§6[Cosmonautics] §cExploded targeted fluid tank!"), true);
+                return 1;
+            }
+        }
+
+        ServerSubLevel ship = findTargetShip(source, player);
+        if (ship != null) {
+            Set<FluidTankBlockEntity> tanks = findShipFluidTanks(ship);
+            int count = tanks.size();
+            float power = count > 0 ? (20.0f + (count * 5.0f)) : 35.0f;
+            dev.devce.rocketnautics.content.physics.SubLevelExplosionHandler.explodeSubLevel(ship, power);
+            final int finalCount = count;
+            source.sendSuccess(() -> Component.literal(
+                    finalCount > 0
+                            ? "§6[Cosmonautics] §cExploded ship with §e" + finalCount + "§c tank multiblock(s) from a distance!"
+                            : "§6[Cosmonautics] §cExploded ship hull from a distance!"), true);
+            return Math.max(1, count);
+        }
+
+        source.sendFailure(Component.literal("§c[Cosmonautics] Look at a fluid tank or a ship!"));
+        return 0;
+    }
+
+    private static int executeTankInfo(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        CommandSourceStack source = ctx.getSource();
+        ServerPlayer player = source.getPlayerOrException();
+
+        FluidTankBlockEntity tank = findTargetTank(source, player);
+        if (tank != null) {
+            FluidTankBlockEntity controller = tank.getControllerBE() != null ? tank.getControllerBE() : tank;
+            if (controller instanceof CreativeFluidTankBlockEntity) {
+                source.sendSuccess(() -> Component.literal(
+                        String.format(Locale.ROOT,
+                                "§6[Cosmonautics Tank Info]\n" +
+                                "§7  • Controller: §b[%d, %d, %d] §7(%d blocks)\n" +
+                                "§7  • Type: §aCreative Fluid Tank\n" +
+                                "§7  • Pressure: §aIMMUNE §7(Infinite capacity, no overpressure)",
+                                controller.getBlockPos().getX(), controller.getBlockPos().getY(), controller.getBlockPos().getZ(),
+                                controller.getTotalTankSize())
+                ), false);
+                return 1;
+            }
+            if (controller instanceof ITankPressure p) {
+                float pressure = p.getPressure();
+                float max = p.getMaxPressure();
+                boolean venting = p.isVenting();
+
+                String fluidInfo = "Empty";
+                try {
+                    var fluidTank = controller.getTank(0);
+                    if (fluidTank != null && !fluidTank.getFluid().isEmpty()) {
+                        fluidInfo = String.format(Locale.ROOT, "%s (%,d / %,d mB)",
+                                fluidTank.getFluid().getHoverName().getString(),
+                                fluidTank.getFluid().getAmount(),
+                                fluidTank.getCapacity());
+                    } else if (fluidTank != null) {
+                        fluidInfo = String.format(Locale.ROOT, "Empty (0 / %,d mB)", fluidTank.getCapacity());
+                    }
+                } catch (Throwable ignored) {}
+
+                double altitude = controller.getBlockPos().getY();
+                SubLevel subLevel = null;
+                try {
+                    Object obj = Sable.HELPER.getContaining(controller.getLevel(), controller.getBlockPos());
+                    if (obj instanceof SubLevel sl) {
+                        subLevel = sl;
+                        altitude = sl.logicalPose().position().y();
+                    }
+                } catch (Throwable ignored) {}
+
+                double fuelMass = 0.0;
+                double massPerB = 0.0;
+                try {
+                    var fluidTank = controller.getTank(0);
+                    if (fluidTank != null && !fluidTank.getFluid().isEmpty()) {
+                        massPerB = dev.devce.rocketnautics.content.physics.FluidMassHelper.getMassPerBucket(fluidTank.getFluid());
+                        fuelMass = (fluidTank.getFluidAmount() / 1000.0) * massPerB;
+                    }
+                } catch (Throwable ignored) {}
+
+                double altThreshold = RocketConfig.SERVER.tankExplosionAltitude.get();
+                final String fInfo = fluidInfo + (massPerB > 0 ? String.format(Locale.ROOT, " §7[%.2f kg/B]", massPerB) : "");
+                final double finalAlt = altitude;
+                final double finalFuelMass = fuelMass;
+                final String slDesc = (subLevel != null ? "§aShip (" + subLevel.getUniqueId().toString().substring(0, 8) + "...)" : "§7World");
+
+                source.sendSuccess(() -> Component.literal(
+                        String.format(Locale.ROOT,
+                                "§6[Cosmonautics Tank Info]\n" +
+                                "§7  • Controller: §b[%d, %d, %d] §7(%d blocks)\n" +
+                                "§7  • Pressure: §e%.2f / %.1f bar §7(Venting: %s§7)\n" +
+                                "§7  • Contents: §b%s §7(Fuel Mass: §e%.1f kg§7)\n" +
+                                "§7  • Altitude: §b%.1f m §7(Explosion Threshold: §c>%.0f m§7)\n" +
+                                "§7  • SubLevel: %s",
+                                controller.getBlockPos().getX(), controller.getBlockPos().getY(), controller.getBlockPos().getZ(),
+                                controller.getTotalTankSize(),
+                                pressure, max, (venting ? "§aYES" : "§cNO"),
+                                fInfo, finalFuelMass,
+                                finalAlt, altThreshold,
+                                slDesc)
+                ), false);
+                return 1;
+            }
+        }
+
+        ServerSubLevel ship = findTargetShip(source, player);
+        if (ship != null) {
+            Set<FluidTankBlockEntity> tanks = findShipFluidTanks(ship);
+            double totalMass = ship.getMassTracker().getMass();
+            double fuelMass = dev.devce.rocketnautics.content.physics.SubLevelFuelMassTracker.getTotalFuelMass(ship);
+            double dryMass = Math.max(0.0, totalMass - fuelMass);
+
+            StringBuilder sb = new StringBuilder(String.format(Locale.ROOT,
+                    "§6[Cosmonautics Ship Mass & Tanks]:\n" +
+                    "§7  • Dry Mass: §e%.1f kg\n" +
+                    "§7  • Fuel Mass: §b%.1f kg\n" +
+                    "§7  • Total Mass: §a%.1f kg\n" +
+                    "§6Tanks (§e%d§6):\n",
+                    dryMass, fuelMass, totalMass, tanks.size()));
+            for (FluidTankBlockEntity t : tanks) {
+                if (t instanceof ITankPressure p) {
+                    sb.append(String.format(Locale.ROOT, "§7  • [%d, %d, %d]: §e%.2f/%.1f bar§7, size: §b%d blocks§7\n",
+                            t.getBlockPos().getX(), t.getBlockPos().getY(), t.getBlockPos().getZ(),
+                            p.getPressure(), p.getMaxPressure(), t.getTotalTankSize()));
+                }
+            }
+            source.sendSuccess(() -> Component.literal(sb.toString().trim()), false);
+            return Math.max(1, tanks.size());
+        }
+
+        source.sendFailure(Component.literal("§c[Cosmonautics] No fluid tank or ship found in crosshairs!"));
+        return 0;
+    }
+
+    private static int executeTankSetPressure(CommandSourceStack source, float pressure) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        FluidTankBlockEntity tank = findTargetTank(source, player);
+        if (tank != null) {
+            FluidTankBlockEntity controller = tank.getControllerBE() != null ? tank.getControllerBE() : tank;
+            if (controller instanceof CreativeFluidTankBlockEntity) {
+                source.sendFailure(Component.literal("§c[Cosmonautics] Creative Fluid Tanks are immune to overpressure!"));
+                return 0;
+            }
+            if (controller instanceof ITankPressure p) {
+                p.setPressure(pressure);
+                controller.sendData();
+                source.sendSuccess(() -> Component.literal(
+                        String.format(Locale.ROOT, "§6[Cosmonautics] §aSet tank pressure at §b[%d, %d, %d]§a to §e%.2f bar§a.",
+                                controller.getBlockPos().getX(), controller.getBlockPos().getY(), controller.getBlockPos().getZ(), pressure)), true);
+                return 1;
+            }
+        }
+
+        ServerSubLevel ship = findTargetShip(source, player);
+        if (ship != null) {
+            Set<FluidTankBlockEntity> tanks = findShipFluidTanks(ship);
+            if (!tanks.isEmpty()) {
+                for (FluidTankBlockEntity t : tanks) {
+                    if (t instanceof ITankPressure p) {
+                        p.setPressure(pressure);
+                        t.sendData();
+                    }
+                }
+                final int count = tanks.size();
+                source.sendSuccess(() -> Component.literal(
+                        String.format(Locale.ROOT, "§6[Cosmonautics] §aSet pressure of §e%d§a tank multiblock(s) on ship to §e%.2f bar§a.",
+                                count, pressure)), true);
+                return count;
+            }
+        }
+
+        source.sendFailure(Component.literal("§c[Cosmonautics] No fluid tank or ship found in crosshairs!"));
+        return 0;
+    }
+
+    private static int executeTankTestExplosion(CommandSourceStack source, float power, float distance) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        Vec3 eye = player.getEyePosition();
+        Vec3 look = player.getLookAngle().normalize();
+
+        HitResult hit = player.pick(distance, 1.0f, false);
+        Vec3 hitPos;
+        if (hit.getType() != HitResult.Type.MISS) {
+            hitPos = hit.getLocation();
+        } else {
+            hitPos = eye.add(look.scale(distance));
+        }
+        ServerLevel level = player.serverLevel();
+        SubLevelExplosionHandler.sendExplosionParticle(level, hitPos.x, hitPos.y, hitPos.z, power);
+
+        source.sendSuccess(() -> Component.literal(
+                String.format(Locale.ROOT, "§6[Cosmonautics] §aTriggered visual explosion (power: §e%.1f§a, distance: §e%.1f§a blocks) at §b[%.1f, %.1f, %.1f]§a.",
+                        power, eye.distanceTo(hitPos), hitPos.x, hitPos.y, hitPos.z)), true);
+        return 1;
     }
 }

@@ -54,6 +54,14 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
+
+    maven {
+        url "https://maven.caffeinemc.net/releases"
+    }
+
+    maven {
+        url "https://maven.su5ed.dev/releases/"
+    }
 }
 
 def devUsername = "Dev${new Random().nextInt(10000)}"
@@ -84,7 +92,7 @@ base {
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 neoForge {
-    version = '21.1.228'
+    version = '21.1.249'
 
     runs {
         client {
@@ -170,6 +178,21 @@ dependencies {
 
     shade("org.luaj:luaj-jse:3.0.1")
     shade('org.orekit:orekit:13.1.4')
+
+// TODO: fix loading
+
+//    runtimeOnly("net.caffeinemc:sodium-neoforge:${sodium_version}")
+//    runtimeOnly("maven.modrinth:sodium:mc1.21.1-0.8.12-alpha.1-neoforge")
+
+    runtimeOnly("maven.modrinth:iris:${iris_version}")
+    compileOnly("maven.modrinth:iris:${iris_version}")
+    shade "io.github.spair:imgui-java-binding:1.87.5"
+    shade("io.github.spair:imgui-java-lwjgl3:1.87.5") {
+        exclude group: "org.lwjgl"
+    }
+    shade "io.github.spair:imgui-java-natives-windows:1.87.5"
+    shade "io.github.spair:imgui-java-natives-linux:1.87.5"
+    shade "io.github.spair:imgui-java-natives-macos:1.87.5"
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
@@ -202,7 +225,8 @@ shadowJar {
     relocate 'org.hipparchus', 'dev.devce.rocketnautics.shaded.hipparchus'
     mergeServiceFiles()
     minimize {
-        exclude("org.luaj")
+        exclude(dependency('org.luaj:.*:.*'))
+        exclude(dependency('io.github.spair:.*:.*'))
     }
 }
 
@@ -241,4 +265,3 @@ tasks.configureEach { task ->
         task.dependsOn 'copyLocalMods'
     }
 }
-

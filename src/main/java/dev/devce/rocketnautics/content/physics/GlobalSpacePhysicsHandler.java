@@ -126,7 +126,11 @@ public class GlobalSpacePhysicsHandler {
     private static final Map<UUID, Vector3d> LAST_SHIPS_VELOCITIES = new ConcurrentHashMap<>();
 
     private static void applySonicBoom(ServerSubLevel subLevel, RigidBodyHandle handle, ServerLevel level) {
-        if (!handle.isValid()) {
+        // note: code for preventing sonic boom when disabled was written with the help of AI
+        // I wrote original, but AI helped rewrite my code
+
+        // update: ai 
+        if (!dev.devce.rocketnautics.RocketConfig.SERVER.boomEnabled.get() || !handle.isValid()) {
             SUPERSONIC_SHIPS.remove(subLevel.getUniqueId());
             LAST_SHIPS_VELOCITIES.remove(subLevel.getUniqueId());
             return;

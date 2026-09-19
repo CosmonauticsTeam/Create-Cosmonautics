@@ -27,6 +27,18 @@
     "render_universe_in_dimension": true
   },
   "name": "overworld",
+  "planet_atmosphere": {
+    "densityFalloff": 4.0,
+    "enabled": true,
+    "intensity": 1.0,
+    "radius": 1.3,
+    "scatteringStrength": 0.075,
+    "wavelengths": [
+      700.0,
+      520.0,
+      440.0
+    ]
+  },
   "planet_extras": {
     "has_clouds": true,
     "light_source_name": "sol"
@@ -186,5 +198,6 @@
       "y": -1.0,
       "z": 0.0
     }
-  }
+  },
+  "star_properties": {}
 }

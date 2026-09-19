@@ -73,5 +73,14 @@
         "stream": true
       }
     ]
+  },
+  "tank_explosion": {
+    "category": "block",
+    "subtitle": "subtitles.rocketnautics.tank_explosion",
+    "sounds": [
+      "rocketnautics:shell_explosion",
+      "rocketnautics:shell_explosion1",
+      "rocketnautics:shell_explosion2"
+    ]
   }
 }

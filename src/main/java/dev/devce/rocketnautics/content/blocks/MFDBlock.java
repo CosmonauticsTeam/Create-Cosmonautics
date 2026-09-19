@@ -59,6 +59,16 @@ public class MFDBlock extends DirectionalBlock implements IWrenchable, IBE<MFDBl
     }
 
     @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (!state.is(newState.getBlock())) {
+            if (level.isClientSide) {
+                dev.devce.rocketnautics.client.MFDAudioEngine.stop(pos);
+            }
+        }
+        super.onRemove(state, level, pos, newState, isMoving);
+    }
+
+    @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (stack.is(AllItems.WRENCH.get())) {
             return super.useItemOn(stack, state, level, pos, player, hand, hitResult);

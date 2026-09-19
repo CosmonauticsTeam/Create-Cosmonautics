@@ -9,8 +9,11 @@ import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.ThreeArgFunction;
+import org.luaj.vm2.lib.VarArgFunction;
+import org.luaj.vm2.lib.ZeroArgFunction;
 import org.luaj.vm2.lib.jse.JsePlatform;
 
 import javax.imageio.ImageIO;
@@ -28,6 +31,9 @@ public class CartridgeProgram implements MFDProgram {
     private Globals globals;
     private long lastFileModified = -1;
     private String lastError = null;
+
+    
+    private MFDBlockEntity currentBe = null;
 
     private final Map<String, LuaTable> imageTableCache = new ConcurrentHashMap<>();
 
@@ -169,6 +175,43 @@ public class CartridgeProgram implements MFDProgram {
         LuaTable input = new LuaTable();
         input.set("isDown", isDownFunc);
         g.set("input", input);
+        g.set("playSound", new VarArgFunction() {
+            @Override
+            public LuaValue invoke(Varargs args) {
+                MFDBlockEntity be = currentBe;
+                if (be == null) return NIL;
+                String fileName  = args.arg(1).tojstring();
+                float  volume    = args.narg() >= 2 ? (float) args.arg(2).todouble() : 1.0f;
+                float  pitch     = args.narg() >= 3 ? (float) args.arg(3).todouble() : 1.0f;
+                boolean loop     = args.narg() >= 4 && args.arg(4).toboolean();
+                Path assetPath = resolveAssetPath(fileName);
+                if (assetPath != null) {
+                    dev.devce.rocketnautics.client.MFDAudioEngine.play(
+                            be.getBlockPos(), assetPath, volume, pitch, loop);
+                } else {
+                    dev.devce.rocketnautics.RocketNautics.LOGGER.warn(
+                            "[MFD Lua] playSound: file not found in assets: {}", fileName);
+                }
+                return NIL;
+            }
+        });
+        g.set("stopSound", new ZeroArgFunction() {
+            @Override
+            public LuaValue call() {
+                MFDBlockEntity be = currentBe;
+                if (be != null) dev.devce.rocketnautics.client.MFDAudioEngine.stop(be.getBlockPos());
+                return NIL;
+            }
+        });
+        g.set("isPlaying", new ZeroArgFunction() {
+            @Override
+            public LuaValue call() {
+                MFDBlockEntity be = currentBe;
+                if (be == null) return FALSE;
+                return LuaValue.valueOf(
+                        dev.devce.rocketnautics.client.MFDAudioEngine.isPlaying(be.getBlockPos()));
+            }
+        });
     }
 
     private void updateInput(Globals g, MFDBlockEntity be) {
@@ -194,6 +237,7 @@ public class CartridgeProgram implements MFDProgram {
 
     @Override
     public void render(MFDCanvas canvas, MFDBlockEntity blockEntity, float partialTicks) {
+        this.currentBe = blockEntity;
         ensureInitialized(canvas, blockEntity);
 
         if (lastError != null) {
@@ -213,6 +257,21 @@ public class CartridgeProgram implements MFDProgram {
                     lastError = e.getMessage();
                 }
             }
+        }
+    }
+
+    
+    private Path resolveAssetPath(String name) {
+        if (name == null || name.trim().isEmpty()) return null;
+        String clean = name.replace('\\', '/').trim();
+        if (clean.contains("..")) return null;
+        Path assetsDir = CartridgeManager.getCartridgeDir(cartridgeId).resolve("assets").normalize();
+        try {
+            Path resolved = assetsDir.resolve(clean).normalize();
+            if (!resolved.startsWith(assetsDir)) return null;
+            return Files.exists(resolved) ? resolved : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 }

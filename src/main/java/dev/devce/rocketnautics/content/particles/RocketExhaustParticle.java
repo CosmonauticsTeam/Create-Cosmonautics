@@ -224,28 +224,16 @@ public class RocketExhaustParticle extends TextureSheetParticle {
         @Override
         public Particle createParticle(@NotNull SimpleParticleType type, @NotNull ClientLevel level, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {
             RocketExhaustParticle particle = new RocketExhaustParticle(level, x, y, z, xSpeed, ySpeed, zSpeed, this.sprites);
-            
-            double speed = Math.sqrt(xSpeed * xSpeed + ySpeed * ySpeed + zSpeed * zSpeed);
-            if (speed > 0.1) {
-                // Ground impact smoke - expands into billowing ground cloud
-                particle.setLifetime(35 + level.random.nextInt(20)); 
-            } else {
-                // Contrail smoke - long lived atmospheric trail
-                particle.setLifetime(360 + level.random.nextInt(80)); 
-            }
-            particle.scale(1.6f + level.random.nextFloat() * 0.8f);
-            particle.setShrinking(false); 
-            particle.friction = 0.975F; 
-            particle.setMaxAlpha(1.0F);
-            particle.setAlpha(1.0F);
-            particle.gravity = 0.0F; // Stop it from falling
-            // Disable block-collision physics: the vanilla move() system treats Sable contraption
-            // blocks as solid, causing moving ships to capture and drag smoke clouds along.
-            // The "spreading from surface" effect is already baked into the spawn velocity.
+            particle.setLifetime(40 + level.random.nextInt(25));
+            particle.scale(1.8f + level.random.nextFloat() * 1.0f);
+            particle.setShrinking(false);
+            particle.friction = 0.975F;
+            particle.setMaxAlpha(0.9F);
+            particle.setAlpha(0.9F);
+            particle.gravity = 0.0F;
             particle.hasPhysics = false;
-            
-            particle.setColor(1.0F, 1.0F, 1.0F); // Pure white
-            particle.setCoolingColor(1.0F, 1.0F, 1.0F); // Pure white throughout
+            particle.setColor(0.95F, 0.95F, 0.95F);
+            particle.setCoolingColor(0.85F, 0.85F, 0.85F);
             return particle;
         }
     }
@@ -271,6 +259,30 @@ public class RocketExhaustParticle extends TextureSheetParticle {
             
             particle.setColor(1.0F, 1.0F, 1.0F);
             particle.setCoolingColor(1.0F, 1.0F, 1.0F);
+            return particle;
+        }
+    }
+
+    public static class VentSteamProvider implements ParticleProvider<SimpleParticleType> {
+        private final SpriteSet sprites;
+
+        public VentSteamProvider(SpriteSet sprites) {
+            this.sprites = sprites;
+        }
+
+        @Override
+        public Particle createParticle(@NotNull SimpleParticleType type, @NotNull ClientLevel level, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {
+            RocketExhaustParticle particle = new RocketExhaustParticle(level, x, y, z, xSpeed, ySpeed, zSpeed, this.sprites);
+            particle.setLifetime(26 + level.random.nextInt(10));
+            particle.scale(0.32f + level.random.nextFloat() * 0.12f);
+            particle.setShrinking(false);
+            particle.friction = 0.96F;
+            particle.setMaxAlpha(1.0F);
+            particle.setAlpha(1.0F);
+            particle.gravity = 0.007F;
+            particle.hasPhysics = false;
+            particle.setColor(1.0F, 1.0F, 1.0F);
+            particle.setCoolingColor(0.95F, 0.95F, 0.98F);
             return particle;
         }
     }

@@ -28,6 +28,7 @@
     "render_universe_in_dimension": true
   },
   "name": "moon",
+  "planet_atmosphere": {},
   "planet_extras": {
     "light_source_name": "sol"
   },
@@ -81,5 +82,6 @@
   "rotation": {
     "type": "tidal_lock",
     "rotations_per_orbit": -1.0
-  }
+  },
+  "star_properties": {}
 }

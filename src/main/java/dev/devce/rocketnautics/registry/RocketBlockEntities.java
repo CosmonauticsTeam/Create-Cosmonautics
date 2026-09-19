@@ -21,6 +21,7 @@ import dev.devce.rocketnautics.content.blocks.SputnikBlockEntity;
 import dev.devce.rocketnautics.content.blocks.SputnikDisplaySource;
 import dev.devce.rocketnautics.content.blocks.ThrusterMountBlockEntity;
 import dev.devce.rocketnautics.content.blocks.VectorThrusterBlockEntity;
+import dev.devce.rocketnautics.content.blocks.drain_valve.DrainValveBlockEntity;
 import dev.devce.rocketnautics.content.blocks.hose.HoseAnchorBlockEntity;
 import dev.devce.rocketnautics.content.blocks.hose.client.HoseAnchorRenderer;
 import net.neoforged.bus.api.IEventBus;
@@ -59,10 +60,14 @@ public class RocketBlockEntities {
         public static final RegistryEntry<DisplaySource, SputnikDisplaySource> SPUTNIK_DISPLAY_SOURCE = REGISTRATE
                         .displaySource("sputnik", SputnikDisplaySource::new).register();
 
-        public static final BlockEntityEntry<SputnikBlockEntity> SPUTNIK = REGISTRATE.blockEntity("sputnik", SputnikBlockEntity::new)
-                        .validBlocks(RocketBlocks.SPUTNIK).onRegisterAfter(com.simibubi.create.api.registry.CreateRegistries.DISPLAY_SOURCE,
-                                        type -> DisplaySource.BY_BLOCK_ENTITY.add(type, SPUTNIK_DISPLAY_SOURCE.get()))
-                        .register();
+	public static final BlockEntityEntry<SputnikBlockEntity> SPUTNIK = REGISTRATE.blockEntity("sputnik", SputnikBlockEntity::new)
+			.validBlocks(RocketBlocks.SPUTNIK).onRegisterAfter(com.simibubi.create.api.registry.CreateRegistries.DISPLAY_SOURCE,
+					type -> DisplaySource.BY_BLOCK_ENTITY.add(type, SPUTNIK_DISPLAY_SOURCE.get()))
+			.register();
+
+	public static final BlockEntityEntry<dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlockEntity> SPUTNIK_LINK = REGISTRATE
+			.blockEntity("sputnik_link", dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlockEntity::new)
+			.validBlocks(RocketBlocks.SPUTNIK_LINK).register();
 
         public static final BlockEntityEntry<HologramTableBlockEntity> HOLOGRAM_TABLE = REGISTRATE
                         .blockEntity("hologram_table", HologramTableBlockEntity::new).validBlocks(RocketBlocks.HOLOGRAM_TABLE)
@@ -77,9 +82,12 @@ public class RocketBlockEntities {
                         .validBlocks(RocketBlocks.GYRODYNE).renderer(() -> dev.devce.rocketnautics.client.render.GyrodyneRenderer::new)
                         .register();
 
-        public static final BlockEntityEntry<HoseAnchorBlockEntity> HOSE_ANCHOR = REGISTRATE
-                        .blockEntity("hose_anchor", HoseAnchorBlockEntity::new).validBlocks(RocketBlocks.HOSE_ANCHOR)
-                        .renderer(() -> HoseAnchorRenderer::new).register();
+	public static final BlockEntityEntry<HoseAnchorBlockEntity> HOSE_ANCHOR = REGISTRATE
+			.blockEntity("hose_anchor", HoseAnchorBlockEntity::new).validBlocks(RocketBlocks.HOSE_ANCHOR)
+			.renderer(() -> HoseAnchorRenderer::new).register();
+
+	public static final BlockEntityEntry<DrainValveBlockEntity> DRAIN_VALVE = REGISTRATE
+			.blockEntity("drain_valve", DrainValveBlockEntity::new).validBlocks(RocketBlocks.DRAIN_VALVE).register();
 
         public static final BlockEntityEntry<ThrusterMountBlockEntity> THRUSTER_MOUNT = REGISTRATE
                         .blockEntity("thruster_mount", ThrusterMountBlockEntity::new).validBlocks(RocketBlocks.THRUSTER_MOUNT)

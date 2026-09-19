@@ -171,6 +171,13 @@ public class RocketSettingsScreen extends Screen {
                 this.init(this.minecraft, this.width, this.height);
             },
             0xFFEF4444));
+
+        this.addRenderableWidget(new ModernButton(10, bottomY, 115, 24,
+            Component.literal("Create Menu"),
+            b -> net.createmod.catnip.gui.ScreenOpener.open(
+                new net.createmod.catnip.config.ui.BaseConfigScreen(this, RocketNautics.MODID)
+            ),
+            0xFF818CF8));
     }
 
     private void initLightingTab(int x, int y, int width) {
@@ -362,6 +369,27 @@ public class RocketSettingsScreen extends Screen {
                 RocketConfig.SERVER.planetShape.set(shape);
                 RocketConfig.SERVER.planetShape.save();
                 DeepSpaceHandler.clearRenderCache();
+            }
+        );
+
+        list.addSlider(
+            "Fuel Mass Multiplier",
+            "Multiplier applied to ship fluid fuel mass (1.0 = normal, 0.0 = completely weightless fuel).",
+            RocketConfig.SERVER.massMultiplier.get(),
+            0.0, 5.0, 0.1, "x",
+            val -> {
+                RocketConfig.SERVER.massMultiplier.set(val);
+                RocketConfig.SERVER.massMultiplier.save();
+            }
+        );
+
+        list.addToggle(
+            "Fuel Mass Enabled",
+            "Enable dynamic fluid fuel mass affecting ship inertia and center of mass.",
+            RocketConfig.SERVER.fuelMassEnabled.get(),
+            val -> {
+                RocketConfig.SERVER.fuelMassEnabled.set(val);
+                RocketConfig.SERVER.fuelMassEnabled.save();
             }
         );
 

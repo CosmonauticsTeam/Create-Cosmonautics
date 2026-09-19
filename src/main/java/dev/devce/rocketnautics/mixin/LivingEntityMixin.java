@@ -37,13 +37,6 @@ public abstract class LivingEntityMixin extends Entity implements FreeMotionEnti
             if (entity instanceof net.minecraft.world.entity.player.Player player) {
                 player.setPose(net.minecraft.world.entity.Pose.STANDING);
             }
-            float yaw = entity.getYRot();
-            float pitch = entity.getXRot();
-            this.rocketnautics$orientation.rotationYXZ(
-                (float)Math.toRadians(180.0f - yaw),
-                (float)Math.toRadians(-pitch),
-                0.0f
-            ).normalize();
         }
         rocketnautics$6DOFEnabled = enabled;
     }

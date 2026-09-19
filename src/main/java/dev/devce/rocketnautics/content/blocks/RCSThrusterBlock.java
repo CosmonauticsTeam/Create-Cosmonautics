@@ -1,7 +1,6 @@
 package dev.devce.rocketnautics.content.blocks;
 
 import com.simibubi.create.content.decoration.encasing.EncasableBlock;
-
 import dev.devce.rocketnautics.registry.RocketBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -20,6 +19,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jetbrains.annotations.Nullable;
 
 public class RCSThrusterBlock extends AbstractRocketThrusterBlock<RCSThrusterBlockEntity> implements EncasableBlock {
     public static final com.mojang.serialization.MapCodec<RCSThrusterBlock> CODEC = simpleCodec(RCSThrusterBlock::new);
@@ -36,7 +36,7 @@ public class RCSThrusterBlock extends AbstractRocketThrusterBlock<RCSThrusterBlo
 
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player,
-            InteractionHand hand, BlockHitResult hitResult) {
+                                              InteractionHand hand, BlockHitResult hitResult) {
         if (player.isShiftKeyDown() || !player.mayBuild()) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
@@ -58,6 +58,7 @@ public class RCSThrusterBlock extends AbstractRocketThrusterBlock<RCSThrusterBlo
     }
 
 
+
     protected static final VoxelShape UP_SHAPE = Block.box(6, 0, 6, 10, 12, 10);
     protected static final VoxelShape DOWN_SHAPE = Block.box(6, 4, 6, 10, 16, 10);
     protected static final VoxelShape NORTH_SHAPE = Block.box(6, 6, 4, 10, 10, 16);
@@ -68,12 +69,12 @@ public class RCSThrusterBlock extends AbstractRocketThrusterBlock<RCSThrusterBlo
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return switch (state.getValue(FACING)) {
-        case UP -> UP_SHAPE;
-        case DOWN -> DOWN_SHAPE;
-        case NORTH -> NORTH_SHAPE;
-        case SOUTH -> SOUTH_SHAPE;
-        case EAST -> EAST_SHAPE;
-        case WEST -> WEST_SHAPE;
+            case UP -> UP_SHAPE;
+            case DOWN -> DOWN_SHAPE;
+            case NORTH -> NORTH_SHAPE;
+            case SOUTH -> SOUTH_SHAPE;
+            case EAST -> EAST_SHAPE;
+            case WEST -> WEST_SHAPE;
         };
     }
 
@@ -86,5 +87,4 @@ public class RCSThrusterBlock extends AbstractRocketThrusterBlock<RCSThrusterBlo
     public BlockEntityType<? extends RCSThrusterBlockEntity> getBlockEntityType() {
         return RocketBlockEntities.RCS_THRUSTER.get();
     }
-
 }

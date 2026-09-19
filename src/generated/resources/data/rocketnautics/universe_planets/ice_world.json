@@ -2,6 +2,7 @@
   "parent": "sol",
   "acceleration_at_surface": 11.0,
   "name": "ice_world",
+  "planet_atmosphere": {},
   "planet_extras": {
     "light_source_name": "sol"
   },
@@ -28,5 +29,6 @@
       "y": -1.0,
       "z": 0.0
     }
-  }
+  },
+  "star_properties": {}
 }

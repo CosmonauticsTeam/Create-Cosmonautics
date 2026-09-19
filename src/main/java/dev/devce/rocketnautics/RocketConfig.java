@@ -39,10 +39,23 @@ public class RocketConfig {
         public final ModConfigSpec.IntValue entitySpeedLimit;
         public final ModConfigSpec.BooleanValue enableEngineDebugLogging;
         public final ModConfigSpec.BooleanValue brokenBarrier;
+        public final ModConfigSpec.BooleanValue boomEnabled;
         public final ModConfigSpec.DoubleValue sonicBoomSpeedThreshold;
         public final ModConfigSpec.DoubleValue gyrodyneStrength;
 
         public final ModConfigSpec.EnumValue<PlanetShape> planetShape;
+
+        public final ModConfigSpec.BooleanValue tankPressureEnabled;
+        public final ModConfigSpec.DoubleValue maxTankPressure;
+        public final ModConfigSpec.DoubleValue tankExplosionAltitude;
+
+        public final ModConfigSpec.BooleanValue fuelMassEnabled;
+        public final ModConfigSpec.DoubleValue massMultiplier;
+        public final ModConfigSpec.DoubleValue fuelMassMultiplier;
+        public final ModConfigSpec.DoubleValue fuelMassPerBucket;
+        public final ModConfigSpec.DoubleValue lavaMassPerBucket;
+        public final ModConfigSpec.DoubleValue heavyFuelMassPerBucket;
+        public final ModConfigSpec.DoubleValue rocketFuelMassPerBucket;
 
         public Server(ModConfigSpec.Builder builder) {
             builder.push("Thrusters");
@@ -64,6 +77,9 @@ public class RocketConfig {
             brokenBarrier = builder
                     .comment("Allow engine thrust to exceed standard limits (up to 5000N)")
                     .define("brokenBarrier", false);
+            boomEnabled = builder
+                    .comment("Enable or disable sonic boom effect and physics on breaking sound barrier velocity")
+                    .define("boomEnabled", true);
             sonicBoomSpeedThreshold = builder
                     .comment("Speed in blocks/second (m/s) at which a ship breaks the sound barrier and triggers a sonic boom")
                     .defineInRange("sonicBoomSpeedThreshold", 166.0, 1.0, 500.0);
@@ -93,6 +109,40 @@ public class RocketConfig {
                     .comment(" - CUBE: Classic Minecraft cube-shaped planets.")
                     .comment(" - SPHERE: Smooth sphere-shaped planets.")
                     .defineEnum("planetShape", PlanetShape.CUBE);
+            builder.pop();
+
+            builder.push("TankPressure");
+            tankPressureEnabled = builder
+                    .comment("Enable pressure mechanics and high-altitude overpressure explosions for Create fluid tanks")
+                    .define("tankPressureEnabled", true);
+            maxTankPressure = builder
+                    .comment("Maximum safe pressure in bars before tanks enter critical overpressure")
+                    .defineInRange("maxTankPressure", 5.0d, 1.0d, 50.0d);
+            tankExplosionAltitude = builder
+                    .comment("Altitude (Y coordinate) above which critical tank overpressure triggers a catastrophic explosion")
+                    .defineInRange("tankExplosionAltitude", 500.0d, 0.0d, 100000.0d);
+            builder.pop();
+
+            builder.push("FuelMass");
+            fuelMassEnabled = builder
+                    .comment("Enable dynamic fuel mass for Create fluid tanks on ships (fluids add mass to the ship and affect physics/center of mass)")
+                    .define("fuelMassEnabled", true);
+            massMultiplier = builder
+                    .comment("Multiplier applied to the total fuel mass on ships (1.0 = normal mass, 0.0 = completely weightless fuel). Allows players who don't want heavy fuel to disable its weight.")
+                    .defineInRange("massMultiplier", 1.0d, 0.0d, 100.0d);
+            fuelMassMultiplier = massMultiplier;
+            fuelMassPerBucket = builder
+                    .comment("Base mass units added per bucket (1000 mB) of fluid in a tank for standard fluids like water (default 1.0)")
+                    .defineInRange("fuelMassPerBucket", 1.0d, 0.0d, 10.0d);
+            lavaMassPerBucket = builder
+                    .comment("Mass units added per bucket (1000 mB) of lava (dense molten rock, default 3.0)")
+                    .defineInRange("lavaMassPerBucket", 3.0d, 0.0d, 30.0d);
+            heavyFuelMassPerBucket = builder
+                    .comment("Mass units added per bucket (1000 mB) of heavy fuels / diesel / napalm / crude oil / fuel (default 0.6)")
+                    .defineInRange("heavyFuelMassPerBucket", 0.6d, 0.0d, 20.0d);
+            rocketFuelMassPerBucket = builder
+                    .comment("Mass units added per bucket (1000 mB) of rocket fuels / kerosene / gasoline / naphtha (default 0.5)")
+                    .defineInRange("rocketFuelMassPerBucket", 0.5d, 0.0d, 20.0d);
             builder.pop();
 
             builder.push("TelemetryServer");

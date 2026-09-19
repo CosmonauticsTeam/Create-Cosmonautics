@@ -17,7 +17,7 @@ import org.orekit.utils.TimeStampedAngularCoordinates;
 // note -- texture definition is never synced to client
 public record CubePlanet(@NotNull FrameTree frame, double radius, TimeStampedAngularCoordinates rotationDescription,
                          @Nullable PlanetDimensionData linkedDimension, @Nullable DeepSpaceTextureDefinition textureDefinition,
-                         @NotNull PlanetExtras extras) implements FrameTreeOwner {
+                         @NotNull PlanetExtras extras, @Nullable PlanetAtmosphere atmosphere, @Nullable StarProperties starProperties) implements FrameTreeOwner {
 
     public ColorPalette getRenderData(MinecraftServer server, int powerScaleClamp) {
         if (linkedDimension == null) return ColorPalette.EMPTY;
@@ -39,6 +39,16 @@ public record CubePlanet(@NotNull FrameTree frame, double radius, TimeStampedAng
             linkedDimension.write(buf);
         }
         PlanetExtras.CODEC.encode(buf, extras);
+
+        buf.writeBoolean(atmosphere != null);
+        if (atmosphere != null) {
+            PlanetAtmosphere.CODEC.encode(buf, atmosphere);
+        }
+
+        buf.writeBoolean(starProperties != null);
+        if (starProperties != null) {
+            StarProperties.CODEC.encode(buf, starProperties);
+        }
     }
 
     public static CubePlanet read(FriendlyByteBuf buf, FrameTree frameSource) {
@@ -51,6 +61,19 @@ public record CubePlanet(@NotNull FrameTree frame, double radius, TimeStampedAng
             linkedDimension = PlanetDimensionData.read(buf);
         }
         PlanetExtras extras = PlanetExtras.CODEC.decode(buf);
-        return new CubePlanet(frameSource.getInTreeByID(id).get(), radius, coords, linkedDimension, null, extras);
+
+        boolean hasAtmosphere = buf.readBoolean();
+        PlanetAtmosphere atmosphere = null;
+        if (hasAtmosphere) {
+            atmosphere = PlanetAtmosphere.CODEC.decode(buf);
+        }
+
+        boolean isStar = buf.readBoolean();
+        StarProperties starProperties = null;
+        if (isStar) {
+            starProperties = StarProperties.CODEC.decode(buf);
+        }
+
+        return new CubePlanet(frameSource.getInTreeByID(id).get(), radius, coords, linkedDimension, null, extras, atmosphere, starProperties);
     }
 }

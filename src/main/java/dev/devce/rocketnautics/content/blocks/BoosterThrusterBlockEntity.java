@@ -495,8 +495,18 @@ public class BoosterThrusterBlockEntity extends AbstractThrusterBlockEntity {
     }
 
     @Override
+    public double readValue(String key) {
+        if ("active".equals(key) || "ignition".equals(key)) return isActive() ? 1.0 : 0.0;
+        if ("thrust".equals(key)) return isActive() ? (thrustPower.getValue() * 50.0) : 0.0;
+        if ("throttle".equals(key)) return isActive() ? 1.0 : 0.0;
+        return 0;
+    }
+
+    @Override
     public void writeValue(String key, double value) {
-        if ("throttle".equals(key) || "thrust".equals(key)) {
+        if ("ignition".equals(key) || "active".equals(key)) {
+            setActive(value > 0.5);
+        } else if ("throttle".equals(key) || "thrust".equals(key)) {
             setActive(value > 0);
         }
     }

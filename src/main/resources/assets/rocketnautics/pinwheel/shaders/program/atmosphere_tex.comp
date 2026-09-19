@@ -1,0 +1,56 @@
+#version 450
+
+#include rocketnautics:common_math
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(r32f, binding = 0) uniform image2D result;
+
+uniform int shape;
+
+uniform float rAtmosphere;
+uniform float densityFalloff;
+
+uniform float voxelSz;
+
+uniform int texSz;
+uniform int numOutScatteringPoints;
+
+float opticalDepth(vec2 rO, vec2 rD, float rL) {
+    if (rL <= 0.0) return 0.0;
+
+    float opticalDepth = 0.0;
+
+    for (int i = 0; i < numOutScatteringPoints; i++) {
+        float t0 = float(i) / float(numOutScatteringPoints);
+        float t1 = float(i + 1) / float(numOutScatteringPoints);
+
+        float ds = rL * (t1 - t0);
+        float t = (t0 + t1) * 0.5;
+
+        vec3 p = vec3(rO, 0) + vec3(rD, 0) * (t * rL);
+
+        float localDensity = densityAtP(shape, p, rAtmosphere, 1.0, densityFalloff, 0, mat4(1.0));
+
+        opticalDepth += localDensity * ds;
+    }
+
+    return opticalDepth;
+}
+
+void main() {
+    const float rPlanet = 1;
+
+    vec2 uv = gl_GlobalInvocationID.xy / float(texSz);
+
+    float mu = 1.0 - 2.0 * uv.x;
+    float sinTheta = sqrt(max(1.0 - mu * mu, 0.0));
+
+    vec3 dir = vec3(sinTheta, mu, 0.0);
+
+    vec2 pIn = vec2(0, mix(rPlanet, rAtmosphere, uv.y));
+    float dstThruAtmo = rayShape(shape, rAtmosphere, mat4(1.0), vec3(pIn, 0), dir).y;
+    vec2 pOut = pIn + dir.xy * dstThruAtmo;
+
+    float outScattering = opticalDepth(pIn, dir.xy, dstThruAtmo);
+    imageStore(result, ivec2(gl_GlobalInvocationID.xy), vec4(outScattering));
+}

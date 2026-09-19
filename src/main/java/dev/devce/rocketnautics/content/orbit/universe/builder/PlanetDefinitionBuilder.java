@@ -8,7 +8,10 @@ import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.api.orbit.FrameTree;
 import dev.devce.rocketnautics.content.orbit.universe.*;
 import dev.ryanhcode.sable.physics.config.dimension_physics.BezierResourceFunction;
-import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectRBTreeMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectSortedMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectSortedMaps;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -17,6 +20,7 @@ import org.hipparchus.geometry.euclidean.threed.Rotation;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 import org.orekit.time.AbsoluteDate;
 import org.orekit.utils.TimeStampedAngularCoordinates;
 import org.orekit.utils.TimeStampedPVCoordinates;
@@ -25,7 +29,6 @@ import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntFunction;
-import java.util.function.UnaryOperator;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class PlanetDefinitionBuilder {
@@ -40,6 +43,8 @@ public class PlanetDefinitionBuilder {
             SerializableDimensionData.CODEC.optionalFieldOf("dimension_data").forGetter(PlanetDefinitionBuilder::serializeDimensionData),
             SerializablePlanetExtras.CODEC.optionalFieldOf("planet_extras").forGetter(PlanetDefinitionBuilder::serializePlanetExtras),
             DeepSpaceTextureDefinition.CODEC.optionalFieldOf("planet_texture").forGetter(p -> p.textureDefinition),
+            SerializablePlanetAtmosphere.CODEC.optionalFieldOf("planet_atmosphere").forGetter(PlanetDefinitionBuilder::serializePlanetAtmosphere),
+            SerializableStarProperties.CODEC.optionalFieldOf("star_properties").forGetter(PlanetDefinitionBuilder::serializeStarProperties),
             Codec.INT.optionalFieldOf("priority", 1000).forGetter(p -> p.priority),
             Codec.BOOL.optionalFieldOf("disabled").forGetter(p -> p.disabled)
             ).apply(instance, PlanetDefinitionBuilder::new));
@@ -72,6 +77,19 @@ public class PlanetDefinitionBuilder {
     // universe loader data
     public Optional<Boolean> disabled = Optional.empty();
     public int priority = 1000;
+
+    public Optional<Boolean> atmosphereEnabled = Optional.empty();
+    public Optional<Float> atmosphereRadius = Optional.empty();
+    public Optional<Float> atmosphereIntensity = Optional.empty();
+    public Optional<Float> atmosphereDensityFalloff = Optional.empty();
+    public Optional<Float> atmosphereScatteringStrength = Optional.empty();
+    public Optional<Vector3f> atmosphereWavelengths = Optional.empty();
+
+    public Optional<Float> starRadius = Optional.empty();
+    public Optional<Float> starIntensity = Optional.empty();
+    public Optional<Float> starDensityFalloff = Optional.empty();
+    public Optional<Vector3f> starColor = Optional.empty();
+
     public final Set<String> dependencies;
 
     public PlanetDefinitionBuilder(@Nullable String parent, @NotNull String name) {
@@ -85,6 +103,8 @@ public class PlanetDefinitionBuilder {
                                       Optional<SerializablePosition> position, Optional<SerializableRotation> rotation,
                                       Optional<SerializableDimensionData> dimData, Optional<SerializablePlanetExtras> extras,
                                       Optional<DeepSpaceTextureDefinition> textureDefinition,
+                                      Optional<SerializablePlanetAtmosphere> planetAtmosphere,
+                                      Optional<SerializableStarProperties> starProperties,
                                       int priority, Optional<Boolean> disabled) {
         this.parent = parent;
         this.name = name;
@@ -115,6 +135,21 @@ public class PlanetDefinitionBuilder {
         this.textureDefinition = textureDefinition;
         this.priority = priority;
         this.disabled = disabled;
+        if (planetAtmosphere.isPresent()) {
+            this.atmosphereEnabled = planetAtmosphere.get().enabled();
+            this.atmosphereRadius = planetAtmosphere.get().radius();
+            this.atmosphereIntensity = planetAtmosphere.get().intensity();
+            this.atmosphereDensityFalloff = planetAtmosphere.get().densityFalloff();
+            this.atmosphereScatteringStrength = planetAtmosphere.get().scatteringStrength();
+            this.atmosphereWavelengths = planetAtmosphere.get().wavelengths();
+        }
+
+        if (starProperties.isPresent() && this.star.orElse(false)) {
+            this.starRadius = starProperties.get().radius();
+            this.starIntensity = starProperties.get().intensity();
+            this.starDensityFalloff = starProperties.get().densityFalloff();
+            this.starColor = starProperties.get().color();
+        }
     }
 
     public PlanetDefinitionBuilder subsume(PlanetDefinitionBuilder other) {
@@ -125,6 +160,8 @@ public class PlanetDefinitionBuilder {
                 resolve(this.serializeDimensionData(), other.serializeDimensionData()),
                 resolve(this.serializePlanetExtras(), other.serializePlanetExtras()),
                 resolve(this.textureDefinition, other.textureDefinition),
+                resolve(this.serializePlanetAtmosphere(), other.serializePlanetAtmosphere()),
+                resolve(this.serializeStarProperties(), other.serializeStarProperties()),
                 this.priority, this.disabled
         );
     }
@@ -139,6 +176,14 @@ public class PlanetDefinitionBuilder {
 
     protected Optional<SerializablePlanetExtras> serializePlanetExtras() {
         return SerializablePlanetExtras.of(star, clouds, lightSource);
+    }
+
+    protected Optional<SerializablePlanetAtmosphere> serializePlanetAtmosphere() {
+        return SerializablePlanetAtmosphere.of(atmosphereEnabled, atmosphereRadius, atmosphereIntensity, atmosphereDensityFalloff, atmosphereScatteringStrength, atmosphereWavelengths);
+    }
+
+    protected Optional<SerializableStarProperties> serializeStarProperties() {
+        return SerializableStarProperties.of(starRadius, starIntensity, starDensityFalloff, starColor);
     }
 
     public CubePlanet build(UniverseDefinitionBuilder destination) {
@@ -197,7 +242,7 @@ public class PlanetDefinitionBuilder {
             roi = Double.POSITIVE_INFINITY;
         }
         destination.gravitySource(new PointGravitySource(ourFrame, mu, roi));
-        CubePlanet p = new CubePlanet(ourFrame, radius, angularCoordinates, constructDimensionData(destination), textureDefinition.get(), constructExtras(destination));
+        CubePlanet p = new CubePlanet(ourFrame, radius, angularCoordinates, constructDimensionData(destination), textureDefinition.get(), constructExtras(destination), constructAtmosphere(), constructStarProperties());
         destination.cubePlanet(p);
         return p;
     }
@@ -227,6 +272,29 @@ public class PlanetDefinitionBuilder {
             }
         }
         return new PlanetExtras(star.orElse(false), clouds.orElse(false), id);
+    }
+
+    protected PlanetAtmosphere constructAtmosphere() {
+        if (!atmosphereEnabled.orElse(false)) return null;
+
+        return new PlanetAtmosphere(
+                atmosphereRadius.orElse(1.3f),
+                atmosphereIntensity.orElse(1.0f),
+                atmosphereDensityFalloff.orElse(4.0f),
+                atmosphereScatteringStrength.orElse(0.075f),
+                atmosphereWavelengths.orElse(new Vector3f(700, 520, 440))
+        );
+    }
+
+    protected StarProperties constructStarProperties() {
+        if (!star.orElse(false)) return null;
+
+        return new StarProperties(
+                starRadius.orElse(1.75f),
+                starIntensity.orElse(2.0f),
+                starDensityFalloff.orElse(5.0f),
+                starColor.orElse(new Vector3f(1.0f, 0.98f, 0.9f))
+        );
     }
 
     public PlanetDefinitionBuilder setLinkedDimension(@Nullable ResourceKey<Level> linkedDimension) {
@@ -273,8 +341,57 @@ public class PlanetDefinitionBuilder {
         return this;
     }
 
+    public PlanetDefinitionBuilder setAtmosphereEnabled(boolean a) {
+        this.atmosphereEnabled = Optional.of(a);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setAtmosphereRadius(float r) {
+        this.atmosphereRadius = Optional.of(r);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setAtmosphereIntensity(float i) {
+        this.atmosphereIntensity = Optional.of(i);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setAtmosphereDensityFalloff(float df) {
+        this.atmosphereDensityFalloff = Optional.of(df);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setAtmosphereScatteringStrength(float ss) {
+        this.atmosphereScatteringStrength = Optional.of(ss);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setAtmosphereScatteringWavelengths(Vector3f sw) {
+        this.atmosphereWavelengths = Optional.of(sw);
+        return this;
+    }
+
     public PlanetDefinitionBuilder setStar(boolean star) {
         this.star = Optional.of(star);
+        return this;
+    }
+    public PlanetDefinitionBuilder setStarRadius(float r) {
+        this.starRadius = Optional.of(r);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setStarIntensity(float i) {
+        this.starIntensity = Optional.of(i);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setStarDensityFalloff(float df) {
+        this.starDensityFalloff = Optional.of(df);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setStarColor(Vector3f c) {
+        this.starColor = Optional.of(c);
         return this;
     }
 

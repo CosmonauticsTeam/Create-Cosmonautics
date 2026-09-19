@@ -13,20 +13,21 @@ void main() {
     vec4 albedo = texture(Sampler0, texCoord);
     vec4 normSample = texture(Sampler1, texCoord);
 
-    // Decode object-space normal map vector directly from RGB [0, 1] to [-1, 1]
-    vec3 objectNormal = normalize(normSample.rgb * 2.0 - 1.0);
+    vec3 mapNormal = normalize(normSample.rgb * 2.0 - 1.0);
 
-    // Calculate diffuse dot product with sun direction in object space
-    vec3 L = normalize(LightDir);
-    float diffuse = dot(objectNormal, L);
+    vec3 light = normalize(LightDir);
+    float normalDiffuse = dot(mapNormal, light);
 
-    // Shading steps matching index.html '3-step' cel shading:
     float shade = 0.3;
-    if (diffuse > 0.4) {
+
+    if (normalDiffuse > 0.4) {
         shade = 1.0;
-    } else if (diffuse > -0.1) {
+    } else if (normalDiffuse > -0.1) {
         shade = 0.62;
     }
 
-    fragColor = vec4(albedo.rgb * shade, albedo.a * vertexColor.a);
+    fragColor = vec4(
+            albedo.rgb * shade,
+            albedo.a * vertexColor.a
+    );
 }

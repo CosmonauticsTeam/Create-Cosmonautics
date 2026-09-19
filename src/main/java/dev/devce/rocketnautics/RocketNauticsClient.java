@@ -332,6 +332,9 @@ public class RocketNauticsClient {
         event.registerSpriteSet(RocketParticles.JET_SMOKE.get(), RocketExhaustParticle.SmokeProvider::new);
         event.registerSpriteSet(RocketParticles.BLUE_FLAME.get(), RocketExhaustParticle.FlameProvider::new);
         event.registerSpriteSet(RocketParticles.RCS_GAS.get(), RocketExhaustParticle.RCSGasProvider::new);
+        event.registerSpriteSet(RocketParticles.VENT_STEAM.get(), RocketExhaustParticle.VentSteamProvider::new);
+        event.registerSpriteSet(RocketParticles.EXPLOSION_SMOKE.get(), dev.devce.rocketnautics.content.particles.ExplosionSmokeParticle.Provider::new);
+        event.registerSpecial(RocketParticles.TANK_EXPLOSION_CLOUD.get(), new dev.devce.rocketnautics.content.particles.TankExplosionCloudParticle.Provider());
         event.registerSpriteSet(RocketParticles.JETPACK_FLAME.get(), JetpackFlameParticle.JetpackFlameProvider::new);
     }
 
@@ -346,8 +349,17 @@ public class RocketNauticsClient {
 
         net.neoforged.fml.ModLoadingContext.get().registerExtensionPoint(net.neoforged.neoforge.client.gui.IConfigScreenFactory.class,
             () -> (client, parent) -> new RocketSettingsScreen(parent));
+
+        net.createmod.catnip.config.ui.BaseConfigScreen.setDefaultActionFor(
+            RocketNautics.MODID,
+            base -> base
+                .withButtonLabels("Client Settings", null, "Server Settings")
+                .withSpecs(RocketConfig.CLIENT_SPEC, null, RocketConfig.SERVER_SPEC)
+        );
+
         event.enqueueWork(() -> {
             net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.devce.rocketnautics.registry.RocketBlocks.SEPARATOR.get(), net.minecraft.client.renderer.RenderType.cutout());
+            net.minecraft.client.renderer.ItemBlockRenderTypes.setRenderLayer(dev.devce.rocketnautics.registry.RocketBlocks.SPUTNIK.get(), net.minecraft.client.renderer.RenderType.cutoutMipped());
         });
     }
 

@@ -82,7 +82,7 @@ public class JetpackItem extends BaseArmorItem implements IBacktank {
             return;
         }
 
-        if (!fme.isAmbulant() && fme.is6DOFEnabled() && player.onGround()) {
+        if (!fme.isAmbulant() && fme.is6DOFEnabled() && (player.onGround() || player.hasLandedInLiquid())) {
             fme.set6DOFEnabled(false);
             setActive(worn, false);
             return;
@@ -94,9 +94,6 @@ public class JetpackItem extends BaseArmorItem implements IBacktank {
             fme.setAmbulant(true);
         } else {
             fme.setAmbulant(false);
-            if (fme.is6DOFEnabled()) {
-                fme.set6DOFEnabled(false);
-            }
         }
     }
 
@@ -158,7 +155,7 @@ public class JetpackItem extends BaseArmorItem implements IBacktank {
             j.setActive(worn, nowActive);
 
             fme.setAmbulant(nowActive);
-            fme.set6DOFEnabled(nowActive);
+            if (nowActive) fme.set6DOFEnabled(true);
 
             if (!nowActive) {
                 player.setSwimming(false);
@@ -167,7 +164,7 @@ public class JetpackItem extends BaseArmorItem implements IBacktank {
 
             PacketDistributor.sendToPlayer(player,
                 new FreeMotionSetupPayload(
-                    nowActive,
+                    true,
                     nowActive,
                     fme.getMovementAcceleration(),
                     fme.getDampenerForce()
