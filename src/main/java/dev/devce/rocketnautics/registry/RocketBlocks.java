@@ -2,7 +2,10 @@ package dev.devce.rocketnautics.registry;
 
 import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllItems;
+import com.simibubi.create.AllSpriteShifts;
 import com.simibubi.create.content.decoration.encasing.CasingBlock;
+import com.simibubi.create.content.decoration.encasing.EncasedCTBehaviour;
+import com.simibubi.create.content.decoration.encasing.EncasingRegistry;
 import com.simibubi.create.foundation.data.BuilderTransformers;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.foundation.data.recipe.CommonMetal;
@@ -15,7 +18,18 @@ import com.tterrag.registrate.util.nullness.NonNullFunction;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.RocketSpriteShifts;
 import dev.devce.rocketnautics.content.RocketBlockItem;
-import dev.devce.rocketnautics.content.blocks.*;
+import dev.devce.rocketnautics.content.blocks.BoosterThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.CreativeThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.EncasedRCSThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.EngineNozzleBlock;
+import dev.devce.rocketnautics.content.blocks.EnginePipesBlock;
+import dev.devce.rocketnautics.content.blocks.HologramTableBlock;
+import dev.devce.rocketnautics.content.blocks.MFDBlock;
+import dev.devce.rocketnautics.content.blocks.RCSThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.RocketThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.SputnikBlock;
+import dev.devce.rocketnautics.content.blocks.ThrusterMountBlock;
+import dev.devce.rocketnautics.content.blocks.VectorThrusterBlock;
 import dev.devce.rocketnautics.content.blocks.drain_valve.DrainValveBlock;
 import dev.devce.rocketnautics.content.blocks.hose.HoseAnchorBlock;
 import dev.devce.rocketnautics.content.blocks.separator.SeparatorBlock;
@@ -37,13 +51,23 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.ItemLike;
-import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ColoredFallingBlock;
+import net.minecraft.world.level.block.DirectionalBlock;
+import net.minecraft.world.level.block.RotatedPillarBlock;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.ApplyBonusCount;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.predicates.ExplosionCondition;
 import net.neoforged.neoforge.client.model.generators.ConfiguredModel;
 import net.neoforged.neoforge.client.model.generators.ModelFile;
 import net.neoforged.neoforge.client.model.generators.MultiPartBlockStateBuilder;
@@ -108,6 +132,42 @@ public class RocketBlocks {
             .tag(RocketTags.BlockTags.THRUSTERS.tag, RocketTags.BlockTags.LIGHT.tag, RocketTags.BlockTags.QUARTER_VOLUME.tag)
             .transform(existingDirectionalModel("rcs_thruster"))
             .item(RocketBlockItem::new).build().register();
+
+    public static final BlockEntry<EncasedRCSThrusterBlock> BRASS_ENCASED_RCS_THRUSTER = REGISTRATE
+            .block("brass_encased_rcs_thruster", properties -> new EncasedRCSThrusterBlock(properties, AllBlocks.BRASS_CASING::get))
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .transform(pickaxeOnly())
+            .tag(RocketTags.BlockTags.THRUSTERS.tag)
+            .transform(encasedDirectionalModel("rcs_thruster_encasement"))
+            .onRegister(CreateRegistrate.connectedTextures(() -> new EncasedCTBehaviour(AllSpriteShifts.BRASS_CASING)))
+            .onRegister(CreateRegistrate.casingConnectivity((block, connectivity) -> connectivity.make(block, AllSpriteShifts.BRASS_CASING)))
+            .loot((tables, block) -> tables.add(block, rcsEncasedLoot(AllBlocks.BRASS_CASING.get())))
+            .transform(EncasingRegistry.addVariantTo(RCS_THRUSTER))
+            .register();
+
+    public static final BlockEntry<EncasedRCSThrusterBlock> COPPER_ENCASED_RCS_THRUSTER = REGISTRATE
+            .block("copper_encased_rcs_thruster", properties -> new EncasedRCSThrusterBlock(properties, AllBlocks.COPPER_CASING::get))
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .transform(pickaxeOnly())
+            .tag(RocketTags.BlockTags.THRUSTERS.tag)
+            .transform(encasedDirectionalModel("rcs_thruster_copper_encasement"))
+            .onRegister(CreateRegistrate.connectedTextures(() -> new EncasedCTBehaviour(AllSpriteShifts.COPPER_CASING)))
+            .onRegister(CreateRegistrate.casingConnectivity((block, connectivity) -> connectivity.make(block, AllSpriteShifts.COPPER_CASING)))
+            .loot((tables, block) -> tables.add(block, rcsEncasedLoot(AllBlocks.COPPER_CASING.get())))
+            .transform(EncasingRegistry.addVariantTo(RCS_THRUSTER))
+            .register();
+
+    public static final BlockEntry<EncasedRCSThrusterBlock> RAILWAY_ENCASED_RCS_THRUSTER = REGISTRATE
+            .block("railway_encased_rcs_thruster", properties -> new EncasedRCSThrusterBlock(properties, AllBlocks.RAILWAY_CASING::get))
+            .initialProperties(() -> Blocks.IRON_BLOCK)
+            .transform(pickaxeOnly())
+            .tag(RocketTags.BlockTags.THRUSTERS.tag)
+            .transform(encasedDirectionalModel("rcs_thruster_railway_encasement"))
+            .onRegister(CreateRegistrate.connectedTextures(() -> new EncasedCTBehaviour(AllSpriteShifts.RAILWAY_CASING)))
+            .onRegister(CreateRegistrate.casingConnectivity((block, connectivity) -> connectivity.make(block, AllSpriteShifts.RAILWAY_CASING_SIDE)))
+            .loot((tables, block) -> tables.add(block, rcsEncasedLoot(AllBlocks.RAILWAY_CASING.get())))
+            .transform(EncasingRegistry.addVariantTo(RCS_THRUSTER))
+            .register();
 
     public static final BlockEntry<ThrusterMountBlock> THRUSTER_MOUNT = REGISTRATE.block("thruster_mount", ThrusterMountBlock::new)
             .initialProperties(() -> Blocks.IRON_BLOCK)
@@ -643,6 +703,22 @@ public class RocketBlocks {
 
     private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> existingDirectionalModel(String name) {
         return b -> b.blockstate((ctx, prov) -> prov.directionalBlock(ctx.getEntry(), prov.models().getExistingFile(RocketNautics.path("block/" + name))));
+    }
+
+    private static <T extends DirectionalBlock> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> encasedDirectionalModel(String casingModel) {
+        return b -> b.blockstate((ctx, prov) -> {
+            MultiPartBlockStateBuilder builder = prov.getMultipartBuilder(ctx.getEntry());
+            for (Direction direction : Direction.values()) {
+                directionalMultiPart(prov, builder, DirectionalBlock.FACING, direction, "rcs_thruster");
+                directionalMultiPart(prov, builder, DirectionalBlock.FACING, direction, casingModel);
+            }
+        });
+    }
+
+    private static LootTable.Builder rcsEncasedLoot(Block casing) {
+        return LootTable.lootTable()
+                .withPool(LootPool.lootPool().when(ExplosionCondition.survivesExplosion()).add(LootItem.lootTableItem(RCS_THRUSTER)))
+                .withPool(LootPool.lootPool().when(ExplosionCondition.survivesExplosion()).add(LootItem.lootTableItem(casing)));
     }
 
     private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> existingSimpleModel(String name) {

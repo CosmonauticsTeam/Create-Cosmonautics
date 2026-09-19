@@ -10,7 +10,17 @@ import com.tterrag.registrate.util.entry.RegistryEntry;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.client.render.HologramTableRenderer;
 import dev.devce.rocketnautics.client.render.VectorThrusterRenderer;
-import dev.devce.rocketnautics.content.blocks.*;
+import dev.devce.rocketnautics.content.blocks.BoosterThrusterBlockEntity;
+import dev.devce.rocketnautics.content.blocks.CreativeThrusterBlockEntity;
+import dev.devce.rocketnautics.content.blocks.EngineNozzleBlockEntity;
+import dev.devce.rocketnautics.content.blocks.EnginePipesBlockEntity;
+import dev.devce.rocketnautics.content.blocks.HologramTableBlockEntity;
+import dev.devce.rocketnautics.content.blocks.RCSThrusterBlockEntity;
+import dev.devce.rocketnautics.content.blocks.RocketThrusterBlockEntity;
+import dev.devce.rocketnautics.content.blocks.SputnikBlockEntity;
+import dev.devce.rocketnautics.content.blocks.SputnikDisplaySource;
+import dev.devce.rocketnautics.content.blocks.ThrusterMountBlockEntity;
+import dev.devce.rocketnautics.content.blocks.VectorThrusterBlockEntity;
 import dev.devce.rocketnautics.content.blocks.drain_valve.DrainValveBlockEntity;
 import dev.devce.rocketnautics.content.blocks.hose.HoseAnchorBlockEntity;
 import dev.devce.rocketnautics.content.blocks.hose.client.HoseAnchorRenderer;
@@ -44,7 +54,8 @@ public class RocketBlockEntities {
 
     public static final BlockEntityEntry<RCSThrusterBlockEntity> RCS_THRUSTER = REGISTRATE
             .blockEntity("rcs_thruster", RCSThrusterBlockEntity::new)
-            .validBlocks(RocketBlocks.RCS_THRUSTER)
+            .validBlocks(RocketBlocks.RCS_THRUSTER, RocketBlocks.BRASS_ENCASED_RCS_THRUSTER,
+                    RocketBlocks.COPPER_ENCASED_RCS_THRUSTER, RocketBlocks.RAILWAY_ENCASED_RCS_THRUSTER)
             .register();
 
     public static final BlockEntityEntry<KineticBlockEntity> SEPARATOR_SHAFT = REGISTRATE

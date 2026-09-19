@@ -33,7 +33,7 @@ public final class RcsThrusterPonderScene {
                 text(scene, util, "text_2", rcs, 100);
                 scene.idle(120);
                 PonderSceneSupport.setAnalogLever(scene, util, lever, 5);
-                setBurning(scene, util, rcs);
+                setBurning(scene, util, rcs, true);
                 scene.effects().indicateRedstone(lever);
                 scene.effects().indicateSuccess(rcs);
                 plume(scene, util, rcs, .3f, 80, -.1);
@@ -44,19 +44,32 @@ public final class RcsThrusterPonderScene {
                 scene.effects().indicateRedstone(lever);
                 plume(scene, util, rcs, .6f, 100, -.2);
                 scene.world().setBlock(lever, Blocks.AIR.defaultBlockState(), false);
+                setBurning(scene, util, rcs, false);
+                scene.idle(20);
+
+                scene.addKeyframe();
+                text(scene, util, "text_4", rcs, 100);
+                scene.idle(120);
+                setCasing(scene, rcs, RocketBlocks.BRASS_ENCASED_RCS_THRUSTER.getDefaultState());
+                text(scene, util, "text_5", rcs, 100);
+                scene.idle(120);
+                setCasing(scene, rcs, RocketBlocks.COPPER_ENCASED_RCS_THRUSTER.getDefaultState());
+                text(scene, util, "text_6", rcs, 100);
+                scene.idle(120);
+                setCasing(scene, rcs, RocketBlocks.RAILWAY_ENCASED_RCS_THRUSTER.getDefaultState());
+                text(scene, util, "text_7", rcs, 100);
+                scene.idle(120);
+
+                scene.addKeyframe();
                 scene.world().setBlock(rcs, Blocks.AIR.defaultBlockState(), false);
-                scene.world().setBlocks(util.select().fromTo(1, 1, 1, 3, 1, 3), AllBlocks.INDUSTRIAL_IRON_BLOCK.getDefaultState(), false);
-                scene.world().setBlocks(util.select().fromTo(1, 2, 1, 3, 2, 3), AllBlocks.BRASS_CASING.getDefaultState(), false);
-                scene.world().setBlocks(util.select().fromTo(1, 3, 1, 3, 3, 3), Blocks.LIGHT_BLUE_STAINED_GLASS.defaultBlockState(), false);
-                scene.world().setBlocks(util.select().fromTo(2, 4, 1, 2, 4, 3), AllBlocks.INDUSTRIAL_IRON_BLOCK.getDefaultState(), false);
-                scene.world().setBlocks(util.select().fromTo(1, 4, 2, 3, 4, 2), AllBlocks.INDUSTRIAL_IRON_BLOCK.getDefaultState(), false);
-                rcs(scene, util, 0, 1, 2, Direction.WEST);
-                rcs(scene, util, 4, 1, 2, Direction.EAST);
-                rcs(scene, util, 2, 1, 0, Direction.NORTH);
-                rcs(scene, util, 2, 1, 4, Direction.SOUTH);
-                scene.overlay().showOutline(PonderPalette.INPUT, "rcs_pods", util.select().fromTo(0, 1, 0, 4, 1, 4), 120);
-                scene.overlay().showText(120).text("rocketnautics.ponder.rcs_thruster.text_4")
-                                .pointAt(util.vector().topOf(util.grid().at(2, 3, 2))).placeNearTarget();
+                BlockPos core = util.grid().at(2, 1, 2);
+                scene.world().setBlock(core, AllBlocks.INDUSTRIAL_IRON_BLOCK.getDefaultState(), false);
+                rcs(scene, util, 1, 1, 2, Direction.WEST);
+                rcs(scene, util, 3, 1, 2, Direction.EAST);
+                rcs(scene, util, 2, 1, 1, Direction.NORTH);
+                rcs(scene, util, 2, 1, 3, Direction.SOUTH);
+                scene.overlay().showOutline(PonderPalette.INPUT, "rcs_pods", util.select().fromTo(1, 1, 1, 3, 1, 3), 120);
+                text(scene, util, "text_8", core, 100);
                 scene.addKeyframe();
                 scene.idle(140);
         }
@@ -66,9 +79,14 @@ public final class RcsThrusterPonderScene {
                                 .setValue(net.minecraft.world.level.block.DirectionalBlock.FACING, facing), false);
         }
 
-        private static void setBurning(SceneBuilder s, SceneBuildingUtil u, BlockPos pos) {
+        private static void setCasing(SceneBuilder s, BlockPos pos, net.minecraft.world.level.block.state.BlockState casing) {
+                s.world().setBlock(pos, casing.setValue(net.minecraft.world.level.block.DirectionalBlock.FACING, Direction.WEST), false);
+                s.effects().indicateSuccess(pos);
+        }
+
+        private static void setBurning(SceneBuilder s, SceneBuildingUtil u, BlockPos pos, boolean burning) {
                 s.world().modifyBlockEntityNBT(u.select().position(pos), RCSThrusterBlockEntity.class,
-                                nbt -> nbt.putBoolean("Burning", true));
+                                nbt -> nbt.putBoolean("Burning", burning));
         }
 
         private static void plume(SceneBuilder s, SceneBuildingUtil u, BlockPos pos, float density, int cycles, double speed) {
