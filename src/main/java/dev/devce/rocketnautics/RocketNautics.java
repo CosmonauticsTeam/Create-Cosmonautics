@@ -1,13 +1,15 @@
 package dev.devce.rocketnautics;
 
+import org.slf4j.Logger;
+
 import com.mojang.logging.LogUtils;
 import com.simibubi.create.foundation.item.ItemDescription;
 import com.simibubi.create.foundation.item.KineticStats;
 import com.simibubi.create.foundation.item.TooltipHelper;
 import com.simibubi.create.foundation.item.TooltipModifier;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
+
 import dev.devce.rocketnautics.compat.computercraft.ComputerCraftCompat;
-import dev.devce.rocketnautics.content.commands.*;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseLoader;
 import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.devce.rocketnautics.data.RocketDatagen;
@@ -33,12 +35,11 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
-import org.slf4j.Logger;
 
 /**
- * Main class for the Cosmonautics (RocketNautics) mod.
- * This class handles mod initialization, configuration registration,
- * and various system setups for physics, commands, and registry.
+ * Main class for the Cosmonautics (RocketNautics) mod. This class handles mod
+ * initialization, configuration registration, and various system setups for
+ * physics, commands, and registry.
  */
 @Mod(RocketNautics.MODID)
 public class RocketNautics {
@@ -47,12 +48,14 @@ public class RocketNautics {
     /** Global logger instance for this mod. */
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final NonNullSupplier<RocketRegistrate> REGISTRATE = NonNullSupplier.lazy(() ->
-            (RocketRegistrate) new RocketRegistrate(path(MODID), MODID).defaultCreativeTab((ResourceKey<CreativeModeTab>) null));
+    private static final NonNullSupplier<RocketRegistrate> REGISTRATE = NonNullSupplier.lazy(
+            () -> (RocketRegistrate) new RocketRegistrate(path(MODID), MODID).defaultCreativeTab((ResourceKey<CreativeModeTab>) null));
+
     /**
-     * Constructor for the mod. Performs initial registration of configs, blocks, and handlers.
+     * Constructor for the mod. Performs initial registration of configs, blocks,
+     * and handlers.
      *
-     * @param modEventBus The event bus for mod-specific events.
+     * @param modEventBus  The event bus for mod-specific events.
      * @param modContainer The container for this mod instance.
      */
     public RocketNautics(IEventBus modEventBus, net.neoforged.fml.ModContainer modContainer) {
@@ -82,7 +85,8 @@ public class RocketNautics {
         RocketSounds.register(modEventBus);
         RocketDataComponents.register(modEventBus);
 
-        // Register mod-bus event subscribers manually to avoid deprecated bus() parameter
+        // Register mod-bus event subscribers manually to avoid deprecated bus()
+        // parameter
         modEventBus.register(NetworkHandler.class);
         if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT) {
             modEventBus.register(dev.devce.rocketnautics.client.ClientModEvents.class);
@@ -90,21 +94,21 @@ public class RocketNautics {
             NeoForge.EVENT_BUS.register(dev.devce.rocketnautics.client.RocketNauticsClientEvents.class);
             net.createmod.ponder.foundation.PonderIndex.addPlugin(new dev.devce.rocketnautics.ponder.RocketPonderPlugin());
 
-            // Auto-configure Flywheel backend to OFF for SubLevel & DeepSpace rendering compatibility
+            // Auto-configure Flywheel backend to OFF for SubLevel & DeepSpace rendering
+            // compatibility
             dev.devce.rocketnautics.RocketNauticsClient.ensureFlywheelCompatibility();
 
             // Enable Sable's shadow maps for sublevels
             dev.ryanhcode.sable.render.sky_light_shadow.SableSkyLightShadows.setIsEnabled(true);
 
-            // Veil platform requires shader processors to be registered during mod construction
-            foundry.veil.platform.VeilEventPlatform.INSTANCE.onVeilAddShaderProcessors((provider, registry) ->
-                registry.addPreprocessor(new dev.devce.rocketnautics.client.render.shader.SunDirectionalShadingPreProcessor(), false)
-            );
+            // Veil platform requires shader processors to be registered during mod
+            // construction
+            foundry.veil.platform.VeilEventPlatform.INSTANCE.onVeilAddShaderProcessors((provider, registry) -> registry
+                    .addPreprocessor(new dev.devce.rocketnautics.client.render.shader.SunDirectionalShadingPreProcessor(), false));
 
             // Register directional shadow map render stage
-            foundry.veil.platform.VeilEventPlatform.INSTANCE.onVeilRenderLevelStage(
-                dev.devce.rocketnautics.client.render.shadow.DirectionalShadowRenderer::renderShadowMap
-            );
+            foundry.veil.platform.VeilEventPlatform.INSTANCE
+                    .onVeilRenderLevelStage(dev.devce.rocketnautics.client.render.shadow.DirectionalShadowRenderer::renderShadowMap);
         }
 
         modEventBus.addListener(this::setup);
@@ -132,11 +136,10 @@ public class RocketNautics {
             final Rarity rarity = item.getDefaultInstance().getRarity();
             FontHelper.Palette color = FontHelper.Palette.STANDARD_CREATE;
             if (rarity == Rarity.EPIC)
-                color = new FontHelper.Palette(TooltipHelper.styleFromColor(SimColors.EPIC_OURPLE), TooltipHelper.styleFromColor(rarity.color()));
+                color = new FontHelper.Palette(TooltipHelper.styleFromColor(SimColors.EPIC_OURPLE),
+                        TooltipHelper.styleFromColor(rarity.color()));
 
-            return new ItemDescription
-                    .Modifier(item, color)
-                    .andThen(TooltipModifier.mapNull(KineticStats.create(item)));
+            return new ItemDescription.Modifier(item, color).andThen(TooltipModifier.mapNull(KineticStats.create(item)));
         });
     }
 
@@ -145,7 +148,8 @@ public class RocketNautics {
      */
     private void setup(final FMLCommonSetupEvent event) {
         LOGGER.info("Cosmonautics Setup");
-        // Sable altitude limits override has been moved to onServerAboutToStart event to prevent early-access exceptions
+        // Sable altitude limits override has been moved to onServerAboutToStart event
+        // to prevent early-access exceptions
     }
 
     /**
@@ -173,13 +177,16 @@ public class RocketNautics {
     }
 
     /**
-     * Temporary fix for <a href="https://github.com/ryanhcode/sable/issues/919">Sable issue #919</a>
-     * that corrupts the world when logging out while seated on a sublevel outside the overworld.
+     * Temporary fix for
+     * <a href="https://github.com/ryanhcode/sable/issues/919">Sable issue #919</a>
+     * that corrupts the world when logging out while seated on a sublevel outside
+     * the overworld.
      */
     @SubscribeEvent
     public void preventWorldCorruptionOnSeatedLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         Player player = event.getEntity();
-        if (player.level().isClientSide() || !player.isPassenger()) return;
+        if (player.level().isClientSide() || !player.isPassenger())
+            return;
         if (player.level().dimension() != Level.OVERWORLD) {
             player.stopRiding();
         }

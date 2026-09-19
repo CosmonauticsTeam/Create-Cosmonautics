@@ -1,12 +1,15 @@
 package dev.devce.rocketnautics.content.blocks;
 
+import java.util.function.Supplier;
+
 import com.simibubi.create.api.schematic.requirement.SpecialBlockItemRequirement;
 import com.simibubi.create.content.decoration.encasing.EncasedBlock;
 import com.simibubi.create.content.schematics.requirement.ItemRequirement;
+
 import dev.devce.rocketnautics.registry.RocketBlocks;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
@@ -20,8 +23,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
-import java.util.function.Supplier;
 
 public class EncasedRCSThrusterBlock extends RCSThrusterBlock implements EncasedBlock, SpecialBlockItemRequirement {
     private static final VoxelShape SHAPE = Block.box(0, 0, 0, 16, 16, 16);
@@ -44,8 +45,8 @@ public class EncasedRCSThrusterBlock extends RCSThrusterBlock implements Encased
     }
 
     @Override
-    public void handleEncasing(BlockState state, Level level, BlockPos pos, ItemStack heldItem, Player player,
-                               InteractionHand hand, BlockHitResult ray) {
+    public void handleEncasing(BlockState state, Level level, BlockPos pos, ItemStack heldItem, Player player, InteractionHand hand,
+            BlockHitResult ray) {
         BlockState encasedState = defaultBlockState().setValue(FACING, state.getValue(FACING));
         switchBlockPreservingData(level, pos, encasedState);
 
@@ -60,8 +61,7 @@ public class EncasedRCSThrusterBlock extends RCSThrusterBlock implements Encased
         if (!level.isClientSide) {
             BlockPos pos = context.getClickedPos();
             level.levelEvent(2001, pos, Block.getId(state));
-            switchBlockPreservingData(level, pos, RocketBlocks.RCS_THRUSTER.getDefaultState()
-                    .setValue(FACING, state.getValue(FACING)));
+            switchBlockPreservingData(level, pos, RocketBlocks.RCS_THRUSTER.getDefaultState().setValue(FACING, state.getValue(FACING)));
             Block.popResource(level, pos, new ItemStack(getCasing()));
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
