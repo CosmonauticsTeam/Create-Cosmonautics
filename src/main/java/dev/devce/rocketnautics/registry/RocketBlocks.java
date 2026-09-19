@@ -28,7 +28,18 @@ import com.tterrag.registrate.util.nullness.NonNullFunction;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.RocketSpriteShifts;
 import dev.devce.rocketnautics.content.RocketBlockItem;
-import dev.devce.rocketnautics.content.blocks.*;
+import dev.devce.rocketnautics.content.blocks.BoosterThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.CreativeThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.EncasedRCSThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.EngineNozzleBlock;
+import dev.devce.rocketnautics.content.blocks.EnginePipesBlock;
+import dev.devce.rocketnautics.content.blocks.HologramTableBlock;
+import dev.devce.rocketnautics.content.blocks.MFDBlock;
+import dev.devce.rocketnautics.content.blocks.RCSThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.RocketThrusterBlock;
+import dev.devce.rocketnautics.content.blocks.SputnikBlock;
+import dev.devce.rocketnautics.content.blocks.ThrusterMountBlock;
+import dev.devce.rocketnautics.content.blocks.VectorThrusterBlock;
 import dev.devce.rocketnautics.content.blocks.drain_valve.DrainValveBlock;
 import dev.devce.rocketnautics.content.blocks.hose.HoseAnchorBlock;
 import dev.devce.rocketnautics.content.blocks.separator.SeparatorBlock;
@@ -107,7 +118,8 @@ public class RocketBlocks {
         public static final BlockEntry<EncasedRCSThrusterBlock> BRASS_ENCASED_RCS_THRUSTER = REGISTRATE
                         .block("brass_encased_rcs_thruster",
                                         properties -> new EncasedRCSThrusterBlock(properties, AllBlocks.BRASS_CASING::get))
-                        .initialProperties(() -> Blocks.IRON_BLOCK).transform(pickaxeOnly()).tag(RocketTags.BlockTags.THRUSTERS.tag)
+                        .initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
+                        .transform(pickaxeOnly()).tag(RocketTags.BlockTags.THRUSTERS.tag)
                         .transform(encasedDirectionalModel("rcs_thruster_encasement"))
                         .onRegister(CreateRegistrate.connectedTextures(() -> new EncasedCTBehaviour(AllSpriteShifts.BRASS_CASING)))
                         .onRegister(CreateRegistrate.casingConnectivity(
@@ -118,7 +130,8 @@ public class RocketBlocks {
         public static final BlockEntry<EncasedRCSThrusterBlock> COPPER_ENCASED_RCS_THRUSTER = REGISTRATE
                         .block("copper_encased_rcs_thruster",
                                         properties -> new EncasedRCSThrusterBlock(properties, AllBlocks.COPPER_CASING::get))
-                        .initialProperties(() -> Blocks.IRON_BLOCK).transform(pickaxeOnly()).tag(RocketTags.BlockTags.THRUSTERS.tag)
+                        .initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
+                        .transform(pickaxeOnly()).tag(RocketTags.BlockTags.THRUSTERS.tag)
                         .transform(encasedDirectionalModel("rcs_thruster_copper_encasement"))
                         .onRegister(CreateRegistrate.connectedTextures(() -> new EncasedCTBehaviour(AllSpriteShifts.COPPER_CASING)))
                         .onRegister(CreateRegistrate.casingConnectivity(
@@ -129,7 +142,8 @@ public class RocketBlocks {
         public static final BlockEntry<EncasedRCSThrusterBlock> RAILWAY_ENCASED_RCS_THRUSTER = REGISTRATE
                         .block("railway_encased_rcs_thruster",
                                         properties -> new EncasedRCSThrusterBlock(properties, AllBlocks.RAILWAY_CASING::get))
-                        .initialProperties(() -> Blocks.IRON_BLOCK).transform(pickaxeOnly()).tag(RocketTags.BlockTags.THRUSTERS.tag)
+                        .initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
+                        .transform(pickaxeOnly()).tag(RocketTags.BlockTags.THRUSTERS.tag)
                         .transform(encasedDirectionalModel("rcs_thruster_railway_encasement"))
                         .onRegister(CreateRegistrate.connectedTextures(() -> new EncasedCTBehaviour(AllSpriteShifts.RAILWAY_CASING)))
                         .onRegister(CreateRegistrate.casingConnectivity(
@@ -152,15 +166,15 @@ public class RocketBlocks {
                         .transform(pickaxeOnly()).transform(existingDirectionalModel("engine_nozzle")).item(RocketBlockItem::new)
                         .transform(RocketItems.noGeneratedModel()).build().register();
 
-        public static final BlockEntry<HoseAnchorBlock> HOSE_ANCHOR = REGISTRATE.block("hose_anchor", HoseAnchorBlock::new)
-                        .initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
-                        .transform(pickaxeOnly()).transform(existingDirectionalModel("hose_anchor")).item(RocketBlockItem::new)
-                        .transform(RocketItems.noGeneratedModel()).build().register();
+	public static final BlockEntry<HoseAnchorBlock> HOSE_ANCHOR = REGISTRATE.block("hose_anchor", HoseAnchorBlock::new)
+			.initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
+			.transform(pickaxeOnly()).transform(existingDirectionalModel("hose_anchor")).item(RocketBlockItem::new)
+			.transform(RocketItems.noGeneratedModel()).build().register();
 
-        public static final BlockEntry<DrainValveBlock> DRAIN_VALVE = REGISTRATE.block("drain_valve", DrainValveBlock::new)
-                        .initialProperties(() -> Blocks.COPPER_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
-                        .transform(pickaxeOnly()).transform(existingDirectionalModel("drain_valve")).item(RocketBlockItem::new)
-                        .transform(RocketItems.noGeneratedModel()).build().register();
+	public static final BlockEntry<DrainValveBlock> DRAIN_VALVE = REGISTRATE.block("drain_valve", DrainValveBlock::new)
+			.initialProperties(() -> Blocks.COPPER_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
+			.transform(pickaxeOnly()).transform(existingDirectionalModel("drain_valve")).item(RocketBlockItem::new)
+			.transform(RocketItems.noGeneratedModel()).build().register();
 
         public static final BlockEntry<dev.devce.rocketnautics.content.blocks.solar.SolarPanelBlock> SOLAR_PANEL = REGISTRATE
                         .block("solar_panel", dev.devce.rocketnautics.content.blocks.solar.SolarPanelBlock::new)
@@ -377,21 +391,21 @@ public class RocketBlocks {
                         .tag(RocketTags.BlockTags.LIGHT.tag).item(RocketBlockItem::new)
                         .model((ctx, prov) -> prov.blockItem(ctx::getEntry, "_item")).build().register();
 
-        public static final BlockEntry<SputnikBlock> SPUTNIK = REGISTRATE.block("sputnik", SputnikBlock::new)
-                        .initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
-                        .transform(pickaxeOnly()).blockstate((ctx, prov) -> {
-                        }).tag(RocketTags.BlockTags.SUPER_HEAVY.tag).item(RocketBlockItem::new).transform(RocketItems.noGeneratedModel())
+	public static final BlockEntry<SputnikBlock> SPUTNIK = REGISTRATE.block("sputnik", SputnikBlock::new)
+			.initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
+			.transform(pickaxeOnly()).transform(existingSimpleModel("sputnik")).tag(RocketTags.BlockTags.SUPER_HEAVY.tag)
+			.item(RocketBlockItem::new)
                         .recipe((ctx, prov) -> ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get()).pattern("L L").pattern("IBI")
                                         .pattern("L L").define('L', Items.LIGHTNING_ROD).define('I', Items.IRON_INGOT)
                                         .define('B', Items.IRON_BLOCK).unlockedBy("has_iron_block", prov.has(Items.IRON_BLOCK)).save(prov))
-                        .build().register();
+			.build().register();
 
-        public static final BlockEntry<dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlock> SPUTNIK_LINK = REGISTRATE
-                        .block("sputnik_link", dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlock::new)
-                        .initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
-                        .transform(pickaxeOnly()).blockstate((ctx, prov) -> {
-                        }).tag(RocketTags.BlockTags.LIGHT.tag).item(RocketBlockItem::new).transform(RocketItems.noGeneratedModel()).build()
-                        .register();
+	public static final BlockEntry<dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlock> SPUTNIK_LINK = REGISTRATE
+			.block("sputnik_link", dev.devce.rocketnautics.content.blocks.sputnik_link.SputnikLinkBlock::new)
+			.initialProperties(() -> Blocks.IRON_BLOCK).properties(BlockBehaviour.Properties::noOcclusion)
+			.transform(pickaxeOnly()).blockstate((ctx, prov) -> {
+			}).tag(RocketTags.BlockTags.LIGHT.tag).item(RocketBlockItem::new).transform(RocketItems.noGeneratedModel()).build()
+			.register();
 
         public static final BlockEntry<HologramTableBlock> HOLOGRAM_TABLE = REGISTRATE.block("hologram_block", HologramTableBlock::new)
                         .initialProperties(() -> Blocks.IRON_BLOCK).transform(pickaxeOnly())
@@ -407,7 +421,6 @@ public class RocketBlocks {
         public static final BlockEntry<MFDBlock> MFD = REGISTRATE.block("mfd", MFDBlock::new).initialProperties(() -> Blocks.IRON_BLOCK)
                         .transform(pickaxeOnly()).transform(existingDirectionalModel("mfd")).tag(RocketTags.BlockTags.LIGHT.tag)
                         .item(RocketBlockItem::new).build().register();
-
 
         public static final BlockEntry<dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlock> GYRODYNE = REGISTRATE
                         .block("gyrodyne", dev.devce.rocketnautics.content.blocks.gyrodyne.GyrodyneBlock::new)
