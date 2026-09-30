@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
+import dev.devce.rocketnautics.content.orbit.universe.PlanetDimensionData;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
@@ -63,8 +64,11 @@ public class UniverseRenderer {
         boolean isDeepSpace = DeepSpaceHelper.isDeepSpace(mc.level);
 
         for (Planet pl : planets) {
-            if (exclude != null && pl.planet.id() == exclude.id()) continue;
-            if (!isDeepSpace && !RocketConfig.CLIENT.enableCustomSky.get()) continue;
+            if (exclude != null) {
+                if (pl.planet.id() == exclude.id()) continue;
+                PlanetDimensionData linkedDimension = exclude.linkedDimension();
+                if (!isDeepSpace && !RocketConfig.CLIENT.enableCustomSky.get() && linkedDimension != null && linkedDimension.renderUniverseInDimension()) continue;
+            }
 
             Vector3f p = new Vector3f((float)pl.pos.getX(), (float)pl.pos.getY(), (float)pl.pos.getZ());
             Vector3f toTarget = camera.getPosition().toVector3f().sub(p).normalize();
@@ -81,8 +85,6 @@ public class UniverseRenderer {
             PlanetRenderer.render(pl.planet, ps, camera, pl.pos, date, frame, angle, pTick);
             ps.popPose();
         }
-
-        LensFlareRenderer.renderQueue(camera);
 
         ps.popPose();
     }

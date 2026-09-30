@@ -11,6 +11,8 @@ import dev.devce.rocketnautics.mixin.BucketItemAccessor;
 import dev.devce.rocketnautics.network.FreeMotionSetupPayload;
 import dev.devce.rocketnautics.registry.RocketDataComponents;
 import dev.devce.rocketnautics.registry.RocketItems;
+import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.companion.math.BoundingBox3d;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
@@ -41,6 +43,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Locale;
+
+import static dev.devce.rocketnautics.content.RocketDimensions.DEEP_SPACE;
 
 @EventBusSubscriber
 public class JetpackItem extends BaseArmorItem implements IBacktank {
@@ -162,9 +166,22 @@ public class JetpackItem extends BaseArmorItem implements IBacktank {
                 player.setPose(net.minecraft.world.entity.Pose.STANDING);
             }
 
+            boolean is6DOFenabled = true;
+            if (player.getAbilities().flying) {
+                is6DOFenabled = nowActive;
+                fme.setAmbulant(nowActive);
+                fme.set6DOFEnabled(is6DOFenabled);
+            } else if (!nowActive && player.level().dimension() == DEEP_SPACE) {
+                SubLevelContainer c = SubLevelContainer.getContainer(player.level());
+                if (c != null) is6DOFenabled = c.queryIntersecting(new BoundingBox3d(player.getBoundingBox().inflate(1.5))).iterator().hasNext();
+
+                fme.setAmbulant(nowActive);
+                fme.set6DOFEnabled(is6DOFenabled);
+            }
+
             PacketDistributor.sendToPlayer(player,
                 new FreeMotionSetupPayload(
-                    true,
+                    is6DOFenabled,
                     nowActive,
                     fme.getMovementAcceleration(),
                     fme.getDampenerForce()

@@ -44,6 +44,11 @@ public class LensFlareRenderer {
         ResourceLocation shaderId = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "lens_flare");
         ResourceLocation fboId = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "lens_flare_fbo");
 
+        ResourceLocation planetFboId = ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "planet_fbo");
+        AdvancedFbo planetFBO = VeilRenderSystem.renderer().getFramebufferManager().getFramebuffer(planetFboId);
+
+        assert planetFBO != null;
+
         ShaderProgram shader = VeilRenderSystem.setShader(shaderId);
         if (shader != null && shader.isValid()) {
             AdvancedFbo lfFBO = VeilRenderSystem.renderer().getFramebufferManager().getFramebuffer(fboId);
@@ -61,8 +66,12 @@ public class LensFlareRenderer {
                 shader.getUniformSafe("sDiffuse").setInt(0);
 
                 RenderSystem.activeTexture(GL13.GL_TEXTURE1);
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, planetFBO.getDepthTextureAttachment().getId());
+                shader.getUniformSafe("sDiffuseDepthSkybox").setInt(1);
+
+                RenderSystem.activeTexture(GL13.GL_TEXTURE1);
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, target.getDepthTextureId());
-                shader.getUniformSafe("sDiffuseDepth").setInt(1);
+                shader.getUniformSafe("sDiffuseDepthDefault").setInt(2);
 
                 shader.getUniformSafe("uResolution").setVector(new Vector2f(lfFBO.getWidth(), lfFBO.getHeight()));
                 shader.getUniformSafe("uThreshold").setFloat(0.9f);
