@@ -535,10 +535,7 @@ public final class DeepSpaceHandler {
             }
         }
 
-        // 2. Ensure star plasma texture is ready ONCE before iterating planets (avoid per-planet overhead)
-        SkyHandler.ensureStarPlasmaTexture();
-
-        // 3. Ensure planet VBOs are uploaded to GPU (one-time, on first render)
+        // 2. Ensure planet VBOs are uploaded to GPU (one-time, on first render)
         ensureVBOs();
         ensureVAOs();
 
@@ -577,6 +574,10 @@ public final class DeepSpaceHandler {
         for (int i = 0; i < entryCount; i++) {
             PlanetDistanceEntry entry = PLANET_ENTRIES.get(i);
             if (!isDeepSpace && !RocketConfig.CLIENT.enableCustomSky.get()) continue;
+            // Only regenerate the star plasma noise texture if there is a star onscreen to be rendered on the current frame
+            if (entry.planet.extras().star()) {
+                SkyHandler.ensureStarPlasmaTexture();
+            }
             poseStack.pushPose();
             if (renderPlanet(entry.planet, entry.pos, poseStack, renderDate, posFrame, celestialAngle, partialTick, camera, modelViewMatrix)) {
                 if (!AWAITING_SERVER.put(entry.planet.id(), true)) {
@@ -640,7 +641,7 @@ public final class DeepSpaceHandler {
             L = planet.getRotationAtTime(date).applyInverseTo(L);
         }
 
-        // Note: ensureStarPlasmaTexture() is called once before the planet loop in renderUniverse.
+        // Note: ensureStarPlasmaTexture() is called once before the planet loop in renderUniverse, only for star planets
         if (planet.extras().star()) {
             if (SkyHandler.STAR_PLASMA_TEXTURE_ID != null) {
                 RenderSystem.setShaderTexture(0, SkyHandler.STAR_PLASMA_TEXTURE_ID);
