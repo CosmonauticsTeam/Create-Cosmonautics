@@ -21,10 +21,12 @@ public final class SunLightAPI {
     // Logic partially AI written, for getting DeepSpacePosition and getting Star Position
     // Vector calculation I searched on Google
     // Logic made by me: use deepspaceposition to calculate sun direction, and calculate points between star and ship pos
-    /*
+    /**
      * Calculates the sun Direction from the specified Block Position.
-     * Preconditions:  level must be a valid level, and BlockPos must not be null.  This must be called for an object in space.
-     * Postcondition: Returns an Optional<> container containing the Vec3, to avoid NullPointerException.
+     * 
+     * @param level: The current level loaded.
+     * @param blockPos:  The Block Position to use to get the Deep Space Instance from.  
+     * @return Optional:  An optional container that may or may not return the non null value, in order to avoid NullPointerExceptions.  
      */
     public static Optional<Vec3> getSunDirection(Level level, BlockPos blockPos) {
         MinecraftServer server = level.getServer();
