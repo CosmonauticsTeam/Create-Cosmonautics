@@ -29,6 +29,8 @@ import org.joml.Vector3d;
 
 import java.util.*;
 
+import static dev.devce.rocketnautics.api.SunLightAPI.getSunDirection;
+
 /**
  * BlockEntity for the Solar Panel.
  * Generates Forge Energy based on sunlight incidence angle.
@@ -280,7 +282,8 @@ public class SolarPanelBlockEntity extends BlockEntity implements IHaveGoggleInf
 
         if (DeepSpaceHelper.isDeepSpace(level)) {
             Vec3 panelNormal = getPanelWorldNormal(facing);
-            Vec3 sunDir = getSunDirection();
+            Optional<Vec3> checkSunDir = getSunDirection(level, frontPos);
+            Vec3 sunDir = checkSunDir.orElse(new Vec3(0, 0, 0));  // Gets the vec3 from the optional collection checkSunDir, fallback is 0, 0, 0.  (Note: AI helped write code, but I understand it).
             double dot = panelNormal.dot(sunDir);
 
             if (dot > 0.0) {
@@ -322,38 +325,6 @@ public class SolarPanelBlockEntity extends BlockEntity implements IHaveGoggleInf
         return new Vec3(facing.getStepX(), facing.getStepY(), facing.getStepZ());
     }
 
-    private Vec3 getSunDirection() {
-        if (level != null && level.isClientSide) {
-            return new Vec3(
-                    SableSubLevelLightingHandler.getSunX(),
-                    SableSubLevelLightingHandler.getSunY(),
-                    SableSubLevelLightingHandler.getSunZ()
-            ).normalize();
-        }
-
-        if (DeepSpaceHandler.hasReceivedPosition() && DeepSpaceHandler.getUniverse() != null) {
-            try {
-                org.orekit.time.AbsoluteDate renderDate = DeepSpaceHandler.getRenderDate(0.0f);
-                Vector3D shipPos = DeepSpaceHandler.getReceivedPosition().getPosition(renderDate);
-                org.orekit.frames.Frame shipFrame = DeepSpaceHandler.getReceivedPosition().getFrame();
-
-                return DeepSpaceHandler.getUniverse().getPlanets().stream()
-                        .filter(p -> p.extras() != null && p.extras().star())
-                        .map(sol -> {
-                            try {
-                                Vector3D dir = sol.posInMyFrame(renderDate, shipPos, shipFrame).negate();
-                                return new Vec3(dir.getX(), dir.getY(), dir.getZ()).normalize();
-                            } catch (Exception e) {
-                                return null;
-                            }
-                        })
-                        .filter(Objects::nonNull)
-                        .findFirst()
-                        .orElse(new Vec3(0.577, 0.707, 0.408).normalize());
-            } catch (Exception ignored) {}
-        }
-        return new Vec3(0.577, 0.707, 0.408).normalize();
-    }
 
     private void pushEnergy() {
         SolarPanelBlockEntity controller = getController();
